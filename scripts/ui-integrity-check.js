@@ -1,0 +1,41 @@
+const fs=require('fs'),path=require('path');
+const root=path.join(__dirname,'..');
+const html=fs.readFileSync(path.join(root,'renderer/index.html'),'utf8');
+const js=fs.readFileSync(path.join(root,'renderer/app.js'),'utf8');
+const css=fs.readFileSync(path.join(root,'renderer/styles.css'),'utf8');
+const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
+const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+const counts=new Map();for(const id of ids)counts.set(id,(counts.get(id)||0)+1);
+const dup=[...counts].filter(([,n])=>n>1).map(([id])=>id);if(dup.length)throw new Error(`Duplicate HTML id(s): ${dup.join(', ')}`);
+const refs=new Set();
+for(const m of js.matchAll(/\$\('#([A-Za-z0-9_-]+)'\)/g))refs.add(m[1]);
+for(const m of js.matchAll(/document\.getElementById\('([^']+)'\)/g))refs.add(m[1]);
+const dynamicIds=new Set([...js.matchAll(/\.id='([^']+)'/g)].map(m=>m[1]));
+const missing=[...refs].filter(id=>!counts.has(id)&&!dynamicIds.has(id));if(missing.length)throw new Error(`Renderer references missing HTML id(s): ${missing.join(', ')}`);
+const pageIds=new Set([...html.matchAll(/<section\s+id="([^"]+)"\s+class="page/g)].map(m=>m[1]));
+for(const m of html.matchAll(/\bdata-(?:page|go)="([^"]+)"/g)){if(!pageIds.has(m[1]))throw new Error(`Navigation target "${m[1]}" does not match a page section.`)}
+const buttons=[...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)];
+for(const [,attrs,body] of buttons){const text=body.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();if(!text&&!/aria-label="[^"]+"/.test(attrs))throw new Error(`Button has no readable label: <button${attrs}>`)}
+const visible=html.replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&[^;]+;/g,' ').replace(/\s+/g,' ');
+const attributeText=[...html.matchAll(/(?:data-tip|placeholder|aria-label|title)="([^"]+)"/gi)].map(m=>m[1]).join(' ');
+const teacherSurface=`${visible} ${attributeText}`;
+for(const term of ['DRY RUN','Task Scheduler','run lock','safety certificate','fingerprint','regular expression','Technical log','Help & diagnostics','Error invoking remote method','remote method','PowerShell','localAppData','userData','exit code','IPC','JSON','stdout','stderr','stack trace','exception','Electron','Chromium','course ID','assignment ID','stream ID','API key']){if(teacherSurface.toLowerCase().includes(term.toLowerCase()))throw new Error(`Teacher UI exposes developer language: ${term}`)}
+if(!html.includes('aria-current="page"'))throw new Error('Active navigation does not expose aria-current.');
+if(!html.includes('role="dialog"')||!html.includes('aria-modal="true"'))throw new Error('Wizard/confirmation dialogs are not accessible modal dialogs.');
+if(!html.includes('id="toastRegion"')||!js.includes("setAttribute('role',error?'alert':'status')"))throw new Error('Accessible live notification behavior is missing.');
+if((html.match(/data-tip=/g)||[]).length<8)throw new Error('Commercial tooltip/help coverage is too sparse.');
+if(!css.includes(':focus-visible'))throw new Error('Visible keyboard focus styling is missing.');
+if(!css.includes('prefers-reduced-motion'))throw new Error('Reduced-motion support is missing.');
+if(css.includes('.switch input{display:none}'))throw new Error('Switch inputs are removed from keyboard accessibility.');
+if(js.includes('confirm('))throw new Error('Browser-native confirm() is still used.');
+if(!js.includes('function trapFocus')||!js.includes('function askConfirm'))throw new Error('Modal focus trapping/custom confirmations are missing.');
+if(!js.includes('markDirty')||!html.includes('id="unsavedBar"'))throw new Error('Unsaved-change protection is missing.');
+if(!js.includes('regexFromExample')||!html.includes('Example Classroom assignment')||!html.includes('Example Drive plan filename'))throw new Error('Example-based matching setup is missing.');
+if(!main.includes('mainWindow.setMenu(null)')||!main.includes('autoHideMenuBar:true'))throw new Error('Generic Electron menu has not been removed.');
+if(!html.includes('Submitted by Auto Turn-In'))throw new Error('Submission metric does not clarify its scope.');
+if(!html.includes('Help & support'))throw new Error('Help & support page is missing.');
+if(!html.includes('id="wizardComplete"')||!html.includes("You're all set"))throw new Error('Wizard completion confidence screen is missing.');
+if(!js.includes('Support code:')||!html.includes('id="attentionCode"')||!html.includes('id="helpCode"'))throw new Error('Support-code UI is missing.');
+if(!js.includes('decodeUserMessage')||!js.includes('unhandledrejection'))throw new Error('Unexpected UI errors are not forced through teacher-safe language.');
+if(html.includes('<pre id="logBox"'))throw new Error('Raw technical logs are still rendered inside the teacher interface.');
+console.log(`UI integrity checks passed: ${ids.length} unique ids, ${refs.size} direct renderer bindings, ${pageIds.size} pages, ${(html.match(/data-tip=/g)||[]).length} contextual help tips.`);

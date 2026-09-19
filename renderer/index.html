@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none';">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Classroom Auto Turn-In</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<svg class="svg-sprite" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.7 12 3l9 7.7v9.1a1.2 1.2 0 0 1-1.2 1.2h-5.3v-6.2h-5V21H4.2A1.2 1.2 0 0 1 3 19.8z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2.8h8l4 4V21H6z"/><path d="M14 2.8v4h4M9 12h6M9 15.5h6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.2 13.5a7.6 7.6 0 0 0 0-3l2-1.4-2-3.4-2.3 1a8 8 0 0 0-2.6-1.5L14 2.7h-4l-.3 2.5a8 8 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.4a7.6 7.6 0 0 0 0 3l-2 1.4 2 3.4 2.3-1a8 8 0 0 0 2.6 1.5l.3 2.5h4l.3-2.5a8 8 0 0 0 2.6-1.5l2.3 1 2-3.4z"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.7 2.7 0 1 1 4.4 2.1c-1 .8-2 1.3-2 2.9M12 17.5h.01"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.4A7 7 0 0 1 18.8 7M17.8 15.6A7 7 0 0 1 5.2 17"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 3 22 20H2z"/><path d="M12 9v5M12 17.5h.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v5.5c0 5-3.2 8.3-8 9.5-4.8-1.2-8-4.5-8-9.5V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+</svg>
+
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Main navigation">
+    <div class="brand">
+      <div class="brand-mark"><img src="../assets/icon.png" alt=""></div>
+      <div class="brand-copy"><strong>Classroom</strong><span>Auto Turn-In</span></div>
+    </div>
+    <nav>
+      <button class="nav active" data-page="dashboard" aria-current="page" data-tip="Home"><svg><use href="#i-home"/></svg><span class="nav-label">Home</span></button>
+      <button class="nav" data-page="plans" data-tip="Lesson plans"><svg><use href="#i-doc"/></svg><span class="nav-label">Lesson plans</span></button>
+      <button class="nav" data-page="automation" data-tip="Automatic turn-in"><svg><use href="#i-clock"/></svg><span class="nav-label">Automatic turn-in</span></button>
+      <button class="nav" data-page="setup" data-tip="Setup"><svg><use href="#i-gear"/></svg><span class="nav-label">Setup</span></button>
+      <button id="aiNav" class="nav hidden" data-page="ai" data-tip="AI recovery"><svg><use href="#i-spark"/></svg><span class="nav-label">AI recovery</span></button>
+      <button class="nav" data-page="grading" data-tip="Local grading"><svg><use href="#i-check"/></svg><span class="nav-label">Local grading</span></button>
+      <button class="nav" data-page="logs" data-tip="Help & support"><svg><use href="#i-help"/></svg><span class="nav-label">Help & support</span></button>
+    </nav>
+    <div class="sidebar-foot"><b>Teacher Edition v0.9.20</b><span>Weekly lesson-plan automation + Classroom draft grading</span></div>
+  </aside>
+
+  <main>
+    <section id="dashboard" class="page active" aria-labelledby="homeTitle">
+      <div class="page-head">
+        <div><span class="page-kicker">OVERVIEW</span><h1 id="homeTitle">Home</h1><p>One glance should tell you whether Auto Turn-In needs anything from you.</p></div>
+        <button id="refreshDash" class="btn secondary" data-tip="Refresh the latest Classroom Auto Turn-In status."><svg><use href="#i-refresh"/></svg><span>Refresh</span></button>
+      </div>
+
+      <div id="attentionCard" class="attention-card hidden" role="alert">
+        <div class="attention-icon"><svg><use href="#i-warning"/></svg></div>
+        <div class="attention-copy"><span class="eyebrow">NEEDS YOUR ATTENTION</span><h2 id="attentionTitle">Something needs attention</h2><p id="attentionText"></p><small id="attentionCode" class="inline-support-code hidden"></small></div>
+        <button id="attentionAction" class="btn warning">Fix this</button>
+      </div>
+
+      <div class="hero-card">
+        <div class="hero-status-icon" id="heroStatusIcon"><svg><use href="#i-clock"/></svg></div>
+        <div class="hero-copy"><span class="eyebrow">AUTOMATIC TURN-IN</span><div class="status-line"><span id="autoDot" class="dot"></span><strong id="autoState">Loading…</strong></div><p id="nextCheck">Checking your schedule…</p></div>
+        <div class="hero-actions"><button class="btn hero-btn" data-go="automation"><svg><use href="#i-clock"/></svg><span>Manage schedule</span></button></div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-home"/></svg></div><div><span>Classroom</span><strong id="dashCourse">Not selected</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-folder"/></svg></div><div><span>Plans found</span><strong id="dashPlans">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-check"/></svg></div><div><span>Submitted by Auto Turn-In</span><strong id="dashSubmitted">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-refresh"/></svg></div><div><span>Last check</span><strong id="dashLast">Never</strong></div></div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="panel next-panel">
+          <div class="panel-title"><div><span class="section-kicker">WHAT'S NEXT</span><h2>Next lesson plan</h2></div><span class="status-badge info" id="nextBadge">Waiting</span></div>
+          <div id="nextPlan" class="next-plan empty">No upcoming plan has been found yet.</div>
+        </div>
+        <details id="readinessPanel" class="panel readiness-panel">
+          <summary><div><span class="section-kicker">SETUP HEALTH</span><h2 id="readinessTitle">Checking readiness…</h2></div><span class="status-badge neutral" id="readyCount">0/8</span></summary>
+          <div id="readiness" class="readiness"></div>
+        </details>
+      </div>
+
+      <div id="aiHomePanel" class="panel ai-home hidden">
+        <div class="panel-title"><div><span class="section-kicker">OPTIONAL AI</span><h2>Missing-plan recovery</h2><p class="muted" id="aiHomeStatus">AI recovery is not configured.</p></div><button class="btn secondary" data-go="ai"><svg><use href="#i-spark"/></svg><span>Review drafts</span></button></div>
+        <div id="aiHomeDrafts" class="ai-home-drafts">No drafts are waiting for review.</div>
+      </div>
+
+      <details class="panel diagnostics-panel">
+        <summary><div><span class="section-kicker">MORE DETAILS</span><h2>More status details</h2></div><span class="status-badge neutral" id="diagOutcome">No runs yet</span></summary>
+        <div class="diagnostic-grid">
+          <div><span>Automatic schedule</span><strong id="diagTask">Checking…</strong></div>
+          <div><span>Next check</span><strong id="diagNext">Unknown</strong></div>
+          <div><span>Last check result</span><strong id="diagLastResult">Never</strong></div>
+          <div><span>Last successful check</span><strong id="diagLastSuccess">Never</strong></div>
+          <div><span>Last problem</span><strong id="diagLastFailure">None</strong></div>
+          <div><span>Check in progress</span><strong id="diagLock">None</strong></div>
+        </div>
+        <div id="diagBlockers" class="notice compact">Nothing needs attention.</div>
+      </details>
+    </section>
+
+    <section id="plans" class="page" aria-labelledby="plansTitle">
+      <div class="page-head"><div><span class="page-kicker">YOUR WEEKLY FILES</span><h1 id="plansTitle">Lesson plans</h1><p>Files in your approved Drive folder are discovered automatically.</p></div><button id="syncDrivePlans" class="btn primary" data-tip="Check the approved Drive folder right now for new weekly plans."><svg><use href="#i-refresh"/></svg><span>Check folder now</span></button></div>
+      <div class="source-card"><div class="source-icon"><svg><use href="#i-folder"/></svg></div><div class="grow"><span class="section-kicker">APPROVED PLAN FOLDER</span><strong id="plansDriveFolder">No Drive folder selected</strong><small>New weekly files in this folder are picked up automatically.</small></div><span id="driveSyncStatus" class="status-badge neutral">Not checked yet</span></div>
+      <div class="panel">
+        <div class="panel-title"><div><span class="section-kicker">RECENT & UPCOMING</span><h2>Plans Auto Turn-In knows about</h2></div></div>
+        <div id="plansOverview" class="plans-overview"></div>
+        <div id="plansEmpty" class="empty-state"><div class="empty-icon"><svg><use href="#i-folder"/></svg></div><h3>No matching plans found yet</h3><p>Choose your Drive folder in Setup, then check it again.</p><button class="btn secondary" data-go="setup">Open setup</button></div>
+      </div>
+      <details class="panel"><summary><div><span class="section-kicker">OPTIONAL</span><h2>Add or correct a plan manually</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+        <p class="muted">Most teachers never need this. Plans found in the approved Drive folder cannot be edited here.</p>
+        <div class="actions toolbar"><button id="importPlans" class="btn secondary"><span>Import a saved list</span></button><button id="exportPlans" class="btn secondary"><span>Save a copy</span></button><button id="addPlan" class="btn secondary"><span>Add manual week</span></button></div>
+        <div class="table-wrap"><table><thead><tr><th>Week</th><th>Document title</th><th>Google Drive link</th><th>Added by</th><th></th></tr></thead><tbody id="plansBody"></tbody></table></div>
+        <div class="form-actions"><button id="savePlans" class="btn primary">Save manual changes</button><span id="plansSaved" class="saved"></span></div>
+      </details>
+    </section>
+
+    <section id="automation" class="page" aria-labelledby="automationTitle">
+      <div class="page-head"><div><span class="page-kicker">SCHEDULE</span><h1 id="automationTitle">Automatic turn-in</h1><p>Choose when Auto Turn-In checks and whether it may submit verified plans.</p></div></div>
+      <div class="mode-card">
+        <div class="mode-icon"><svg><use href="#i-clock"/></svg></div><div class="grow"><span class="eyebrow dark">AUTOMATIC TURN-IN</span><h2 id="modeTitle">OFF</h2><p id="modeDesc">Automatic submitting is off. You can still run a Safety Check.</p></div>
+        <label class="switch" data-tip="Turn automatic submissions on or off. Turning it on requires a passed Safety Check."><input id="liveToggle" type="checkbox" aria-label="Automatic turn-in"><span aria-hidden="true"></span></label>
+      </div>
+      <div class="panel computer-card">
+        <div class="panel-title"><div><span class="section-kicker">THIS COMPUTER</span><h2>Choose this computer's job</h2><p class="muted">You can install Auto Turn-In on more than one Windows PC without making them all run at the same time.</p></div><span id="machineBadge" class="status-badge info">Loading</span></div>
+        <div class="machine-layout">
+          <label class="field">Computer name <button class="help-tip" type="button" aria-label="About computer name" data-tip="Use a simple name you will recognize, such as Home PC or Classroom PC.">i</button><input id="machineName" maxlength="60" placeholder="Home PC"></label>
+          <label class="field">Role on this computer <button class="help-tip" type="button" aria-label="About computer role" data-tip="Main runs at your normal time. Backup waits until the main computer and its retries have had time to finish. Manual only never runs on a schedule.">i</button><select id="machineRole"><option value="primary">Main computer</option><option value="backup">Backup computer</option><option value="manual">Manual only</option></select></label>
+        </div>
+        <div id="machineRoleHelp" class="notice compact">Main computer runs at your normal scheduled time.</div>
+        <div class="form-actions"><button id="saveMachine" class="btn secondary"><svg><use href="#i-check"/></svg><span>Save this computer</span></button></div>
+      </div>
+      <div class="panel schedule-card">
+        <div class="panel-title"><div><span class="section-kicker">WHEN TO CHECK</span><h2>Weekly schedule</h2></div><div id="scheduleStatus" class="schedule-status"><svg><use href="#i-clock"/></svg><span id="scheduleHealthText">Checking schedule…</span></div></div>
+        <input id="scheduleEnabled" type="hidden">
+        <div class="schedule-layout">
+          <label class="field">Check time <button class="help-tip" type="button" aria-label="About check time" data-tip="This is the daily check. If a temporary connection problem prevents it from finishing, Auto Turn-In can retry automatically.">i</button><input id="scheduleTime" type="time" value="06:30"></label>
+          <div class="days"><span>Check days</span><div id="scheduleDays"><label><input type="checkbox" value="MON" checked><span>Mon</span></label><label><input type="checkbox" value="TUE" checked><span>Tue</span></label><label><input type="checkbox" value="WED" checked><span>Wed</span></label><label><input type="checkbox" value="THU" checked><span>Thu</span></label><label><input type="checkbox" value="FRI" checked><span>Fri</span></label></div></div>
+        </div>
+        <div id="nextSchedulePreview" class="schedule-preview">This computer must be on and signed in when the check runs.</div>
+        <details class="inline-details"><summary>How automatic retries work <span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p>A successful check ends immediately. If a temporary internet or Google problem prevents the check from finishing, Auto Turn-In can retry up to two times. Setup, sign-in, duplicate, and safety problems do not retry.</p></details>
+        <div class="form-actions"><button id="installSchedule" class="btn primary"><svg><use href="#i-check"/></svg><span>Save schedule</span></button><button id="removeSchedule" class="btn danger"><svg><use href="#i-pause"/></svg><span>Pause automatic checks</span></button></div>
+      </div>
+      <div class="run-grid">
+        <button id="runTest" class="run-card" data-tip="Checks the selected Classroom, Drive folder, weekly assignment, and Turn in controls without attaching or submitting anything."><div class="run-icon"><svg><use href="#i-shield"/></svg></div><div><span>SAFETY CHECK</span><strong>Check my setup now</strong><small>Nothing will be attached or submitted.</small></div></button>
+        <button id="runLive" class="run-card live"><div class="run-icon"><svg><use href="#i-play"/></svg></div><div><span>CHECK NOW</span><strong>Turn in anything due now</strong><small>Uses the same safety rules as an automatic check.</small></div></button>
+      </div>
+      <div id="runStatus" class="notice" role="status" aria-live="polite">Ready.</div>
+    </section>
+
+    <section id="setup" class="page" aria-labelledby="setupTitle">
+      <div class="page-head"><div><span class="page-kicker">ONE-TIME SETUP</span><h1 id="setupTitle">Setup</h1><p>Tell Auto Turn-In where your recurring assignment and weekly plans live.</p></div><button id="openWizard" class="btn primary"><svg><use href="#i-shield"/></svg><span>Run guided setup</span></button></div>
+      <div class="panel env-card"><div class="status-leading"><div class="status-icon"><svg><use href="#i-check"/></svg></div><div><span class="section-kicker">COMPUTER READINESS</span><h2>This PC</h2><p id="environmentLabel">Checking automatically…</p></div></div><button id="checkEnvironment" class="btn secondary" data-tip="Recheck whether Chrome or Edge is ready and whether Auto Turn-In can remember your Google sign-in on this computer."><svg><use href="#i-refresh"/></svg><span>Check again</span></button></div>
+      <div class="setup-stack">
+        <div class="panel step"><div class="step-num">1</div><div class="grow"><h2>Google Classroom</h2><p id="courseLabel">No Classroom selected.</p><small>Choose the Classroom that receives your weekly plans.</small></div><button id="selectCourse" class="btn primary"><svg><use href="#i-external"/></svg><span>Choose Classroom</span></button></div>
+        <div class="panel step"><div class="step-num">2</div><div class="grow"><h2>Lesson-plan topic</h2><p>Auto Turn-In only scans this topic for recurring assignments.</p><select id="topicSelect"><option>Lesson Plans - Teaching Staff Only</option></select></div><button id="discoverTopics" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Find topics</span></button></div>
+        <div class="panel step"><div class="step-num">3</div><div class="grow"><h2>Google Drive plan folder</h2><p id="driveFolderLabel">No Drive folder selected.</p><small>Choose the folder that contains your weekly lesson-plan files.</small></div><div class="stack-actions"><button id="selectDriveFolder" class="btn primary"><svg><use href="#i-folder"/></svg><span>Choose folder</span></button><button id="scanDriveFolder" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Check folder</span></button></div></div>
+      </div>
+      <div class="panel transfer-card">
+        <div class="panel-title"><div><span class="section-kicker">ANOTHER WINDOWS PC</span><h2>Copy this setup to another computer</h2><p class="muted">The setup file includes your Classroom, topic, Drive folder, naming rules, and schedule time. It never includes your Google sign-in, AI secret, submission history, or permission to submit automatically.</p></div></div>
+        <div class="actions toolbar"><button id="exportSetup" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Save setup copy</span></button><button id="importSetup" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Use setup from another PC</span></button></div>
+        <div class="notice compact">After importing on another PC, sign into Google there, check the Drive folder, run a new Safety Check, then choose whether that PC is Main, Backup, or Manual only.</div>
+      </div>
+      <details class="panel"><summary><div><span class="section-kicker">SPECIAL OPTIONS</span><h2>Naming & safety options</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+        <p class="muted">Only change these if your school uses unusual assignment or file names.</p>
+        <div class="form-grid">
+          <label class="wide field">Example Classroom assignment <button class="help-tip" type="button" aria-label="About assignment example" data-tip="Type one real assignment title. Auto Turn-In will use it to recognize the correct weekly assignment.">i</button><input id="assignmentExample" placeholder="Week 5 - Lesson Plans"></label>
+          <label class="wide field">Example Drive plan filename <button class="help-tip" type="button" aria-label="About plan example" data-tip="Type one real weekly filename, including .docx or .pdf if you use it.">i</button><input id="planExample" placeholder="Week 05 - Lesson Plans.docx"></label>
+          <input id="eligibilityMode" type="hidden" value="classroomDueDate">
+          <label class="field">Maximum plans in one check <button class="help-tip" type="button" aria-label="About maximum plans" data-tip="A safety limit. If more plans are due, later checks can finish the rest.">i</button><input id="maxSubmissions" type="number" min="1" max="20" value="5"></label>
+          <label class="check"><input id="submitOverdue" type="checkbox"><span>Catch up overdue matching assignments</span><button class="help-tip" type="button" aria-label="About overdue catch-up" data-tip="If a matching assignment is already overdue, Auto Turn-In may still submit it if every other safety check passes.">i</button></label>
+          <label class="check"><input id="screenshots" type="checkbox"><span>Save screenshots after successful checks too</span><button class="help-tip" type="button" aria-label="About screenshots" data-tip="Problems already save a support screenshot when possible. Turn this on only if you also want screenshots after successful checks.">i</button></label>
+          <input id="assignmentRegex" type="hidden" value="Week\s+(\d+)\s*-\s*Lesson Plans"><input id="planRegex" type="hidden" value="^Week\s+0?(\d+)\s*-\s*Lesson Plans(?:\.(?:docx|pdf))?$">
+          <div class="wide notice compact"><b>Optional:</b> AI missing-plan recovery is separate from normal Auto Turn-In and stays hidden unless you choose to use it. <button id="openOptionalAi" class="btn text-btn" type="button">Set up optional AI recovery</button></div>
+          <div class="form-actions"><button id="saveSetup" class="btn primary"><svg><use href="#i-check"/></svg><span>Save settings</span></button></div>
+        </div>
+      </details>
+    </section>
+
+    <section id="ai" class="page" aria-labelledby="aiTitle">
+      <div class="page-head"><div><span class="page-kicker">OPTIONAL</span><h1 id="aiTitle">AI missing-plan recovery</h1><p>If a due plan is missing, AI can draft a local Word file and wait for your approval.</p></div><button id="openAiFolder" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open drafts folder</span></button></div>
+      <div class="mode-card"><div class="mode-icon"><svg><use href="#i-spark"/></svg></div><div class="grow"><span class="eyebrow dark">AI DRAFTING</span><h2 id="aiModeTitle">OFF</h2><p id="aiModeDesc">Missing plans will stop safely and notify you.</p></div><label class="switch" data-tip="AI recovery is optional. Normal Auto Turn-In works without it."><input id="aiEnabled" type="checkbox" aria-label="AI missing-plan recovery"><span aria-hidden="true"></span></label></div>
+      <div class="ai-layout">
+        <div class="panel">
+          <div class="panel-title"><div><span class="section-kicker">SETUP</span><h2>Draft writer</h2></div></div>
+          <p class="muted">A draft stays on this computer until you approve it.</p>
+          <div class="form-grid ai-settings-grid">
+            <label class="wide field">Lesson-plan drafting instructions <button class="help-tip" type="button" aria-label="About drafting instructions" data-tip="Describe your classes, required plan format, recurring expectations, and other standing context. Do not include student-specific information.">i</button><textarea id="aiPlanningContext" rows="8" placeholder="Describe your classes, the weekly-plan format, and what the AI should always know."></textarea></label>
+            <label class="check wide"><input id="aiAutoDraft" type="checkbox" checked><span>Automatically create a local draft when a due weekly plan is missing</span></label>
+            <div class="form-actions"><button id="saveAiSettings" class="btn primary"><svg><use href="#i-check"/></svg><span>Save AI settings</span></button><span id="aiSettingsSaved" class="saved"></span></div>
+          </div>
+        </div>
+        <div class="panel security-card">
+          <div class="panel-title"><div><span class="section-kicker">FREE AI CONNECTIONS</span><h2>Choose a no-cost draft writer</h2></div><button class="help-tip" type="button" aria-label="About free AI connections" data-tip="Each teacher connects a free account directly. Auto Turn-In never buys credits or silently changes to a paid model.">i</button></div>
+          <label class="field">Preferred service<select id="aiProvider"><option value="groq">Groq Free — recommended</option><option value="gemini">Google Gemini Free</option><option value="openrouter">OpenRouter Free</option><option value="openai">OpenAI API — existing connections only</option></select></label>
+          <div class="actions toolbar"><button id="aiGetKey" class="btn secondary" type="button"><svg><use href="#i-external"/></svg><span>Open free-key page</span></button></div>
+          <label class="field"><span id="aiApiKeyLabel">Groq private key</span> <button class="help-tip" type="button" aria-label="About the AI private key" data-tip="The key connects this Windows account directly to the selected AI service. It is encrypted by Windows and is never included in a setup copy.">i</button><input id="aiApiKey" type="password" autocomplete="off" placeholder="Paste the selected service's private key"></label>
+          <div id="aiKeyStatus" class="wizard-result subtle">Not connected.</div>
+          <div id="aiConnectionList" class="notice compact">No free AI services are connected yet.</div>
+          <label class="check wide"><input id="aiFallbackEnabled" type="checkbox"><span>If the preferred free service is temporarily unavailable, try another free service I connected</span></label>
+          <details class="inline-details"><summary>Security, privacy & free-tier limits <span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p id="aiPrivacyText">Only the missing assignment details, your planning instructions, and correction notes are sent to the selected service. Groq says ordinary inference prompts are not retained by default. Do not include student-specific personal information.</p><p>It does not automatically read your other Classroom lessons, Drive files, or student work. Free limits can change or temporarily fill up. If every connected free service is unavailable, AI drafting stops safely. Normal Auto Turn-In keeps working.</p><button id="clearAiKey" class="btn danger"><svg><use href="#i-trash"/></svg><span>Remove selected connection</span></button></details>
+        </div>
+      </div>
+      <div class="panel"><div class="panel-title"><div><span class="section-kicker">WAITING FOR YOU</span><h2>Drafts</h2><p class="muted">Review the Word file, make any edits, then approve it.</p></div><span id="aiDraftCount" class="status-badge neutral">0 waiting</span></div><div id="aiDraftList" class="ai-draft-list"><div class="empty-state">No AI drafts are waiting for review.</div></div></div>
+      <details class="panel"><summary><div><span class="section-kicker">MORE OPTIONS</span><h2>AI writing options</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><div class="form-grid ai-advanced"><label>Writing model<select id="aiModel"><option value="openai/gpt-oss-20b">GPT-OSS 20B — free on Groq</option><option value="qwen/qwen3.8-27b">Qwen 3.8 27B — free on Groq</option><option value="openai/gpt-oss-120b">GPT-OSS 120B — free on Groq</option></select></label><label>How generated files are named<input id="aiFileNameTemplate" value="Week {week2} - Lesson Plans.docx"></label><label>Maximum missing plans to draft in one check<input id="aiMaxDrafts" type="number" min="1" max="3" value="1"></label><div class="wide notice compact"><b>Optional feature:</b> Normal Auto Turn-In does not need AI. <button id="disableAiFeature" class="btn text-btn" type="button">Stop using and hide AI recovery</button></div></div></details>
+    </section>
+
+    <section id="grading" class="page" aria-labelledby="gradingTitle">
+      <div class="page-head"><div><span class="page-kicker">LOCAL AI LAB</span><h1 id="gradingTitle">Local draft grading</h1><p>Use Ollama on this computer to create rubric-based draft grades. CATI can optionally save validated scores as hidden Classroom drafts, but it never clicks Return.</p></div><button id="refreshGrading" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Check Ollama</span></button></div>
+      <div class="mode-card"><div class="mode-icon"><svg><use href="#i-shield"/></svg></div><div class="grow"><span class="eyebrow dark">DRAFT-ONLY SAFETY</span><h2 id="gradingModeTitle">OFF</h2><p id="gradingModeDesc">Local grading is off. Classroom reading and draft-score writing stay disabled until you turn them on.</p></div><label class="switch" data-tip="This enables local grading. Classroom draft-score writing has a separate opt-in and never returns work to students."><input id="gradingEnabled" type="checkbox" aria-label="Local draft grading"><span aria-hidden="true"></span></label></div>
+      <div class="ai-layout">
+        <div class="panel">
+          <div class="panel-title"><div><span class="section-kicker">OLLAMA</span><h2>Local model</h2><p class="muted">CATI connects only to Ollama at 127.0.0.1 on this computer.</p></div><span id="gradingOllamaBadge" class="status-badge neutral">Checking…</span></div>
+          <label class="field">Grading model<select id="gradingModel"></select></label>
+          <div id="gradingOllamaStatus" class="notice compact">Checking local Ollama models…</div>
+          <div class="form-actions"><button id="saveGradingSettings" class="btn secondary"><svg><use href="#i-check"/></svg><span>Save local grading settings</span></button></div>
+        </div>
+        <div class="panel security-card">
+          <div class="panel-title"><div><span class="section-kicker">PRIVACY BOUNDARY</span><h2>Local means local</h2></div></div>
+          <p>The assignment, rubric, and student response entered on this page are sent to the Ollama server running on this PC. CATI does not send this grading request to Groq, Gemini, OpenRouter, or OpenAI.</p>
+          <div class="notice compact"><b>Privacy:</b> Classroom grading reads only the selected assignment and the student work needed for that run. Student submissions and grading results are not saved to CATI data files.</div>
+        </div>
+      </div>
+      <div class="panel classroom-grading-panel">
+        <div class="panel-title"><div><span class="section-kicker">GOOGLE CLASSROOM</span><h2>Grade a Classroom assignment</h2><p class="muted">CATI can read turned-in work from the Classroom selected in Setup, grade a small batch locally, and optionally save validated scores as hidden draft grades.</p></div><span id="gradingClassroomBadge" class="status-badge neutral">Not loaded</span></div>
+        <div class="notice compact"><b>Draft-only:</b> CATI never clicks <b>Return</b>. Existing draft/final grades are not overwritten. Unsupported or incomplete student evidence goes to teacher review.</div>
+        <div class="form-grid grading-classroom-grid">
+          <label class="wide field">Assignment<select id="gradingClassroomAssignment"><option value="">Find assignments first</option></select></label>
+          <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Find Classroom assignments</span></button><span id="gradingClassroomCourse" class="muted">Uses the Classroom selected in Setup.</span></div>
+          <label class="wide field">Rubric<textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric or point criteria for this Classroom assignment."></textarea></label>
+          <label class="wide field">Assignment directions override <small class="muted">Optional. Leave blank to use directions CATI reads from Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only use this if the Classroom directions need clarification."></textarea></label>
+          <label class="field">Students per run<input id="gradingBatchSize" type="number" min="1" max="10" value="5"></label>
+          <label class="check wide"><input id="gradingClassroomWriteEnabled" type="checkbox"><span>Allow CATI to save validated SAFE_DRAFT scores into Classroom as hidden draft grades</span></label>
+          <label class="check wide"><input id="gradingWriteDraftsThisRun" type="checkbox"><span>For this run, save validated SAFE_DRAFT scores to Classroom. Leave unchecked to preview only.</span></label>
+        </div>
+        <div class="form-actions"><button id="runClassroomGrading" class="btn primary"><svg><use href="#i-play"/></svg><span>Scan & grade selected assignment</span></button></div>
+        <div id="gradingClassroomResultPanel" class="grading-classroom-results hidden"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><div><span class="section-kicker">TEST THE ENGINE</span><h2>Create a draft grade</h2><p class="muted">Paste one real or sample assignment. CATI validates the model's structure and point math before calling the result safe.</p></div></div>
+        <div class="form-grid grading-form-grid">
+          <label class="wide field">Assignment question or directions<textarea id="gradingQuestion" rows="5" maxlength="20000" placeholder="What should the student answer or do?"></textarea></label>
+          <label class="wide field">Rubric<textarea id="gradingRubric" rows="7" maxlength="30000" placeholder="List the criteria and possible points."></textarea></label>
+          <label class="wide field">Student submission<textarea id="gradingStudentWork" rows="9" maxlength="60000" placeholder="Paste the student response or extracted work here."></textarea></label>
+        </div>
+        <div class="form-actions"><button id="runLocalGrade" class="btn primary"><svg><use href="#i-play"/></svg><span>Create draft grade</span></button></div>
+      </div>
+      <div id="gradingResultPanel" class="panel hidden">
+        <div class="panel-title"><div><span class="section-kicker">RESULT</span><h2 id="gradingResultTitle">Draft grade</h2><p id="gradingResultSummary" class="muted"></p></div><span id="gradingResultBadge" class="status-badge neutral">Waiting</span></div>
+        <div id="gradingResultBody" class="grading-result"></div>
+      </div>
+    </section>
+
+    <section id="logs" class="page" aria-labelledby="helpTitle">
+      <div class="page-head"><div><span class="page-kicker">SUPPORT</span><h1 id="helpTitle">Help & support</h1><p>See what needs attention and the safest next step.</p></div><button id="runDiagnostics" class="btn primary"><svg><use href="#i-shield"/></svg><span>Check app health</span></button></div>
+      <div class="support-grid">
+        <div class="panel support-card"><div class="support-icon"><svg><use href="#i-warning"/></svg></div><span class="section-kicker">LAST PROBLEM</span><h2 id="helpLastProblem">No recent problems</h2><p id="helpMeaning">Auto Turn-In has not reported a current problem.</p><small id="helpCode" class="inline-support-code hidden"></small><div id="helpAction" class="help-action">If something changes, the recommended next step will appear here.</div></div>
+        <div class="panel support-card"><div class="support-icon good"><svg><use href="#i-shield"/></svg></div><span class="section-kicker">QUICK SUPPORT</span><h2>Copy a support summary</h2><p>Copies the useful status information you can send to someone helping you.</p><button id="copyDiagnostics" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Copy support summary</span></button></div>
+      </div>
+      <details class="panel"><summary><div><span class="section-kicker">SUPPORT FILES</span><h2>Files for school technology support</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p class="muted">You normally do not need these. If someone is helping troubleshoot the app, they may ask you to open this folder.</p><div class="actions toolbar"><button id="refreshLogs" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh support status</span></button><button id="openLogs" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open support folder</span></button><button id="cleanupLogs" class="btn secondary"><span>Remove old support files</span></button></div><div id="logBox" class="notice compact">Support files are stored on this computer and are not shown inside the app.</div></details>
+      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>Classroom Auto Turn-In</h2><p>Teacher Edition v0.9.20 · Scheduled checks run quietly on this Windows computer. Local grading can save validated hidden draft scores, but CATI never returns student work.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
+    </section>
+  </main>
+</div>
+
+<div id="unsavedBar" class="unsaved-bar hidden" role="status" aria-live="polite"><div><strong>Unsaved changes</strong><span id="unsavedText">Save your changes before leaving this page.</span></div><div class="actions"><button id="unsavedDiscard" class="btn secondary">Discard</button><button id="unsavedSave" class="btn primary">Save changes</button></div></div>
+<div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+<div id="wizard" class="modal-layer hidden" aria-hidden="true">
+  <div class="wizard-card" role="dialog" aria-modal="true" aria-labelledby="wizardTitle" tabindex="-1">
+    <div class="wizard-head"><div><span class="page-kicker">GUIDED SETUP</span><h2 id="wizardTitle">Set up Auto Turn-In</h2><p>Five short steps. The app handles the complicated parts for you.</p></div><button id="closeWizard" class="icon-btn" aria-label="Close setup wizard">×</button></div>
+    <ol class="wizard-progress" aria-label="Setup progress">
+      <li data-dot="1"><span>1</span><b>Classroom</b></li><li data-dot="2"><span>2</span><b>Topic</b></li><li data-dot="3"><span>3</span><b>Drive</b></li><li data-dot="4"><span>4</span><b>Options</b></li><li data-dot="5"><span>5</span><b>Safety check</b></li>
+    </ol>
+    <div id="wizardSteps">
+      <div class="wizard-step active" data-step="1"><div class="wizard-num">1</div><h3>Choose the Classroom</h3><p>Open the Classroom that receives your weekly lesson plans. Auto Turn-In remembers this choice.</p><div id="wizEnvironment" class="wizard-result subtle">Checking this PC…</div><button id="wizSelectCourse" class="btn primary"><svg><use href="#i-external"/></svg><span>Choose Google Classroom</span></button><div id="wizCourse" class="wizard-result">Not selected yet.</div></div>
+      <div class="wizard-step" data-step="2"><div class="wizard-num">2</div><h3>Choose the assignment topic</h3><p>Pick the topic that contains the recurring lesson-plan assignments.</p><div class="inline-control"><select id="wizTopic"><option>Lesson Plans - Teaching Staff Only</option></select><button id="wizFindTopics" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Find topics</span></button></div></div>
+      <div class="wizard-step" data-step="3"><div class="wizard-num">3</div><h3>Choose your Drive folder</h3><p>Choose the folder containing your weekly lesson plans.</p><button id="wizSelectDrive" class="btn primary"><svg><use href="#i-folder"/></svg><span>Choose Google Drive folder</span></button><div id="wizDrive" class="wizard-result">No folder selected yet.</div><label class="field example-field">Example weekly filename <button class="help-tip" type="button" aria-label="About filename example" data-tip="If your files are named differently, type one real filename here before scanning.">i</button><input id="wizPlanExample" placeholder="Week 05 - Lesson Plans.docx"></label><input id="wizPlanRegex" type="hidden" value="^Week\s+0?(\d+)\s*-\s*Lesson Plans(?:\.(?:docx|pdf))?$"><button id="wizScanDrive" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Check selected folder</span></button><div id="wizScanResult" class="wizard-result subtle">Folder not checked yet.</div></div>
+      <div class="wizard-step" data-step="4"><div class="wizard-num">4</div><h3>Choose a few preferences</h3><input id="wizEligibility" type="hidden" value="classroomDueDate"><div class="notice compact">Turn-in timing uses the due date shown on the Classroom assignment.</div><label class="check"><input id="wizOverdue" type="checkbox"><span>Catch up an overdue matching assignment</span><button class="help-tip" type="button" aria-label="About overdue catch-up" data-tip="If you forgot an earlier week, Auto Turn-In may catch it up when all safety checks pass.">i</button></label><div class="optional-ai-choice"><b>Optional AI help if a plan is missing</b><p>Normal Auto Turn-In does not need AI. No is the simplest setup.</p><label class="check"><input type="radio" name="wizAiChoice" value="no" checked><span>No — keep normal Auto Turn-In only</span></label><label class="check"><input type="radio" name="wizAiChoice" value="yes"><span>Yes — show optional AI setup after normal setup</span></label></div><label class="field example-field">Example Classroom assignment <button class="help-tip" type="button" aria-label="About assignment example" data-tip="Only change this if your assignment titles are not like Week 5 - Lesson Plans.">i</button><input id="wizAssignmentExample" placeholder="Week 5 - Lesson Plans"></label><input id="wizAssignmentRegex" type="hidden" value="Week\s+(\d+)\s*-\s*Lesson Plans"></div>
+      <div class="wizard-step" data-step="5"><div class="wizard-num">5</div><h3>Run one Safety Check</h3><p>Auto Turn-In verifies the Classroom, Drive plan, and turn-in controls without attaching or submitting anything.</p><button id="wizRunTest" class="btn primary"><svg><use href="#i-shield"/></svg><span>Run Safety Check</span></button><div id="wizTestResult" class="safety-result"><div><span>Classroom</span><i>Waiting</i></div><div><span>Topic & assignment match</span><i>Waiting</i></div><div><span>Drive plan match</span><i>Waiting</i></div><div><span>Turn-in controls</span><i>Waiting</i></div></div><label class="field">Automatic check time<input id="wizScheduleTime" type="time" value="06:30"></label><div class="notice compact">Finishing setup installs the automatic schedule and turns on automatic submission. If the setup later changes, Auto Turn-In pauses instead of guessing.</div></div>
+    </div>
+    <div id="wizardComplete" class="wizard-complete hidden"><div class="complete-icon"><svg><use href="#i-check"/></svg></div><h3>You're all set</h3><p id="wizardCompleteText">Automatic turn-in is ready.</p><div class="completion-summary"><div><span>Classroom</span><strong id="completeClassroom">Ready</strong></div><div><span>Drive folder</span><strong id="completeDrive">Ready</strong></div><div><span>First check</span><strong id="completeSchedule">Scheduled</strong></div></div><button id="wizDone" class="btn primary">Done</button></div>
+    <div id="wizardFoot" class="wizard-foot"><button id="wizBack" class="btn secondary">Back</button><span id="wizStepLabel">Step 1 of 5</span><button id="wizNext" class="btn primary">Next</button><button id="wizFinish" class="btn primary hidden">Finish & turn on</button></div>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal-layer hidden" aria-hidden="true">
+  <div class="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText" tabindex="-1">
+    <div id="confirmIcon" class="confirm-icon"><svg><use href="#i-warning"/></svg></div><h2 id="confirmTitle">Confirm action</h2><p id="confirmText"></p><div class="confirm-actions"><button id="confirmCancel" class="btn secondary">Cancel</button><button id="confirmOk" class="btn primary">Continue</button></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

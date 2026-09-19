@@ -1,0 +1,95 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+const fallbackByChannel={
+  'dashboard:get':['AT-HOME-199','Auto Turn-In could not load the Home status. Close and reopen the app, then try again.'],
+  'config:get':['AT-SET-199','Auto Turn-In could not load your saved setup. Restart the app and try again.'],
+  'config:save':['AT-SET-198','Your setup changes could not be saved. Nothing was changed. Try again.'],
+  'setup:finish':['AT-SET-197','Setup could not be fully turned on. Nothing unsafe was enabled.'],
+  'plans:get':['AT-PLAN-199','Auto Turn-In could not load the lesson-plan list. Open Lesson plans and check the approved folder again.'],
+  'plans:save':['AT-PLAN-198','The lesson-plan list could not be saved. Nothing was submitted.'],
+  'plans:import':['AT-PLAN-197','The saved plan list could not be imported. Choose a list created by Auto Turn-In and try again.'],
+  'plans:export':['AT-PLAN-196','A copy of the lesson-plan list could not be saved. Choose another folder and try again.'],
+  'course:select':['AT-CLS-199','The Classroom could not be selected. Make sure the correct Google account is signed in, then try again.'],
+  'topics:discover':['AT-CLS-198','The Classroom topics could not be read. Open the Classroom again and try once more.'],
+  'drive:select-folder':['AT-DRV-199','The Drive folder could not be selected. Open the exact weekly-plan folder and try again.'],
+  'drive:scan-folder':['AT-DRV-198','The approved Drive folder could not be checked. Nothing was submitted.'],
+  'environment:check':['AT-PC-199','The computer readiness check could not finish. Restart the app and try again.'],
+  'automation:run':['AT-RUN-199','The check could not finish safely. Nothing uncertain was submitted.'],
+  'automation:set-live':['AT-AUTO-199','Automatic turn-in could not be changed. Your previous setting is still in effect.'],
+  'schedule:install':['AT-SCH-199','Windows could not save the automatic check schedule. Try Save schedule again.'],
+  'schedule:remove':['AT-SCH-198','Windows could not pause the automatic checks. Check the schedule again before assuming it is paused.'],
+  'schedule:health':['AT-SCH-197','Auto Turn-In could not confirm the automatic schedule in Windows.'],
+  'ai:get-state':['AT-AI-199','The optional AI settings could not be loaded. Normal Auto Turn-In is unaffected.'],
+  'ai:save-settings':['AT-AI-198','The optional AI settings could not be saved. Normal Auto Turn-In is unaffected.'],
+  'ai:open-draft':['AT-AI-197','The lesson-plan draft could not be opened.'],
+  'ai:open-folder':['AT-AI-196','The lesson-plan drafts folder could not be opened.'],
+  'ai:open-provider-setup':['AT-AI-192','The selected AI service page could not be opened. Open its website in your normal browser instead.'],
+  'ai:regenerate':['AT-AI-195','The lesson-plan draft could not be rewritten right now. Nothing was uploaded or submitted.'],
+  'ai:approve':['AT-AI-194','The lesson-plan draft could not be approved safely. Nothing uncertain was submitted.'],
+  'ai:dismiss':['AT-AI-193','The lesson-plan draft could not be dismissed. Try again.'],
+  'grading:get-state':['AT-GRD-199','Local grading status could not be loaded. Normal Auto Turn-In is unaffected.'],
+  'grading:save-settings':['AT-GRD-198','Local grading settings could not be saved. Nothing was published to Classroom.'],
+  'grading:grade':['AT-GRD-197','The local draft grade could not be created safely. Nothing was published to Classroom.'],
+  'grading:discover-classroom':['AT-GRD-196','CATI could not read the selected Classroom assignment list safely. No grades were changed.'],
+  'grading:process-classroom':['AT-GRD-195','CATI could not finish the Classroom draft-grading batch safely. No uncertain grade was written.'],
+  'diagnostics:cleanup':['AT-SUP-198','Old support files could not be cleaned up. This does not affect automatic turn-in.'],
+  'logs:open':['AT-SUP-196','Windows could not open the Auto Turn-In support folder.'],
+  'machine:get':['AT-PC-105',"Auto Turn-In could not read this computer\'s local role. Restart the app and try again."],
+  'machine:save':['AT-PC-106',"This computer\'s Auto Turn-In role could not be saved. Your previous setting is still in effect."],
+  'setup:export-portable':['AT-SET-108','Auto Turn-In could not save a setup copy for another computer. Choose another folder and try again.'],
+  'setup:import-portable':['AT-SET-109','Auto Turn-In could not use that setup file. Nothing unsafe was enabled.']
+};
+function cleanRemoteError(raw,channel){
+  const s=String(raw?.message||raw||'');
+  const tagged=s.match(/CATI_UI\|([A-Z0-9-]+)\|(.+)$/i);
+  if(tagged)return `CATI_UI|${tagged[1]}|${tagged[2]}`;
+  const [code,message]=fallbackByChannel[channel]||['AT-APP-999','Auto Turn-In could not complete that action safely. Nothing uncertain was submitted or changed.'];
+  return `CATI_UI|${code}|${message}`;
+}
+async function invoke(channel,...args){
+  try{return await ipcRenderer.invoke(channel,...args)}
+  catch(err){throw new Error(cleanRemoteError(err,channel))}
+}
+
+contextBridge.exposeInMainWorld('cati',{
+  getDashboard:()=>invoke('dashboard:get'),
+  getMachine:()=>invoke('machine:get'),
+  saveMachine:(v)=>invoke('machine:save',v),
+  exportSetup:()=>invoke('setup:export-portable'),
+  importSetup:()=>invoke('setup:import-portable'),
+  getConfig:()=>invoke('config:get'),
+  saveConfig:(v)=>invoke('config:save',v),
+  finishSetup:(time)=>invoke('setup:finish',time),
+  getPlans:()=>invoke('plans:get'),
+  savePlans:(v)=>invoke('plans:save',v),
+  importPlans:()=>invoke('plans:import'),
+  exportPlans:()=>invoke('plans:export'),
+  selectCourse:()=>invoke('course:select'),
+  discoverTopics:()=>invoke('topics:discover'),
+  selectDriveFolder:()=>invoke('drive:select-folder'),
+  scanDriveFolder:()=>invoke('drive:scan-folder'),
+  checkEnvironment:()=>invoke('environment:check'),
+  runTest:()=>invoke('automation:run',true),
+  runLive:()=>invoke('automation:run',false),
+  setLiveEnabled:(enabled)=>invoke('automation:set-live',enabled),
+  installSchedule:()=>invoke('schedule:install'),
+  removeSchedule:()=>invoke('schedule:remove'),
+  getScheduleHealth:()=>invoke('schedule:health'),
+  getAiState:()=>invoke('ai:get-state'),
+  saveAiSettings:(v)=>invoke('ai:save-settings',v),
+  openAiDraft:(id)=>invoke('ai:open-draft',id),
+  openAiDraftFolder:()=>invoke('ai:open-folder'),
+  openAiProviderSetup:(provider)=>invoke('ai:open-provider-setup',provider),
+  regenerateAiDraft:(id,notes)=>invoke('ai:regenerate',id,notes),
+  approveAiDraft:(id)=>invoke('ai:approve',id),
+  dismissAiDraft:(id)=>invoke('ai:dismiss',id),
+  getGradingState:()=>invoke('grading:get-state'),
+  saveGradingSettings:(v)=>invoke('grading:save-settings',v),
+  createDraftGrade:(v)=>invoke('grading:grade',v),
+  discoverGradingAssignments:()=>invoke('grading:discover-classroom'),
+  processClassroomGrading:(v)=>invoke('grading:process-classroom',v),
+  onAiDraftReady:(cb)=>ipcRenderer.on('ai-draft-ready',(_e,d)=>cb(d)),
+  cleanupDiagnostics:()=>invoke('diagnostics:cleanup'),
+  openLogs:()=>invoke('logs:open'),
+  onStatus:(cb)=>ipcRenderer.on('automation-status',(_e,s)=>cb(s))
+});

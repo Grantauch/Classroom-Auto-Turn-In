@@ -1,0 +1,74 @@
+name: Build Windows Release Candidate
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v0.9.20*'
+      - 'v1.*'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: 'npm'
+
+      - name: Require committed dependency lock
+        shell: pwsh
+        run: |
+          if (-not (Test-Path package-lock.json)) {
+            throw "package-lock.json is required for v0.9.20 and 1.x release builds. Run PREPARE-RC-LOCKFILE.bat, retain the lockfile, and commit/package it before release."
+          }
+
+      - name: Install exact locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run release-readiness checks
+        run: npm run check:release-ready
+
+      - name: Run Chrome/Edge DOM fixture checks
+        run: npm run check:dom
+
+      - name: Verify silent background browser mode
+        run: npm run check:browser
+
+      - name: Run end-to-end checks against the offline Classroom/Drive simulator
+        run: npm run check:e2e
+        env:
+          CATI_E2E_HEADLESS: "1"
+
+      - name: Build teacher installer
+        run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          CSC_LINK: ""
+          CSC_KEY_PASSWORD: ""
+          WIN_CSC_LINK: ""
+          WIN_CSC_KEY_PASSWORD: ""
+
+      - name: Validate actual install, packaged self-test, uninstall cleanup, and reinstall
+        shell: pwsh
+        run: ./scripts/windows-installed-validation.ps1
+
+      - name: Write release hashes
+        shell: pwsh
+        run: ./scripts/Write-ReleaseHashes.ps1
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Classroom-Auto-Turn-In-v0.9.20-Windows
+          path: |
+            dist/Classroom-Auto-Turn-In-Setup-*.exe
+            dist/*.blockmap
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
