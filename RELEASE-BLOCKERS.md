@@ -29,8 +29,10 @@ All items below must pass before calling a v0.9.20 Setup EXE verified:
 - [x] Packaged-app self-test with isolated user data, v0.9.20 resources, and packaged Chrome launch.
 - [x] Backed-up in-place upgrade from v0.9.17 to v0.9.20; existing teacher data and the production scheduled-task definition were preserved, and the installed application passed its isolated packaged-browser self-test.
 - [x] Microsoft Defender targeted installer scan: no threats found.
-- [ ] Full clean install/uninstall/reinstall validation on an isolated Windows user or test PC. It was not run on this teacher setup because uninstalling would disrupt the now-upgraded production installation.
+- [x] Clean current-user install/uninstall/data-preserving reinstall validation on a disposable GitHub-hosted Windows runner, followed by a second packaged-browser self-test ([run 35447491739](https://github.com/Grantauch/Classroom-Auto-Turn-In/actions/runs/35447491739)).
 - [x] Release hashes generated from every finished downloadable artifact in the accompanying `SHA256SUMS-v0.9.20.txt` delivery manifest.
+
+The visible shortcut/SmartScreen experience and district-managed Windows restrictions still require the controlled school-PC/IT pilot. They do not block source/package integrity status, but they do block describing the release as field validated.
 
 ## Live Google Classroom grading gate
 

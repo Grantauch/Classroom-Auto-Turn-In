@@ -2,9 +2,9 @@
 
 ## Readiness statement
 
-**Share with caveats.** The v0.9.20 source, simulated Classroom/Drive workflow, Windows package, packaged-browser runtime, and backed-up in-place upgrade passed their available gates on September 19, 2026. The unsigned installer is suitable for an IT-reviewed, controlled test. It is not a field-validated production grading release.
+**Share with caveats.** The v0.9.20 source, simulated Classroom/Drive workflow, Windows package, clean Windows install/uninstall/reinstall lifecycle, packaged-browser runtime, and backed-up in-place upgrade passed their available gates on September 19, 2026. The unsigned installer is suitable for an IT-reviewed, controlled test. It is not a field-validated production grading release.
 
-The standard destructive install/uninstall/reinstall gate initially refused to run because CATI v0.9.17 and a real `Classroom Auto Turn-In` scheduled task were already present. After the user requested that this PC be set up with the release, the v0.9.17 program, teacher-local data, and task definition were fully backed up; v0.9.20 was installed in place; and the scheduled task was proven byte-for-byte unchanged. A clean uninstall/reinstall cycle remains untested because uninstalling the working teacher installation would be disruptive.
+The standard destructive install/uninstall/reinstall gate correctly refused to run on the teacher PC because CATI v0.9.17 and a real `Classroom Auto Turn-In` scheduled task were already present. After the user requested that this PC be set up with the release, the v0.9.17 program, teacher-local data, and task definition were fully backed up; v0.9.20 was installed in place; and the scheduled task was proven byte-for-byte unchanged. The clean lifecycle was then run independently on a disposable GitHub-hosted Windows runner from commit `9f21b0e8bff9905b44559180709709be33905454`; [workflow run 35447491739](https://github.com/Grantauch/Classroom-Auto-Turn-In/actions/runs/35447491739) passed fresh install, packaged self-test, uninstall with data preservation, reinstall, and a second packaged-browser self-test.
 
 ## Baseline and environment
 
@@ -29,6 +29,7 @@ The standard destructive install/uninstall/reinstall gate initially refused to r
 | `npm run check:browser` | PASS | Real Google Chrome background smoke test passed, including cross-tab Classroom and Drive picker fixtures. |
 | `npm run check:e2e` engine gate | PASS | 21 offline Classroom/Drive scenarios passed in Electron. |
 | `npm run check:e2e` UI gate | NOT RUN BY DESIGN | On Windows this test would register real scheduled tasks. The script explicitly skipped it; isolated installed validation is the intended Windows gate. |
+| GitHub-hosted Windows lifecycle | PASS | Clean checkout, all source/browser/simulator gates, installer build, isolated current-user install, uninstall/data preservation, reinstall, packaged-browser retest, hashes, and artifact upload passed in run 35447491739. |
 
 ## Classroom draft-grading safeguards verified in source
 
@@ -53,19 +54,21 @@ The standard destructive install/uninstall/reinstall gate initially refused to r
 
 The first installer attempt from the deeply nested workspace reached NSIS but failed because the legacy NSIS include path exceeded its practical Windows path limit. Rebuilding the identical source through a short temporary drive mapping succeeded. The temporary mapping was removed afterward. The source package instructs builders to extract to a short local path.
 
-- Installer: `Classroom-Auto-Turn-In-Setup-0.9.20-x64.exe`
-- Size: 90,650,004 bytes.
-- SHA-256: `EEDA767C4F7AFCEAABCA90F9E90EF8CA9BCD27DFD58557EF507DDC3948605849`
+- Final downloadable installer: `Classroom-Auto-Turn-In-Setup-0.9.20-x64.exe`
+- Size: 89,924,465 bytes.
+- SHA-256: `3F2B4B68A7377F487F86F02A725CB17B96D64E8D3D095A7EDB09DBD82CB455B2`
 - Authenticode: Not signed, as expected for this release candidate.
 - Installer resource version: `0.9.20`.
 - Installer product name: `Classroom Auto Turn-In`.
-- Microsoft Defender targeted scan: PASS, no threats found.
+- Microsoft Defender targeted scan of the final downloadable installer: PASS, no threats found.
 - Unpacked packaged-app resource version: `0.9.20.0`.
 - Packaged-app isolated-user-data self-test: PASS.
 - Packaged Playwright/Chrome launch: PASS when run through a short validation path matching a normal installation path.
 - In-place installer exit code: `0`.
 - Installed application resource version: `0.9.20.0`.
 - Installed application packaged-browser self-test: PASS with isolated user data.
+
+The locally built installer used for the backed-up in-place upgrade had SHA-256 `EEDA767C4F7AFCEAABCA90F9E90EF8CA9BCD27DFD58557EF507DDC3948605849` and size 90,650,004 bytes. The final downloadable installer above was rebuilt from the same application source on the clean hosted runner and is the artifact that passed the clean lifecycle. NSIS output is not byte-for-byte reproducible across those two build environments, so both hashes are recorded rather than treated as interchangeable.
 
 ## Installed-package boundary
 
@@ -83,13 +86,16 @@ Before installing, an additive private recovery backup captured 1,805 files (600
 - the task remained Ready and continued to point at the same current-user executable path;
 - the installed v0.9.20 self-test passed with isolated user data and a packaged Chrome launch.
 
-The following clean-install lifecycle items remain unverified:
+The disposable hosted Windows runner additionally proved that the final installer:
 
-- shortcut creation on a previously clean Windows user;
-- uninstall behavior and teacher-data preservation during a real uninstall;
-- reinstall behavior;
+- installs silently as the current user on a clean environment;
+- exposes the expected v0.9.20 product/version resources and uninstaller;
+- keeps packaged self-test data isolated and creates no production scheduled task;
+- preserves an application-data marker across uninstall;
+- reinstalls successfully and preserves that marker;
+- passes the packaged-browser self-test again after reinstall.
 
-Run the full installed-package gate on a clean Windows test user or test PC before treating the installer as fully clean-install/uninstall verified.
+The automated lifecycle does not assert the visible Start-menu/Desktop shortcut experience, SmartScreen prompts, or district-managed Windows policy behavior. Those remain part of the controlled school-PC/IT pilot, not a source or installer-integrity failure.
 
 ## Live and pedagogical blockers
 

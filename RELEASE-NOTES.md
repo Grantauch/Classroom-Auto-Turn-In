@@ -2,6 +2,12 @@
 
 v0.9.20 hardens the v0.9.19 teacher-controlled Classroom Draft Grading Bridge without weakening its draft-only boundary.
 
+## Clean Windows release verification
+
+- Added checkout-stable line-ending rules and normalized source assertions so the SHA-256 source manifest verifies consistently after a real Git checkout.
+- A disposable GitHub-hosted Windows runner passed the full source, DOM, Chrome, 21-scenario offline Classroom/Drive, installer build, clean current-user install, data-preserving uninstall, reinstall, packaged-browser retest, hash, and artifact-upload workflow.
+- The final downloadable installer is the independently tested hosted-runner artifact. CATI remains unsigned and still requires a controlled school-PC/SmartScreen/live-Classroom pilot.
+
 ## Hardening in v0.9.20
 
 - Moved consequential per-run confirmation into a native, Cancel-by-default main-process dialog.

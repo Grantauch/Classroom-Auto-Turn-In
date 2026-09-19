@@ -36,11 +36,12 @@ v0.9.20 preserves the verified lesson-plan Auto Turn-In baseline, the v0.9.18 lo
 - Unsigned per-user NSIS installer build with v0.9.20 resources.
 - Packaged application self-test with isolated user data and packaged Chrome launch.
 - In-place upgrade from the existing v0.9.17 current-user installation to v0.9.20; the teacher-local data folder remained present, the production scheduled-task definition remained byte-for-byte unchanged, and the installed v0.9.20 application passed the isolated packaged-browser self-test.
+- Clean checkout/build/current-user install/uninstall/data-preserving reinstall on a disposable GitHub-hosted Windows runner, including packaged-browser self-tests before and after reinstall.
 - Microsoft Defender targeted scan of the finished installer found no threats.
 
 ### Still requires Windows/live validation
 
-- A full clean install/uninstall/reinstall validation on an isolated Windows user or PC. This builder's production v0.9.17 installation was backed up and successfully upgraded in place, but it was not uninstalled because that would disrupt the teacher setup.
+- Manual confirmation of visible shortcuts, SmartScreen prompts, and district-managed Windows behavior on the intended school PC. The automated clean lifecycle passed, and the teacher PC's existing installation was upgraded in place without disturbing its scheduled task.
 - Live Google Classroom assignment discovery against the teacher's district UI.
 - Live direct-answer extraction and Google Docs extraction against representative student submissions.
 - Live draft-grade entry/verification on a controlled test assignment before use with real grades.
