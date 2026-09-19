@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+# Windows command scripts are intentionally CRLF for school-PC compatibility.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Do not transform binary release assets.
+*.ico binary
+*.png binary
+*.exe binary
+*.zip binary
