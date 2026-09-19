@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
+# This source is line-ending agnostic so Git checkouts remain reproducible.
 # v0.9.13 Rev C: keep the portable build runtime OUTSIDE the source tree.
 # Teachers often extract the source under a long Downloads folder name. The
 # official Node ZIP contains nested npm documentation paths, so extracting it
