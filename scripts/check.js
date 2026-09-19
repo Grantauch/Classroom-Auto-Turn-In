@@ -3,7 +3,10 @@ const root=path.join(__dirname,'..');
 const files=['main.js','preload.js','renderer/app.js','main-services/local-data.js','main-services/engine-runner.js','main-services/ai-service.js','main-services/grading-service.js','main-services/scheduler-service.js','engine/app-config.js','engine/json-store.js','engine/protocol.js','engine/classroom-actions.js','engine/classroom-discovery.js','engine/lib.js','engine/safety.js','engine/browser.js','engine/classroom-picker.js','engine/drive-picker.js','engine/preflight.js','engine/submit-weekly.js','engine/select-course.js','engine/discover-topics.js','engine/select-drive-folder.js','engine/scan-drive-folder.js','engine/scheduler.js','engine/dom-helpers.js','engine/validation.js','engine/ai-recovery.js','engine/grading.js','engine/docx-writer.js','engine/upload-draft-plan.js','engine/retry-policy.js','engine/browser-mode.js','engine/page-evidence.js'];
 for(const f of files){const p=path.join(root,f);if(!fs.existsSync(p))throw new Error(`Missing ${f}`);cp.execFileSync(process.execPath,['--check',p],{stdio:'inherit'});}
 
-const mainSource=fs.readFileSync(path.join(root,'main.js'),'utf8');
+// Git may materialize text as LF or CRLF depending on checkout settings.
+// Normalize before source-shape assertions so the release gate verifies content,
+// not the operating system's line-ending convention.
+const mainSource=fs.readFileSync(path.join(root,'main.js'),'utf8').replace(/\r\n?/g,'\n');
 const schedulerSource=fs.readFileSync(path.join(root,'engine/scheduler.js'),'utf8');
 const domSource=fs.readFileSync(path.join(root,'engine/dom-helpers.js'),'utf8');
 const libSource=fs.readFileSync(path.join(root,'engine/lib.js'),'utf8');
