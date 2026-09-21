@@ -51,6 +51,41 @@ function Assert-PerUserInstall([string]$exe){
     }
   }
 }
+function Invoke-SetupInstall([string]$label){
+  # NSIS can occasionally terminate with STATUS_ACCESS_VIOLATION on a freshly
+  # provisioned Windows runner while security scanning releases the installer.
+  # Retry that one transient code once, but never retry any other installer
+  # failure or continue if a partial application executable appeared.
+  for($attempt=1;$attempt -le 2;$attempt++){
+    $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
+    if($p.ExitCode -eq 0){return}
+    if($p.ExitCode -ne -1073741819 -or $attempt -ne 1){
+      throw "$label exited $($p.ExitCode)."
+    }
+    foreach($folder in $installFolders){
+      $candidate=Join-Path $env:LOCALAPPDATA ("Programs\$folder\Classroom Auto Turn-In.exe")
+      if(Test-Path $candidate){
+        throw "$label exited $($p.ExitCode) after creating a partial application executable at $candidate; validation will not retry an ambiguous install."
+      }
+    }
+    Write-Warning "$label hit transient Windows status 0xC0000005 before installing; waiting once and retrying."
+    Start-Sleep -Seconds 5
+  }
+}
+function Wait-ForUninstallCompletion([string]$appExe,[string]$uninstallExe){
+  # The NSIS launcher may exit before its child process has removed the final
+  # files. Starting the installer during that handoff can crash the new NSIS
+  # process, so require both installed executables to disappear first.
+  $deadline=[DateTime]::UtcNow.AddSeconds(30)
+  while([DateTime]::UtcNow -lt $deadline){
+    if(-not (Test-Path $appExe) -and -not (Test-Path $uninstallExe)){
+      Start-Sleep -Seconds 3
+      return
+    }
+    Start-Sleep -Milliseconds 500
+  }
+  throw "Uninstaller returned but installed files were still present after 30 seconds: $appExe"
+}
 function Run-SelfTest([string]$exe,[string]$out,[string]$isolatedUserData){
   if(Test-Path $out){Remove-Item $out -Force}
   $args=@("--self-test-file=$out","--self-test-user-data=$isolatedUserData","--self-test-browser")
@@ -67,8 +102,7 @@ function Run-SelfTest([string]$exe,[string]$out,[string]$isolatedUserData){
 
 try {
   Write-Host 'Installing release candidate silently as current user...'
-  $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
-  if($p.ExitCode -ne 0){throw "Installer exited $($p.ExitCode)."}
+  Invoke-SetupInstall 'Installer'
   $installedByValidation=$true
   $appExe=Find-AppExe
   Assert-PerUserInstall $appExe
@@ -95,12 +129,12 @@ try {
   Write-Host 'Uninstalling while preserving isolated validation data...'
   $p=Start-Process -FilePath $uninstallExe.FullName -ArgumentList '/S' -PassThru -Wait
   if($p.ExitCode -ne 0){throw "Uninstaller exited $($p.ExitCode)."}
+  Wait-ForUninstallCompletion $appExe $uninstallExe.FullName
   $installedByValidation=$false
   if(-not (Test-Path $marker)){throw 'Uninstaller deleted application data; teacher data must be preserved by default.'}
 
   Write-Host 'Reinstalling and rerunning packaged browser self-test...'
-  $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
-  if($p.ExitCode -ne 0){throw "Reinstaller exited $($p.ExitCode)."}
+  Invoke-SetupInstall 'Reinstaller'
   $installedByValidation=$true
   $appExe=Find-AppExe
   Assert-PerUserInstall $appExe

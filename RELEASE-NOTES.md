@@ -29,6 +29,7 @@ v0.9.22 fixes the core grading workflow so the Classroom that receives lesson pl
 - Requires one explicit positive rubric total and one explicit Classroom point total before `SAFE_DRAFT` write eligibility.
 - Rechecks the grade-field denominator before writing and after reload.
 - Prevents a blank field from falsely verifying as a saved zero.
+- Hardens the disposable Windows install/uninstall/reinstall gate against the NSIS cleanup handoff: validation now waits for the old app and uninstaller to disappear before reinstalling, and permits one narrowly scoped retry only for a pre-install `0xC0000005` exit when no partial app executable exists. Every other installer failure still stops the release.
 - Rejects overlong/truncated directions, combined submissions, and Google Docs exports instead of grading partial evidence.
 - Requires model rubric labels to come from the teacher rubric and evidence quotes to appear in the submission.
 - Stops direct instruction-like prompt injection before student work is sent to Ollama.

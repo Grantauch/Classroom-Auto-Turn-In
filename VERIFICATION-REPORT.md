@@ -72,6 +72,8 @@ The first installer attempt from the deeply nested workspace reached NSIS but fa
 
 The installer was also applied in place on this Windows PC. The installer exited `0`; the installed executable reports file/product version `0.9.22.0`; and the installed packaged-browser self-test passed with isolated user data.
 
+The GitHub-hosted disposable Windows lifecycle gate initially exposed an NSIS timing race: one run exited with Windows status `0xC0000005` before installation, and another reached the immediate reinstall before the asynchronous uninstaller cleanup had fully released its files. The validation script now waits for both installed executables to disappear before reinstalling and allows one retry only for that exact pre-install status when no partial app executable exists. This changes the release gate, not GoClassroom's teacher runtime; the corrected gate must pass on the final commit before delivery is called complete.
+
 ## Backed-up in-place upgrade evidence
 
 Before installation, the following additive backup was created:
