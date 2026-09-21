@@ -2,6 +2,17 @@
 
 This is the final validation ledger before v1.0.0. A check is only marked PASS when it was actually observed on the Windows/district-Google environment.
 
+## v0.9.21 GoClassroom additions
+
+- [ ] Add at least five teaching Classrooms through the dedicated Draft grading picker.
+- [ ] Switch classes and confirm assignment discovery changes to the selected class only.
+- [ ] Remove and re-add one class; confirm the Google Classroom itself is unchanged.
+- [ ] Confirm the lesson-plan Classroom, topic, Drive folder, schedule, and Safety Check state remain unchanged throughout.
+- [ ] Confirm the write-enabled native dialog names the grading Classroom and assignment.
+- [ ] Choose a restricted review folder, enable private review copies, and verify a complete packet after one preview run.
+- [ ] Confirm review copies remain off by default and no packet is created when disabled.
+- [ ] If using Google Drive for desktop, confirm the folder is restricted and the school retention policy is documented.
+
 > **v0.9.17 note — September 18, 2026:** v0.9.17 preserves the live Classroom workflow from v0.9.16 and adds optional free AI providers. Classroom/Drive simulation and mocked-provider tests do not replace a teacher-controlled live provider draft. See `VERIFICATION-REPORT.md`. The items below still require the real district environment or a teacher-owned free account.
 >
 > **v0.9.13 reset note — September 16, 2026:** v0.9.12 reached a real school-PC Safety Check but stopped with `AT-RUN-101` because `engine/submit-weekly.js` referenced the exported `maybeClick` helper without importing it. Nothing was submitted. v0.9.13 fixes that regression; any v0.9.12 dry-run evidence after Drive discovery must be repeated before promotion.

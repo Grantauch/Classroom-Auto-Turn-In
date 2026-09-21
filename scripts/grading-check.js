@@ -97,10 +97,10 @@ assert(!validateGrade(wrongTypes).valid,'Mechanical validation accepted string-t
     const dataPath=localData.dataDir(),files=fs.readdirSync(dataPath).filter(x=>!x.endsWith('.bak'));
     assert(files.includes('grading-settings.json'),'Grading settings were not persisted');
     const savedSettings=JSON.parse(fs.readFileSync(path.join(dataPath,'grading-settings.json'),'utf8'));
-    assert(Object.keys(savedSettings).sort().join(',')==='batchSize,classroomDraftWriteEnabled,enabled,model','Grading settings persisted unexpected fields');
-    assert(savedSettings.classroomDraftWriteEnabled===false&&savedSettings.batchSize===5,'Grading bridge safety settings were not persisted as expected');
+    assert(Object.keys(savedSettings).sort().join(',')==='activeGradingCourseId,batchSize,classroomDraftWriteEnabled,enabled,gradingClassrooms,model,reviewExportEnabled,reviewFolderPath','Grading settings persisted unexpected fields');
+    assert(savedSettings.classroomDraftWriteEnabled===false&&savedSettings.batchSize===5&&savedSettings.reviewExportEnabled===false&&Array.isArray(savedSettings.gradingClassrooms),'Grading bridge safety settings were not persisted as expected');
     assert(!files.some(x=>/grade|student|submission/i.test(x)&&x!=='grading-settings.json'),'Grading service persisted student grading content unexpectedly');
     fs.rmSync(root,{recursive:true,force:true});
   }finally{global.fetch=oldFetch}
-  console.log('Local grading checks passed: loopback-only Ollama, structured schema, SAFE_DRAFT/TEACHER_REVIEW, arithmetic validation, and no student-work persistence.');
+  console.log('Local grading checks passed: loopback-only Ollama, structured schema, SAFE_DRAFT/TEACHER_REVIEW, arithmetic validation, and no student-work persistence unless teacher review export is explicitly enabled.');
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -42,11 +42,13 @@ const good={
     throw new Error(`Unexpected fetch URL: ${url}`);
   };
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'cati-classroom-grading-')),localData=createLocalData(()=>root);
+  const reviewRoot=path.join(root,'private-review');fs.mkdirSync(reviewRoot);
   let writeCalls=0,extractCalls=0,discoverCalls=0;
   const runNodeScript=async(file,args=[])=>{
     if(file==='grading-classroom-discover.js'){
       discoverCalls++;
-      return encode('grading-assignments',{courseId:'course_1',courseDisplayName:'US History',assignments:[{courseId:'course_1',assignmentId:'assignment_1',title:'Industrialization',detailUrl:urls.detailUrl,studentWorkUrl:urls.studentWorkUrl}]})+'\n';
+      const request=decodePayload(args[0]),courseId=request.courseId,assignmentId=courseId==='course_2'?'assignment_2':'assignment_1';
+      return encode('grading-assignments',{courseId,courseDisplayName:request.courseDisplayName,assignments:[{courseId,assignmentId,title:courseId==='course_2'?'Reconstruction':'Industrialization',detailUrl:assignmentUrls(courseId,assignmentId).detailUrl,studentWorkUrl:assignmentUrls(courseId,assignmentId).studentWorkUrl}]})+'\n';
     }
     if(file==='grading-classroom-extract.js'){
       extractCalls++;
@@ -76,11 +78,23 @@ const good={
     throw new Error(`Unexpected engine script: ${file}`);
   };
   try{
-    localData.saveConfig({...localData.loadConfig(),courseUrl:'https://classroom.google.com/c/course_1'});
+    localData.saveConfig({...localData.loadConfig(),courseUrl:'https://classroom.google.com/c/lesson_plan_course',courseDisplayName:'Staff Lesson Plans'});
     const service=createGradingService({localData,ensureAutomationIdle(){},compactError:e=>String(e?.message||e),runNodeScript,runExclusiveBrowser:(_label,fn)=>fn()});
     service.saveSettings({enabled:true,model:'qwen3.6:latest',classroomDraftWriteEnabled:false,batchSize:3});
-    const discovered=await service.discoverAssignments();
-    assert(discoverCalls===1&&discovered.assignments.length===1,'Classroom assignment discovery bridge failed');
+    for(let i=1;i<=6;i++)service.addGradingClassroom({courseId:`course_${i}`,courseDisplayName:`Period ${i}`});
+    service.addGradingClassroom({courseId:'course_1',courseDisplayName:'US History'});
+    let settings=service.loadSettings();
+    assert(settings.gradingClassrooms.length===6,'Six separate grading Classrooms were not preserved');
+    assert(settings.gradingClassrooms.filter(course=>course.courseId==='course_1').length===1,'Duplicate grading Classroom was not deduplicated');
+    assert(localData.loadConfig().courseUrl.endsWith('/lesson_plan_course'),'Adding grading Classrooms changed the lesson-plan Classroom');
+    const discovered=await service.discoverAssignments('course_1');
+    const switched=await service.discoverAssignments('course_2');
+    assert(discoverCalls===2&&discovered.assignments.length===1&&switched.assignments[0].courseId==='course_2','Independent multi-Classroom assignment discovery bridge failed');
+    let unknownBlocked=false;
+    try{await service.discoverAssignments('not_saved')}catch(error){unknownBlocked=/saved grading Classrooms/i.test(String(error.message))}
+    assert(unknownBlocked&&discoverCalls===2,'An unsaved grading Classroom reached the browser bridge');
+    service.removeGradingClassroom('course_6');
+    assert(service.loadSettings().gradingClassrooms.length===5&&localData.loadConfig().courseUrl.endsWith('/lesson_plan_course'),'Removing a grading Classroom touched lesson-plan setup or the wrong list');
 
     let blocked=false;
     const rubric='Total points: 10. Factory jobs: 4 points. Migration: 3 points. Connection: 3 points.';
@@ -88,13 +102,18 @@ const good={
     assert(blocked,'Classroom draft write was not blocked while the separate write setting was off');
     assert(writeCalls===0,'Writer ran while draft writing was disabled');
 
-    service.saveSettings({enabled:true,model:'qwen3.6:latest',classroomDraftWriteEnabled:true,batchSize:3});
+    service.saveSettings({enabled:true,model:'qwen3.6:latest',classroomDraftWriteEnabled:true,batchSize:3,activeGradingCourseId:'course_1',reviewExportEnabled:true,reviewFolderPath:reviewRoot});
     let confirmationBlocked=false;
     try{await service.processClassroomAssignment({assignment:discovered.assignments[0],rubric,writeDrafts:true,batchSize:3})}catch(e){confirmationBlocked=/one-time teacher confirmation/i.test(String(e.message));}
     assert(confirmationBlocked&&writeCalls===0&&extractCalls===0,'Writer was not blocked without a one-time teacher confirmation');
     const preview=await service.processClassroomAssignment({assignment:discovered.assignments[0],rubric,writeDrafts:false,batchSize:3});
     assert(preview.summary.safeDrafts===1&&preview.summary.teacherReview===3,'Preview did not classify SAFE_DRAFT / TEACHER_REVIEW and duplicate identities correctly');
     assert(preview.summary.draftsSaved===0&&writeCalls===0,'Preview mode wrote a Classroom grade');
+    assert(preview.reviewExport?.recordCount===4&&fs.existsSync(path.join(preview.reviewExport.folderPath,'assignment-review.json')),'Teacher-enabled grading review packet was not saved');
+    const reviewFiles=fs.readdirSync(preview.reviewExport.folderPath);
+    assert(reviewFiles.some(name=>/Alice.*\.json$/i.test(name))&&reviewFiles.includes('EXPORT-COMPLETE.txt'),'Grading review packet is incomplete');
+    const aliceReview=JSON.parse(fs.readFileSync(path.join(preview.reviewExport.folderPath,reviewFiles.find(name=>/Alice.*\.json$/i.test(name))),'utf8'));
+    assert(/Factories created jobs/.test(aliceReview.evidenceAsGraded)&&aliceReview.classification==='SAFE_DRAFT'&&aliceReview.proposedGrade.score===10,'Review packet did not preserve the exact graded evidence and validated score');
 
     const writeAuthorization=service.authorizeWriteBatch(discovered.assignments[0]);
     const written=await service.processClassroomAssignment({assignment:discovered.assignments[0],rubric,writeDrafts:true,writeAuthorization,batchSize:3});
@@ -113,5 +132,5 @@ const good={
     assert(!files.some(x=>/student|submission|result|grade/i.test(x)&&x!=='grading-settings.json'),'Classroom grading bridge persisted student grading content unexpectedly');
     fs.rmSync(root,{recursive:true,force:true});
   }finally{global.fetch=oldFetch}
-  console.log('Classroom grading bridge checks passed: assignment discovery, bounded extraction, preview-only mode, persistent opt-in plus one-time write authorization, SAFE_DRAFT-only writeback, existing-grade protection, and no Return click.');
+  console.log('Classroom grading bridge checks passed: six independent grading Classrooms, lesson-plan separation, bounded extraction, private review export, preview-only mode, one-time write authorization, SAFE_DRAFT-only writeback, existing-grade protection, and no Return click.');
 })().catch(e=>{console.error(e);process.exit(1)});

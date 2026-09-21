@@ -31,7 +31,7 @@ assert.equal(pkg.devDependencies?.resedit, '1.7.2', 'Pure-JS Windows resource ed
 assert(fs.existsSync(path.join(root,'scripts','electron-builder-schema-check.js')), 'Installed electron-builder schema preflight is missing.');
 assert(fs.existsSync(path.join(root,'scripts','after-pack-windows.js')), 'Windows resource restoration hook is missing.');
 assert(bat.includes('CSC_IDENTITY_AUTO_DISCOVERY=false'), 'Controlled builder must explicitly suppress signing auto-discovery.');
-assert(main.includes("icon:path.join(__dirname,'assets','icon.ico')"), 'Runtime BrowserWindow icon must remain explicit.');
+assert(main.includes("icon:path.join(__dirname,'assets','GoClassroom.ico')"), 'Runtime BrowserWindow icon must remain explicit.');
 
 for(const file of ['BUILD-SETUP-EXE.bat','BUILD-WINDOWS.bat','PREPARE-RC-LOCKFILE.bat','RUN-PRE-FLIGHT-TESTS.bat']){
   const txt=fs.readFileSync(path.join(root,file),'utf8');

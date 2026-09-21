@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-title Classroom Auto Turn-In - v0.9.20 Release Builder
+title GoClassroom Preview - v0.9.21 Release Builder
 
 echo ============================================================
-echo   Classroom Auto Turn-In v0.9.20 - Controlled Windows Build
+echo   GoClassroom Preview v0.9.21 - Controlled Windows Build
 echo ============================================================
 echo.
 echo This builds the teacher installer and runs isolated install validation.

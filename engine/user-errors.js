@@ -62,8 +62,12 @@ function classify(err,operation=''){
     return ['AT-GRD-206','That draft-write confirmation is missing or has expired. Start a new batch and confirm it again. No grade was changed.'];
   if(operation==='grading:process-classroom'&&/another classroom grading batch is already running/.test(s))
     return ['AT-GRD-207','Another Classroom grading batch is already running. Wait for it to finish before starting another batch.'];
-  if(/^grading:/.test(operation)&&/does not belong to the classroom configured in setup|did not match the classroom configured in setup/.test(s))
-    return ['AT-GRD-208','The selected assignment does not match the Classroom configured in Setup. Find the assignment again before grading.'];
+  if(/^grading:/.test(operation)&&/does not belong to the classroom configured in setup|did not match the classroom configured in setup|saved grading classrooms|did not match the selected grading classroom/.test(s))
+    return ['AT-GRD-208','The selected assignment does not match a saved grading Classroom. Choose the class and find its assignments again before grading.'];
+  if(operation==='grading:select-classroom')return ['AT-GRD-194','The grading Classroom could not be added. Your lesson-plan setup and Classroom grades were not changed.'];
+  if(operation==='grading:remove-classroom')return ['AT-GRD-193','The grading Classroom could not be removed from the local list. Nothing was changed in Google Classroom.'];
+  if(operation==='grading:select-review-folder')return ['AT-GRD-192','The private grading review folder could not be selected. No student work was saved by this action.'];
+  if(operation==='grading:open-review-folder')return ['AT-GRD-191','Windows could not open the private grading review folder. Choose the folder again if it moved.'];
   if(/config\.json|saved auto turn-in settings are damaged/.test(s)&&/could not be read|damaged|data_corrupt/.test(s))
     return ['AT-DATA-111','Your saved Auto Turn-In setup could not be read safely. Automatic turn-in is paused. Open Help & support and copy the support summary before changing the setup.'];
   if(/plans\.json|saved lesson-plan list/.test(s)&&/could not be read|damaged|data_corrupt/.test(s))

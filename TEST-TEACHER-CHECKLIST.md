@@ -1,17 +1,17 @@
-# v0.9.20 Teacher Field Checklist
+# GoClassroom v0.9.21 Teacher Field Checklist
 
-> Use only after the v0.9.20 Windows installer has passed the Windows distribution gate. Use a controlled test Classroom/assignment and test accounts before trying draft writeback with real student grades.
+> Use only after the v0.9.21 Windows installer has passed the Windows distribution gate. Use controlled test Classrooms/assignments and test accounts before trying draft writeback with real student grades.
 
 ## Install and normal Auto Turn-In
 
-- [ ] Install the finished v0.9.20 Setup EXE on the intended teacher PC.
+- [ ] Install the finished v0.9.21 Setup EXE on the intended teacher PC.
 - [ ] Confirm the existing Classroom, Drive folder, schedule, Safety Check, and normal Auto Turn-In behavior still work.
 - [ ] Confirm optional external-provider AI lesson-plan recovery remains separate from local student grading.
 
 ## Local Ollama grading
 
 - [ ] Start Ollama on the same PC.
-- [ ] Confirm **Local grading** reports the selected model as Ready.
+- [ ] Confirm **Draft grading** reports the selected model as Ready.
 - [ ] Run the manual grading lab with a known sample answer.
 - [ ] Confirm a valid result shows rubric evidence and validated totals.
 - [ ] Confirm a missing-evidence sample stops at teacher review.
@@ -19,8 +19,13 @@
 ## Classroom assignment discovery
 
 - [ ] Keep Classroom draft writing OFF.
-- [ ] Select **Find Classroom assignments**.
-- [ ] Confirm CATI lists assignments from the Classroom selected in Setup and no other course.
+- [ ] Record the lesson-plan Classroom, topic, Drive folder, and schedule shown in Setup.
+- [ ] Select **Add grading Classroom** and add at least five classes you grade.
+- [ ] Confirm each class appears once even if you try to add the same class again.
+- [ ] Switch among the grading classes and use **Find assignments in this class**.
+- [ ] Confirm assignments come only from the selected grading class.
+- [ ] Remove one class from the local grading list and confirm nothing is removed from Google Classroom.
+- [ ] Reopen Setup and confirm the recorded lesson-plan Classroom, topic, Drive folder, and schedule are unchanged.
 - [ ] Choose a controlled assignment with a known point total.
 - [ ] Use a rubric that includes one explicit **Total points: N** line matching Classroom.
 
@@ -40,7 +45,7 @@
 
 - [ ] Enable the separate **Allow CATI to save validated SAFE_DRAFT scores** setting and confirm the warning.
 - [ ] Check the per-run write box.
-- [ ] Confirm CATI shows the native batch dialog, defaults to **Cancel**, and names the selected assignment.
+- [ ] Confirm GoClassroom shows the native batch dialog, defaults to **Cancel**, and names both the grading Classroom and selected assignment.
 - [ ] Cancel once and confirm no grade changes; then start a fresh batch and explicitly confirm it.
 - [ ] Use a test student with no existing grade.
 - [ ] Confirm only `SAFE_DRAFT` gets a numeric draft score.
@@ -53,9 +58,14 @@
 
 ## Persistence/privacy
 
-- [ ] Close and reopen CATI.
-- [ ] Confirm local grading/model, draft-write opt-in, and batch-size settings persist.
-- [ ] Confirm assignment rubric text, student work, extracted evidence, grading results, and draft feedback are not restored from CATI data files.
+- [ ] Close and reopen GoClassroom.
+- [ ] Confirm local grading/model, draft-write opt-in, batch size, saved grading classes, and active class persist.
+- [ ] With private review copies OFF, confirm assignment rubric text, student work, extracted evidence, grading results, and draft feedback are not restored from application data files.
+- [ ] Choose a private test folder, enable review copies, and accept the student-data warning.
+- [ ] Run one preview batch and confirm a new folder contains `assignment-review.json`, one numbered JSON file per processed student, and `EXPORT-COMPLETE.txt`.
+- [ ] Confirm each record contains the evidence that was graded, proposed score/classification, and validation/write status.
+- [ ] Confirm GoClassroom did not make the folder public or change its Google Drive permissions.
+- [ ] Turn review copies OFF and confirm the next grading run creates no new review folder.
 
 ## Teacher benchmark
 

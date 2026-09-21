@@ -1,4 +1,6 @@
 const crypto=require('crypto');
+const fs=require('fs');
+const path=require('path');
 const {DEFAULT_OLLAMA_URL,DEFAULT_GRADING_MODEL,GRADING_SCHEMA_VERSION,cleanModel,boundedRequiredText,getOllamaStatus,createOllamaGrade}=require('../engine/grading');
 const {clean,clampBatch,encodePayload,assignmentUrls,extractMaxPoints}=require('../engine/classroom-grading');
 const {parseClassroomIds}=require('../engine/safety');
@@ -6,6 +8,7 @@ const {lastPayload}=require('../engine/protocol');
 
 const WRITE_AUTHORIZATION_TTL_MS=5*60*1000;
 const CLASSROOM_BATCH_DEADLINE_MS=12*60*1000;
+const MAX_GRADING_CLASSROOMS=20;
 
 function createGradingService({localData,ensureAutomationIdle,compactError,runNodeScript=null,runExclusiveBrowser=null}){
   const {readJson,writeJson,loadConfig,appLog}=localData;
@@ -19,12 +22,45 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     return text;
   }
 
+  function normalizeGradingClassroom(value={}){
+    const suppliedId=clean(value.courseId,300);
+    const parsedId=parseClassroomIds(value.courseUrl||'').courseId;
+    const courseId=suppliedId||parsedId;
+    if(!courseId||!/^[-_a-z0-9]+$/i.test(courseId))return null;
+    return {
+      courseId,
+      courseUrl:`https://classroom.google.com/c/${courseId}`,
+      courseDisplayName:clean(value.courseDisplayName||value.name,500)||'Selected Classroom'
+    };
+  }
+
+  function uniqueClassrooms(values=[]){
+    const byId=new Map();
+    for(const value of Array.isArray(values)?values:[]){
+      const item=normalizeGradingClassroom(value);
+      if(item&&!byId.has(item.courseId))byId.set(item.courseId,item);
+      if(byId.size>=MAX_GRADING_CLASSROOMS)break;
+    }
+    return [...byId.values()];
+  }
+
+  function legacyClassroom(){
+    const cfg=loadConfig(),item=normalizeGradingClassroom({courseUrl:cfg.courseUrl,courseDisplayName:cfg.courseDisplayName});
+    return item?[item]:[];
+  }
+
+  function gradingClassroom(courseId,settings=loadSettings()){
+    const id=clean(courseId||settings.activeGradingCourseId,300);
+    const item=settings.gradingClassrooms.find(course=>course.courseId===id);
+    if(!item)throw new Error('Choose one of your saved grading Classrooms before continuing.');
+    return item;
+  }
+
   function validateAssignmentScope(assignment={}){
     const courseId=clean(assignment.courseId,300),assignmentId=clean(assignment.assignmentId,300),title=clean(assignment.title,1000);
     if(!courseId||!assignmentId)throw new Error('Choose a Classroom assignment before grading student work.');
-    const configuredCourseId=parseClassroomIds(loadConfig().courseUrl).courseId;
-    if(!configuredCourseId||courseId!==configuredCourseId)throw new Error('The selected grading assignment does not belong to the Classroom configured in Setup.');
-    return {courseId,assignmentId,title};
+    const course=gradingClassroom(courseId);
+    return {courseId,assignmentId,title,courseDisplayName:course.courseDisplayName};
   }
 
   function pruneWriteAuthorizations(){const now=Date.now();for(const [token,item] of writeAuthorizations)if(!item||item.expiresAt<=now)writeAuthorizations.delete(token)}
@@ -52,15 +88,34 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     return 'The local grading engine stopped safely. Nothing was returned to students. Try once more, then check Ollama if the problem continues.';
   }
 
-  function defaultSettings(){return {enabled:false,model:DEFAULT_GRADING_MODEL,classroomDraftWriteEnabled:false,batchSize:5}}
+  function defaultSettings(){
+    return {
+      enabled:false,
+      model:DEFAULT_GRADING_MODEL,
+      classroomDraftWriteEnabled:false,
+      batchSize:5,
+      gradingClassrooms:[],
+      activeGradingCourseId:'',
+      reviewExportEnabled:false,
+      reviewFolderPath:''
+    };
+  }
 
   function loadSettings(){
-    const raw=readJson('grading-settings.json',{}),saved={...defaultSettings(),...(raw&&typeof raw==='object'?raw:{})};
+    const raw=readJson('grading-settings.json',{}),defaults=defaultSettings(),saved={...defaults,...(raw&&typeof raw==='object'?raw:{})};
+    const hasLegacySettings=raw&&typeof raw==='object'&&Object.keys(raw).length>0&&!Array.isArray(raw.gradingClassrooms);
+    const gradingClassrooms=uniqueClassrooms(Array.isArray(raw?.gradingClassrooms)?raw.gradingClassrooms:(hasLegacySettings?legacyClassroom():defaults.gradingClassrooms));
+    const requestedActive=clean(saved.activeGradingCourseId,300);
+    const activeGradingCourseId=gradingClassrooms.some(item=>item.courseId===requestedActive)?requestedActive:(gradingClassrooms[0]?.courseId||'');
     return {
       enabled:!!saved.enabled,
       model:cleanModel(saved.model),
       classroomDraftWriteEnabled:!!saved.classroomDraftWriteEnabled,
       batchSize:clampBatch(saved.batchSize),
+      gradingClassrooms,
+      activeGradingCourseId,
+      reviewExportEnabled:!!saved.reviewExportEnabled,
+      reviewFolderPath:String(saved.reviewFolderPath||'').trim(),
       baseUrl:DEFAULT_OLLAMA_URL,
       gradingSchema:GRADING_SCHEMA_VERSION
     };
@@ -69,9 +124,44 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
   function saveSettings(input={}){
     ensureAutomationIdle();
     const current=loadSettings(),next={...current,...input};
-    const saved={enabled:!!next.enabled,model:cleanModel(next.model),classroomDraftWriteEnabled:!!next.classroomDraftWriteEnabled,batchSize:clampBatch(next.batchSize)};
+    const gradingClassrooms=uniqueClassrooms(next.gradingClassrooms);
+    const requestedActive=clean(next.activeGradingCourseId,300);
+    const activeGradingCourseId=gradingClassrooms.some(item=>item.courseId===requestedActive)?requestedActive:(gradingClassrooms[0]?.courseId||'');
+    const reviewFolderPath=String(next.reviewFolderPath||'').trim();
+    if(reviewFolderPath&&!path.isAbsolute(reviewFolderPath))throw new Error('Choose a full grading review folder path before turning on review copies.');
+    const saved={
+      enabled:!!next.enabled,
+      model:cleanModel(next.model),
+      classroomDraftWriteEnabled:!!next.classroomDraftWriteEnabled,
+      batchSize:clampBatch(next.batchSize),
+      gradingClassrooms,
+      activeGradingCourseId,
+      reviewExportEnabled:!!next.reviewExportEnabled,
+      reviewFolderPath
+    };
+    if(saved.reviewExportEnabled&&!saved.reviewFolderPath)throw new Error('Choose a grading review folder before turning on review copies.');
     writeJson('grading-settings.json',saved);
     return {...saved,baseUrl:DEFAULT_OLLAMA_URL,gradingSchema:GRADING_SCHEMA_VERSION};
+  }
+
+  function addGradingClassroom(input={}){
+    ensureAutomationIdle();
+    const item=normalizeGradingClassroom(input);
+    if(!item)throw new Error('GoClassroom could not verify the selected Classroom identity.');
+    const current=loadSettings(),existing=current.gradingClassrooms.find(course=>course.courseId===item.courseId);
+    if(!existing&&current.gradingClassrooms.length>=MAX_GRADING_CLASSROOMS)throw new Error(`GoClassroom can save up to ${MAX_GRADING_CLASSROOMS} grading Classrooms.`);
+    const gradingClassrooms=existing
+      ? current.gradingClassrooms.map(course=>course.courseId===item.courseId?item:course)
+      : [...current.gradingClassrooms,item];
+    return saveSettings({...current,gradingClassrooms,activeGradingCourseId:item.courseId});
+  }
+
+  function removeGradingClassroom(courseId){
+    ensureAutomationIdle();
+    const current=loadSettings(),id=clean(courseId,300);
+    const gradingClassrooms=current.gradingClassrooms.filter(course=>course.courseId!==id);
+    if(gradingClassrooms.length===current.gradingClassrooms.length)throw new Error('That grading Classroom is not in the saved list.');
+    return saveSettings({...current,gradingClassrooms,activeGradingCourseId:current.activeGradingCourseId===id?(gradingClassrooms[0]?.courseId||''):current.activeGradingCourseId});
   }
 
   async function state(){
@@ -109,14 +199,82 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
 
   function requireBrowserRunner(){if(typeof runNodeScript!=='function')throw new Error('The Classroom grading browser bridge is not available in this build.');}
 
-  async function discoverAssignments(){
+  async function discoverAssignments(courseId){
     ensureAutomationIdle();requireBrowserRunner();
-    const out=await exclusive('Classroom grading assignment discovery',()=>runNodeScript('grading-classroom-discover.js',[],false,{timeoutMs:4*60*1000}));
+    const course=gradingClassroom(courseId);
+    const out=await exclusive('Classroom grading assignment discovery',()=>runNodeScript('grading-classroom-discover.js',[encodePayload(course)],false,{timeoutMs:4*60*1000}));
     const payload=lastPayload(out,'grading-assignments');
     if(!payload||!Array.isArray(payload.assignments))throw new Error('CATI could not read the Classroom assignment list safely.');
-    const configuredCourseId=parseClassroomIds(loadConfig().courseUrl).courseId;
-    if(!configuredCourseId||payload.courseId!==configuredCourseId||payload.assignments.some(item=>item?.courseId!==configuredCourseId))throw new Error('CATI rejected an assignment list that did not match the Classroom configured in Setup.');
-    return payload;
+    if(payload.courseId!==course.courseId||payload.assignments.some(item=>item?.courseId!==course.courseId))throw new Error('GoClassroom rejected an assignment list that did not match the selected grading Classroom.');
+    return {...payload,courseDisplayName:course.courseDisplayName};
+  }
+
+  function safeFilePart(value,fallback){
+    const text=String(value||'').replace(/[<>:"/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,90);
+    return text||fallback;
+  }
+
+  function exportReviewPacket({settings,course,scan,results,model,summary,writeDrafts}){
+    if(!settings.reviewExportEnabled)return null;
+    const root=path.resolve(settings.reviewFolderPath);
+    if(!fs.existsSync(root)||!fs.statSync(root).isDirectory())throw new Error('The grading review folder is unavailable. No review copy was saved; Classroom grading results are still shown in GoClassroom.');
+    const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+    const runId=`${stamp}-${crypto.randomBytes(3).toString('hex')}`;
+    const folderName=`${stamp} - ${safeFilePart(course.courseDisplayName,'Classroom')} - ${safeFilePart(scan.assignment.title,'Assignment')}`;
+    const folderPath=path.join(root,folderName);
+    fs.mkdirSync(folderPath,{recursive:false});
+    const packets=Array.isArray(scan.packets)?scan.packets:[];
+    const records=results.map((result,index)=>{
+      const packet=packets[index]||{};
+      return {
+        recordVersion:1,
+        exportedAt:new Date().toISOString(),
+        runId,
+        classroom:{courseId:course.courseId,name:course.courseDisplayName},
+        assignment:{assignmentId:scan.assignment.assignmentId,title:scan.assignment.title,directions:scan.assignment.question,maxPoints:scan.assignment.maxPoints},
+        student:{studentId:result.studentId||packet.studentId||'',name:result.studentName||packet.studentName||''},
+        evidenceAsGraded:packet.studentWork||'',
+        evidenceComplete:packet.extractionComplete===true,
+        evidenceIssue:packet.extractionReason||null,
+        attachments:Array.isArray(packet.attachments)?packet.attachments.map(item=>({kind:item?.kind||'',name:item?.name||'',supported:item?.supported===true})):[],
+        proposedGrade:result.grade||null,
+        classification:result.status,
+        reviewReason:result.reason||null,
+        independentValidation:result.validation||null,
+        classroomWrite:{requested:!!writeDrafts,status:result.writeStatus,message:result.writeMessage},
+        model
+      };
+    });
+    const manifest={
+      reviewExportVersion:1,
+      exportedAt:new Date().toISOString(),
+      runId,
+      privacy:'Teacher-enabled review copy. Contains student work and grading data. Keep this folder private and follow school retention rules.',
+      classroom:{courseId:course.courseId,name:course.courseDisplayName},
+      assignment:{assignmentId:scan.assignment.assignmentId,title:scan.assignment.title,directions:scan.assignment.question,maxPoints:scan.assignment.maxPoints},
+      model,
+      summary,
+      records:records.map((record,index)=>({file:`${String(index+1).padStart(2,'0')} - ${safeFilePart(record.student.name,`Student ${index+1}`)}.json`,studentId:record.student.studentId,classification:record.classification,score:record.proposedGrade?.score??null,maxScore:record.proposedGrade?.max_score??null}))
+    };
+    fs.writeFileSync(path.join(folderPath,'assignment-review.json'),JSON.stringify(manifest,null,2),'utf8');
+    records.forEach((record,index)=>fs.writeFileSync(path.join(folderPath,manifest.records[index].file),JSON.stringify(record,null,2),'utf8'));
+    const readme=[
+      'GoClassroom grading review copy',
+      '',
+      `Classroom: ${course.courseDisplayName}`,
+      `Assignment: ${scan.assignment.title}`,
+      `Exported: ${manifest.exportedAt}`,
+      `Students: ${records.length}`,
+      '',
+      'This folder contains student work and AI-assisted draft grading data because the teacher enabled review copies.',
+      'Keep it private, do not share it publicly, and delete or archive it according to school policy.',
+      'The assignment-review.json file is the index; each numbered JSON file contains the exact evidence and validated result for one processed student.',
+      'No file in this folder means a grade was returned or published to a student.'
+    ].join('\r\n');
+    fs.writeFileSync(path.join(folderPath,'README - PRIVATE STUDENT DATA.txt'),readme,'utf8');
+    fs.writeFileSync(path.join(folderPath,'EXPORT-COMPLETE.txt'),`GoClassroom completed this review export at ${manifest.exportedAt}.\r\n`,'utf8');
+    appLog(`Teacher-enabled grading review copy saved for ${records.length} item(s) in ${folderPath}.`);
+    return {folderPath,recordCount:records.length,runId};
   }
 
   function reviewResult(packet,reason){
@@ -128,8 +286,13 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     const settings=loadSettings(),model=cleanModel(input.model||settings.model),writeDrafts=!!input.writeDrafts,batchSize=clampBatch(input.batchSize||settings.batchSize);
     if(!settings.enabled)throw new Error('Local grading is off. Turn it on before grading Classroom submissions.');
     if(writeDrafts&&!settings.classroomDraftWriteEnabled)throw new Error('Classroom draft writing is off. Turn on the separate draft-write safety setting before saving scores to Classroom.');
+    if(settings.reviewExportEnabled){
+      const reviewRoot=path.resolve(settings.reviewFolderPath);
+      if(!fs.existsSync(reviewRoot)||!fs.statSync(reviewRoot).isDirectory())throw new Error('The grading review folder is unavailable. Choose an available private folder or turn review copies off before grading.');
+    }
     const assignment=input.assignment&&typeof input.assignment==='object'?input.assignment:{};
-    const {courseId,assignmentId,title}=validateAssignmentScope(assignment);
+    const {courseId,assignmentId,title,courseDisplayName}=validateAssignmentScope(assignment);
+    const course=gradingClassroom(courseId,settings);
     if(writeDrafts)consumeWriteAuthorization(input.writeAuthorization,{courseId,assignmentId});
     const rubric=boundedRequiredText(input.rubric,'rubric',30000),questionOverride=optionalBoundedText(input.questionOverride,'assignment directions override',20000);
     const canonicalUrls=assignmentUrls(courseId,assignmentId);
@@ -203,7 +366,10 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       classroomMaxPoints:maxKnown?classroomMax:null
     };
     appLog(`Classroom local grading processed ${summary.scanned} submission(s): ${summary.safeDrafts} safe draft(s), ${summary.teacherReview} teacher-review item(s), ${summary.draftsSaved} Classroom draft score(s) verified.`);
-    return {assignment:{...scan.assignment,question},summary,results,writeDraftsRequested:writeDrafts,classroomDraftWriteEnabled:settings.classroomDraftWriteEnabled,model};
+    let reviewExport=null;
+    try{reviewExport=exportReviewPacket({settings,course:{...course,courseDisplayName},scan:{...scan,assignment:{...scan.assignment,question}},results,model,summary,writeDrafts})}
+    catch(error){reviewExport={error:compactError(error)};appLog(`Grading finished, but the teacher-enabled review copy failed: ${reviewExport.error}`)}
+    return {assignment:{...scan.assignment,question},classroom:course,summary,results,reviewExport,writeDraftsRequested:writeDrafts,classroomDraftWriteEnabled:settings.classroomDraftWriteEnabled,model};
   }
 
   async function processClassroomAssignment(input={}){
@@ -214,7 +380,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     finally{classroomBatchActive=false}
   }
 
-  return {loadSettings,saveSettings,state,grade,discoverAssignments,authorizeWriteBatch,processClassroomAssignment};
+  return {loadSettings,saveSettings,addGradingClassroom,removeGradingClassroom,state,grade,discoverAssignments,authorizeWriteBatch,processClassroomAssignment};
 }
 
 module.exports={createGradingService};

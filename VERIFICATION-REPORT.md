@@ -1,35 +1,36 @@
-# v0.9.20 Verification Report
+# v0.9.21 GoClassroom Multi-Class Grading Preview Verification Report
 
 ## Readiness statement
 
-**Share with caveats.** The v0.9.20 source, simulated Classroom/Drive workflow, Windows package, clean Windows install/uninstall/reinstall lifecycle, packaged-browser runtime, and backed-up in-place upgrade passed their available gates on September 19, 2026. The unsigned installer is suitable for an IT-reviewed, controlled test. It is not a field-validated production grading release.
+**Release-candidate / controlled-test ready; not field-validated 1.0.** The v0.9.21 source, simulated Classroom/Drive workflow, DOM fixtures, real-Chrome smoke checks, Windows package, isolated packaged runtime, Microsoft Defender scan, and backed-up in-place upgrade passed their available gates on September 20, 2026.
 
-The standard destructive install/uninstall/reinstall gate correctly refused to run on the teacher PC because CATI v0.9.17 and a real `Classroom Auto Turn-In` scheduled task were already present. After the user requested that this PC be set up with the release, the v0.9.17 program, teacher-local data, and task definition were fully backed up; v0.9.20 was installed in place; and the scheduled task was proven byte-for-byte unchanged. The clean lifecycle was then run independently on a disposable GitHub-hosted Windows runner from commit `9f21b0e8bff9905b44559180709709be33905454`; [workflow run 35447491739](https://github.com/Grantauch/Classroom-Auto-Turn-In/actions/runs/35447491739) passed fresh install, packaged self-test, uninstall with data preservation, reinstall, and a second packaged-browser self-test.
+The installed app on the teacher PC is now v0.9.21. The existing current-user application data and the `Classroom Auto Turn-In` scheduled-task definition were backed up before installation. The task definition remained byte-for-byte identical, and the installed package passed an isolated self-test that launched packaged Chrome. No live Classroom assignment was opened, graded, written, returned, or published during this verification.
 
 ## Baseline and environment
 
 - Baseline archive: `Classroom-Auto-Turn-In-v0.9.19-Classroom-Draft-Grading-Bridge-Source-and-Builder.zip`
 - Baseline SHA-256: `1EA661933B1F938A308430AAF67C1B7CDA2F6CEF0CBA5B4E00CD9B5D4FB98F19`
 - Baseline archive validation: 124 safe ZIP entries; no absolute or parent-traversal paths.
-- Baseline source manifest: 112 listed files verified exactly before changes; no missing, mismatched, or extra files.
-- Release-builder OS: Windows.
-- Release version: `0.9.20`.
+- Release version: `0.9.21`.
 - Electron: `38.1.2`.
 - Electron Builder: `26.0.12`.
 - Installer format: unsigned, one-click, current-user NSIS x64.
+- Release-builder short path: `C:\CATI-Build\v0.9.21-goclassroom-20260920`.
 
 ## Source and dependency checks
 
 | Check | Result | Evidence boundary |
 |---|---|---|
-| `npm ci --no-audit --no-fund` | PASS | Installed 384 packages from the frozen lockfile. |
-| `npm audit --omit=dev --audit-level=high` | PASS | Reported 0 production dependency vulnerabilities. |
-| `npm run check:deep` | PASS | Syntax, Electron Builder schema, Windows build rules, adversarial/fuzz, AI recovery, grading, Classroom bridge, native confirmation, 61 support-code cases, UI integrity, architecture, migration, recovery, isolation, verified-build, and 21 generated scheduler scripts passed. |
+| `npm ci --no-audit --no-fund` | PASS | 384 packages installed from the frozen lockfile in the short-path Windows build copy. |
+| `npm run check:deep` | PASS | Syntax, trust/reliability, builder schema, Windows build rules, adversarial/fuzz, AI recovery, grading, six-class bridge/review export, confirmation, teacher error language, UI integrity, stabilization, architecture, migration, release-candidate, multi-PC, recovery, action scope, distribution isolation, verified build, and scheduler checks passed. |
 | `npm run check:dom` | PASS | Chromium DOM fixtures passed, including ambiguous totals and grade-field scoping. |
-| `npm run check:browser` | PASS | Real Google Chrome background smoke test passed, including cross-tab Classroom and Drive picker fixtures. |
-| `npm run check:e2e` engine gate | PASS | 21 offline Classroom/Drive scenarios passed in Electron. |
-| `npm run check:e2e` UI gate | NOT RUN BY DESIGN | On Windows this test would register real scheduled tasks. The script explicitly skipped it; isolated installed validation is the intended Windows gate. |
-| GitHub-hosted Windows lifecycle | PASS | Clean checkout, all source/browser/simulator gates, installer build, isolated current-user install, uninstall/data preservation, reinstall, packaged-browser retest, hashes, and artifact upload passed in run 35447491739. |
+| `npm run check:browser` | PASS | Real Google Chrome background smoke checks passed for Classroom/default grading picker and Drive picker, including dedicated “Add grading Classroom.” |
+| `npm run check:e2e` engine gate | PASS | 21 offline Classroom/Drive scenarios passed. |
+| `npm run check:e2e` UI gate | NOT RUN BY DESIGN | The Windows UI gate would register real scheduled tasks; the isolated installed-package gate is used instead. |
+| `npm run check:visual -- validation-evidence-v0.9.21` | PASS | Teacher dashboard and draft-grading screenshots rendered with supplied assets; no asserted horizontal overflow. |
+| `npm run check:grading-bridge` | PASS | Six independent classes, lesson-plan separation, unsaved-course rejection, local-only removal, review packet completion, preview/write safety, and no Return path. |
+| `npm run check:release-ready` | PASS | Release manifest, version, docs, package, and source consistency checks passed after the final manifest was regenerated. |
+| Production dependency audit | PASS | `npm audit --omit=dev --audit-level=high` reported no high-severity production dependency vulnerability. |
 
 ## Classroom draft-grading safeguards verified in source
 
@@ -37,78 +38,71 @@ The standard destructive install/uninstall/reinstall gate correctly refused to r
 - The persistent draft-write setting alone cannot authorize a write.
 - Every write-enabled run requires a native main-process dialog that defaults to Cancel.
 - Confirmation creates one assignment-bound authorization that expires after five minutes and is consumed once.
-- Renderer-provided URLs cannot redirect the service outside the configured course/assignment.
-- Concurrent batches and duplicate student identities fail closed.
-- Partial page loads, ambiguous Classroom totals, missing rubric totals, point mismatches, unsupported/inaccessible/oversized/truncated evidence, and direct prompt-injection phrases stop at teacher review.
-- Student evidence is sent only to local loopback Ollama and is not intentionally persisted.
-- Ollama errors are categorized without logging the prompt or server response body.
+- Renderer-provided URLs cannot redirect the service outside the configured saved grading course/assignment.
+- The lesson-plan Classroom is separate from the saved grading-Classroom list; adding, switching, or removing a grading class cannot change Setup.
+- Partial page loads, ambiguous Classroom totals, missing rubric totals, point mismatches, unsupported/inaccessible/oversized/truncated evidence, and direct instruction-like student text stop at `TEACHER_REVIEW`.
+- Student evidence is sent only to local loopback Ollama and is not intentionally persisted by default.
 - Model rubric labels must match teacher-rubric labels, evidence excerpts must occur in the submitted evidence, and all arithmetic and score bounds are independently checked.
 - Existing draft/final grades are skipped, not overwritten.
 - Only `SAFE_DRAFT` rows reach the writer.
 - The writer rechecks the exact student, score, maximum, grade-field denominator, and blank existing-grade state.
-- A blank input cannot verify as numeric zero.
 - Reload verification must show the exact expected score and denominator.
 - The writer contains no `.click(` call and no Return/publish implementation.
 
+## Private grading review-folder verification
+
+Review copies are off by default and require a teacher-selected folder plus a native student-data warning. The offline bridge regression created a non-overwriting per-run folder containing `assignment-review.json`, numbered student records, a private-data README, and a final `EXPORT-COMPLETE.txt` marker. The export contains only evidence actually used, normalized validated results, safety classification, and write status; it does not contain browser credentials, cookies, raw unvalidated model output, or browser-profile contents.
+
+This is an intentional privacy exception. A Google Drive for desktop folder may be selected, but CATI does not change Drive sharing or retention settings. District policy and teacher-controlled access/retention still require review before real student data is exported.
+
 ## Windows package evidence
 
-The first installer attempt from the deeply nested workspace reached NSIS but failed because the legacy NSIS include path exceeded its practical Windows path limit. Rebuilding the identical source through a short temporary drive mapping succeeded. The temporary mapping was removed afterward. The source package instructs builders to extract to a short local path.
+The first installer attempt from the deeply nested workspace reached NSIS but failed because the legacy NSIS include path exceeded Windows path handling limits. Rebuilding the identical source from the short path above succeeded. The source package instructs builders to extract to a short local path.
 
-- Final downloadable installer: `Classroom-Auto-Turn-In-Setup-0.9.20-x64.exe`
-- Size: 89,924,465 bytes.
-- SHA-256: `3F2B4B68A7377F487F86F02A725CB17B96D64E8D3D095A7EDB09DBD82CB455B2`
-- Authenticode: Not signed, as expected for this release candidate.
-- Installer resource version: `0.9.20`.
-- Installer product name: `Classroom Auto Turn-In`.
-- Microsoft Defender targeted scan of the final downloadable installer: PASS, no threats found.
-- Unpacked packaged-app resource version: `0.9.20.0`.
+- Final installer: `Classroom-Auto-Turn-In-Setup-0.9.21-x64.exe`
+- Size: `90,666,558` bytes.
+- SHA-256: `9B9CD243B05E7BB54600E489D28F723032FE82FA5DED38B862509FF0A4498B26`.
+- Authenticode: unsigned, as expected for this release candidate.
+- Installer resource version: `0.9.21`.
+- Installer product name: `Classroom Auto Turn-In` (stable compatibility identity).
+- Unpacked packaged-app resource version: `0.9.21.0`.
 - Packaged-app isolated-user-data self-test: PASS.
-- Packaged Playwright/Chrome launch: PASS when run through a short validation path matching a normal installation path.
-- In-place installer exit code: `0`.
-- Installed application resource version: `0.9.20.0`.
-- Installed application packaged-browser self-test: PASS with isolated user data.
+- Packaged Chrome launch: PASS.
+- Microsoft Defender targeted scan: PASS; the finished installer scan reported no threats.
 
-The locally built installer used for the backed-up in-place upgrade had SHA-256 `EEDA767C4F7AFCEAABCA90F9E90EF8CA9BCD27DFD58557EF507DDC3948605849` and size 90,650,004 bytes. The final downloadable installer above was rebuilt from the same application source on the clean hosted runner and is the artifact that passed the clean lifecycle. NSIS output is not byte-for-byte reproducible across those two build environments, so both hashes are recorded rather than treated as interchangeable.
+The installer was also applied in place on this Windows PC. The installer exited `0`; the installed executable reports file/product version `0.9.21.0`; and the installed packaged-browser self-test passed with isolated user data.
 
-## Installed-package boundary
+## Backed-up in-place upgrade evidence
 
-`scripts/windows-installed-validation.ps1` deliberately refused to run while this PC still had the production CATI installation and task. Before the requested upgrade, the PC had:
+Before installation, the following additive backup was created:
 
-- installed CATI version `0.9.17.0` under the current user's local Programs folder;
-- one ready production scheduled task named `Classroom Auto Turn-In`.
+- Backup folder: `validation-evidence-v0.9.21\\pre-upgrade-v0.9.20-20260920-195156`.
+- Existing installed executable: `0.9.20.0`.
+- Existing executable SHA-256: `5E66A918A3FB20E7F4E361D9911B2350FD0D6AF65B347BD8D471E8BCF5E74A7E`.
+- Teacher-local data backup: 1,409 files / 285,580,584 bytes.
+- Existing task XML SHA-256 before: `A5C3ECAEE7F7499495AB652B19A13B49EDA8F944EF820D8D418BD2266E9F1FA9`.
+- Existing task XML SHA-256 after: `A5C3ECAEE7F7499495AB652B19A13B49EDA8F944EF820D8D418BD2266E9F1FA9`.
+- Task state after upgrade: Ready.
+- Task action after upgrade: current-user v0.9.21 executable with `--background-run`.
+- Checked `data` settings hashes (`ai-secrets.json`, `ai-settings.json`, `config.json`, `machine.json`, `plans.json`, and `state.json`): unchanged from the backup.
 
-Before installing, an additive private recovery backup captured 1,805 files (600,089,278 bytes): the v0.9.17 program folder, teacher-local CATI data/browser profile, and scheduled-task XML. The installer then upgraded the same current-user program path. Verification showed:
-
-- installed version `0.9.20.0`;
-- installer exit code `0`;
-- teacher-local data remained present at the same measured size immediately after the upgrade;
-- the production scheduled-task XML SHA-256 remained `EBB9EDD5DE672D2DE278CD8853578BF561AC40AB8734CE617F46A3B6D25AEE0E` before and after;
-- the task remained Ready and continued to point at the same current-user executable path;
-- the installed v0.9.20 self-test passed with isolated user data and a packaged Chrome launch.
-
-The disposable hosted Windows runner additionally proved that the final installer:
-
-- installs silently as the current user on a clean environment;
-- exposes the expected v0.9.20 product/version resources and uninstaller;
-- keeps packaged self-test data isolated and creates no production scheduled task;
-- preserves an application-data marker across uninstall;
-- reinstalls successfully and preserves that marker;
-- passes the packaged-browser self-test again after reinstall.
-
-The automated lifecycle does not assert the visible Start-menu/Desktop shortcut experience, SmartScreen prompts, or district-managed Windows policy behavior. Those remain part of the controlled school-PC/IT pilot, not a source or installer-integrity failure.
+The app windows were closed gracefully before the upgrade; no unrelated process was changed. The app was not launched into the teacher's real Classroom account for this check.
 
 ## Live and pedagogical blockers
 
-No live district Classroom assignment or student submission was opened or changed during this build. No grade was written, returned, or published. Before routine use, complete `TEST-TEACHER-CHECKLIST.md` with a controlled test course, assignment, and test accounts, including:
+The following still require a controlled teacher/IT validation pass:
 
-- current district Classroom assignment discovery and page selectors;
-- direct-answer and Google Docs extraction against representative test submissions;
-- preview-only proof that Classroom remains unchanged;
-- one controlled draft write and independent Classroom reload/readback;
-- existing-grade protection and rubric/Classroom mismatch tests;
-- proof that work remains unreturned/unpublished;
-- district/privacy-policy review for local student-work processing;
-- teacher-scored benchmark for grading quality and false `SAFE_DRAFT` cases;
-- multi-day school-PC operation and SmartScreen/IT review for the unsigned installer.
+- Live assignment discovery against the teacher's current district Classroom UI.
+- Adding and switching among the teacher's actual five or six grading Classes while proving lesson-plan Setup remains unchanged.
+- Direct-answer and Google Docs extraction against representative test submissions.
+- Preview-only proof that Classroom remains unchanged.
+- One controlled draft write and independent Classroom reload/readback.
+- Existing-grade protection and rubric/Classroom mismatch tests in the live UI.
+- Proof that work remains unreturned/unpublished.
+- Teacher-scored benchmark for grading quality, disagreement review, and false `SAFE_DRAFT` cases.
+- District/privacy-policy review for local student-work processing and the optional Drive-synced review folder.
+- Multi-day school-PC operation, SmartScreen, visible shortcuts, and district-managed Windows policy review for the unsigned installer.
 
-Mechanical safety validation is not evidence that the model's pedagogical judgment matches the teacher's grading. `SAFE_DRAFT` means CATI proved its mechanical gates, not that the teacher must accept the score.
+Mechanical `SAFE_DRAFT` validation means CATI proved its safety gates; it does not mean the teacher must accept the model's pedagogical judgment.
+
+Until those gates are complete, this package must be described as a controlled-test release candidate, not a verified production grading release or a 1.0 release.

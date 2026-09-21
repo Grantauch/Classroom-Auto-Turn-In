@@ -286,6 +286,20 @@ $('#disableAiFeature').onclick=async()=>{if(!(await askConfirm('Hide AI recovery
 
 let latestGradingState=null;
 let gradingAssignments=[];
+function renderGradingClassrooms(settings=latestGradingState?.settings||{}){
+  const select=$('#gradingClassroomSelect');if(!select)return;
+  const classrooms=Array.isArray(settings.gradingClassrooms)?settings.gradingClassrooms:[];
+  const selected=settings.activeGradingCourseId||classrooms[0]?.courseId||'';
+  select.innerHTML=classrooms.length
+    ? classrooms.map(course=>`<option value="${escapeHtml(course.courseId)}">${escapeHtml(course.courseDisplayName||'Selected Classroom')}</option>`).join('')
+    : '<option value="">Add a grading Classroom first</option>';
+  if(classrooms.some(course=>course.courseId===selected))select.value=selected;
+  const active=classrooms.find(course=>course.courseId===select.value);
+  $('#removeGradingClassroom').disabled=!active;
+  $('#discoverGradingAssignments').disabled=!active;
+  $('#gradingClassroomCourse').textContent=active?`${classrooms.length} grading class${classrooms.length===1?'':'es'} saved · ${active.courseDisplayName} selected.`:'Your lesson-plan setup will not change.';
+  badge($('#gradingClassroomBadge'),active?'info':'neutral',active?(classrooms.length===1?'1 class':`${classrooms.length} classes`):'No class selected');
+}
 function renderGradingModels(state){
   const settings=state?.settings||{},models=state?.ollama?.models||[],select=$('#gradingModel'),selected=settings.model||'qwen3.6:latest';
   const choices=models.map(m=>[m.name,m.parameter_size?`${m.name} — ${m.parameter_size}`:m.name]);
@@ -308,11 +322,18 @@ function syncClassroomWriteControls(settings=latestGradingState?.settings||{}){
     if(!allowed)$('#gradingWriteDraftsThisRun').checked=false;
   }
 }
+function syncReviewCopyControls(settings=latestGradingState?.settings||{}){
+  const enabled=!!settings.reviewExportEnabled,folder=settings.reviewFolderPath||'';
+  $('#gradingReviewExportEnabled').checked=enabled;
+  $('#gradingReviewFolder').textContent=folder||'No folder selected';
+  $('#openGradingReviewFolder').disabled=!folder;
+  badge($('#gradingReviewBadge'),enabled?'warn':'neutral',enabled?'On · private student data':'Off');
+}
 async function loadGrading(){
   try{
     const state=await cati.getGradingState();latestGradingState=state;const settings=state.settings||{},ollama=state.ollama||{};
     $('#gradingEnabled').checked=!!settings.enabled;$('#gradingModeTitle').textContent=settings.enabled?'ON':'OFF';$('#gradingModeDesc').textContent=settings.enabled?'CATI may create local draft grades after validation. Classroom draft writing still requires its separate opt-in.':'Local grading is disabled. Nothing is sent to Ollama until you turn it on.';
-    renderGradingModels(state);syncClassroomWriteControls(settings);
+    renderGradingModels(state);syncClassroomWriteControls(settings);renderGradingClassrooms(settings);syncReviewCopyControls(settings);
     if($('#gradingBatchSize'))$('#gradingBatchSize').value=Math.max(1,Math.min(10,Number(settings.batchSize)||5));
     if(ollama.available){
       badge($('#gradingOllamaBadge'),ollama.selectedModelAvailable?'good':'warn',ollama.selectedModelAvailable?'Ready':'Model missing');
@@ -330,10 +351,12 @@ async function saveGrading(){
     enabled:$('#gradingEnabled').checked,
     model:$('#gradingModel').value,
     classroomDraftWriteEnabled:$('#gradingClassroomWriteEnabled')?.checked===true,
-    batchSize:Number($('#gradingBatchSize')?.value)||5
+    batchSize:Number($('#gradingBatchSize')?.value)||5,
+    activeGradingCourseId:$('#gradingClassroomSelect')?.value||'',
+    reviewExportEnabled:$('#gradingReviewExportEnabled')?.checked===true
   });
   clearDirty('grading');await loadGrading();
-  if(saved.cancelled){toast('Classroom draft-grade writing remains off.');return saved;}
+  if(saved.cancelled){toast('That privacy-sensitive setting was not enabled. Your previous grading settings remain in place.');return saved;}
   toast(saved.enabled?'Local grading settings saved.':'Local grading settings saved; local grading is off.');return saved;
 }
 function renderGradeResult(result){
@@ -358,34 +381,42 @@ function renderClassroomGradingResult(result){
     const write=row.writeStatus==='SAVED_DRAFT'||row.writeStatus==='ALREADY_SAVED'?row.writeMessage:(row.writeStatus&&row.writeStatus!=='NOT_WRITTEN'?row.writeMessage:'');
     return `<div class="classroom-grade-row"><div class="classroom-grade-name"><b>${escapeHtml(row.studentName||'Student')}</b><span class="status-badge ${safe?'good':'warn'}">${safe?'SAFE_DRAFT':'TEACHER_REVIEW'}</span></div><div class="classroom-grade-score">${score}</div><p>${escapeHtml(reason||'Validated draft ready for teacher review.')}</p>${write?`<small>${escapeHtml(write)}</small>`:''}</div>`;
   }).join('')||'<div class="empty-state">No eligible student submissions were found in this batch.</div>';
-  panel.innerHTML=`<div class="grading-classroom-summary"><b>${headline}</b><span>${escapeHtml(writeText)}</span>${summary.alreadyGraded?`<small>${escapeHtml(summary.alreadyGraded)} existing/returned grade${Number(summary.alreadyGraded)===1?' was':'s were'} left untouched.</small>`:''}</div><div class="classroom-grade-list">${rows}</div><div class="notice compact"><b>Safety boundary:</b> CATI never clicks Return. Draft scores remain hidden from students until you return work yourself in Classroom.</div>`;
+  const review=result?.reviewExport?.folderPath?`<div class="notice compact review-saved"><b>Private review copy saved:</b> ${escapeHtml(result.reviewExport.folderPath)}</div>`:(result?.reviewExport?.error?`<div class="notice compact error-soft"><b>Grading finished, but the review copy failed:</b> ${escapeHtml(result.reviewExport.error)}</div>`:'');
+  panel.innerHTML=`<div class="grading-classroom-summary"><b>${headline}</b><span>${escapeHtml(writeText)}</span>${summary.alreadyGraded?`<small>${escapeHtml(summary.alreadyGraded)} existing/returned grade${Number(summary.alreadyGraded)===1?' was':'s were'} left untouched.</small>`:''}</div>${review}<div class="classroom-grade-list">${rows}</div><div class="notice compact"><b>Safety boundary:</b> GoClassroom never clicks Return. Draft scores remain hidden from students until you return work yourself in Classroom.</div>`;
 }
 async function discoverClassroomGrading(){
-  const payload=await cati.discoverGradingAssignments();gradingAssignments=Array.isArray(payload?.assignments)?payload.assignments:[];renderGradingAssignmentOptions();
-  $('#gradingClassroomCourse').textContent=payload?.courseDisplayName?`Classroom: ${payload.courseDisplayName}`:'Selected Classroom loaded.';
+  const courseId=$('#gradingClassroomSelect').value;if(!courseId)throw new Error('Add and choose a grading Classroom first.');
+  const payload=await cati.discoverGradingAssignments(courseId);gradingAssignments=(Array.isArray(payload?.assignments)?payload.assignments:[]).map(item=>({...item,courseDisplayName:payload?.courseDisplayName||''}));renderGradingAssignmentOptions();
+  $('#gradingClassroomCourse').textContent=payload?.courseDisplayName?`Ready: ${payload.courseDisplayName}`:'Selected grading Classroom loaded.';
   badge($('#gradingClassroomBadge'),gradingAssignments.length?'good':'warn',gradingAssignments.length?`${gradingAssignments.length} found`:'None found');
   return payload;
 }
-['gradingEnabled','gradingModel','gradingClassroomWriteEnabled','gradingBatchSize'].forEach(id=>$('#'+id)?.addEventListener('input',()=>markDirty('grading')));
+['gradingEnabled','gradingModel','gradingClassroomWriteEnabled','gradingBatchSize','gradingReviewExportEnabled'].forEach(id=>$('#'+id)?.addEventListener('input',()=>markDirty('grading')));
 $('#gradingEnabled').onchange=()=>{$('#gradingModeTitle').textContent=$('#gradingEnabled').checked?'ON':'OFF';$('#gradingModeDesc').textContent=$('#gradingEnabled').checked?'Save settings to enable local draft grading.':'Local grading is disabled.';markDirty('grading')};
 $('#gradingClassroomWriteEnabled').onchange=()=>{if(!$('#gradingClassroomWriteEnabled').checked)$('#gradingWriteDraftsThisRun').checked=false;markDirty('grading')};
+$('#gradingReviewExportEnabled').onchange=()=>{badge($('#gradingReviewBadge'),$('#gradingReviewExportEnabled').checked?'warn':'neutral',$('#gradingReviewExportEnabled').checked?'Save to turn on':'Off');markDirty('grading')};
+$('#gradingClassroomSelect').onchange=()=>{gradingAssignments=[];renderGradingAssignmentOptions();$('#gradingClassroomResultPanel').classList.add('hidden');const settings=latestGradingState?.settings||{};settings.activeGradingCourseId=$('#gradingClassroomSelect').value;renderGradingClassrooms(settings);markDirty('grading')};
 $('#saveGradingSettings').onclick=()=>withBusy($('#saveGradingSettings'),'Saving…',saveGrading).catch(e=>toast(e.message,true));
 $('#refreshGrading').onclick=()=>withBusy($('#refreshGrading'),'Checking…',loadGrading).catch(e=>toast(e.message,true));
 $('#discoverGradingAssignments').onclick=()=>withBusy($('#discoverGradingAssignments'),'Finding…',discoverClassroomGrading).catch(e=>toast(e.message,true));
+$('#addGradingClassroom').onclick=()=>withBusy($('#addGradingClassroom'),'Opening Classroom…',async()=>{const settings=await cati.selectGradingClassroom();latestGradingState={...(latestGradingState||{}),settings};gradingAssignments=[];renderGradingAssignmentOptions();renderGradingClassrooms(settings);clearDirty('grading');toast(`${settings.gradingClassrooms?.find(item=>item.courseId===settings.activeGradingCourseId)?.courseDisplayName||'Grading Classroom'} added. Your lesson-plan Classroom was not changed.`)}).catch(e=>toast(e.message,true));
+$('#removeGradingClassroom').onclick=async()=>{const courseId=$('#gradingClassroomSelect').value,course=(latestGradingState?.settings?.gradingClassrooms||[]).find(item=>item.courseId===courseId);if(!course)return;if(!(await askConfirm(`Remove ${course.courseDisplayName} from the grading list?`,'This removes only GoClassroom’s local shortcut. Nothing in Google Classroom, your lesson-plan setup, or saved grades will be changed.',{ok:'Remove from list'})))return;try{const settings=await cati.removeGradingClassroom(courseId);latestGradingState={...(latestGradingState||{}),settings};gradingAssignments=[];renderGradingAssignmentOptions();renderGradingClassrooms(settings);clearDirty('grading');toast('Grading Classroom removed from this computer.')}catch(e){toast(e.message,true)}};
+$('#chooseGradingReviewFolder').onclick=()=>withBusy($('#chooseGradingReviewFolder'),'Choosing…',async()=>{const settings=await cati.selectGradingReviewFolder();if(!settings)return;latestGradingState={...(latestGradingState||{}),settings};syncReviewCopyControls(settings);clearDirty('grading');toast('Private grading review folder selected. Review copies are still off until you enable and save them.')} ).catch(e=>toast(e.message,true));
+$('#openGradingReviewFolder').onclick=()=>cati.openGradingReviewFolder().catch(e=>toast(e.message,true));
 $('#runLocalGrade').onclick=()=>withBusy($('#runLocalGrade'),'Grading…',async()=>{
-  await cati.saveGradingSettings({enabled:$('#gradingEnabled').checked,model:$('#gradingModel').value,classroomDraftWriteEnabled:$('#gradingClassroomWriteEnabled')?.checked===true,batchSize:Number($('#gradingBatchSize')?.value)||5});clearDirty('grading');
+  await cati.saveGradingSettings({enabled:$('#gradingEnabled').checked,model:$('#gradingModel').value,classroomDraftWriteEnabled:$('#gradingClassroomWriteEnabled')?.checked===true,batchSize:Number($('#gradingBatchSize')?.value)||5,activeGradingCourseId:$('#gradingClassroomSelect')?.value||'',reviewExportEnabled:$('#gradingReviewExportEnabled')?.checked===true});clearDirty('grading');
   const result=await cati.createDraftGrade({model:$('#gradingModel').value,question:$('#gradingQuestion').value,rubric:$('#gradingRubric').value,studentWork:$('#gradingStudentWork').value});
   renderGradeResult(result);if(result.status==='SAFE_DRAFT')toast('Local draft grade created and validated. Nothing was written to Classroom.');else toast('CATI stopped at teacher review. Nothing was written to Classroom.');
 }).catch(e=>toast(e.message,true));
 $('#runClassroomGrading').onclick=()=>withBusy($('#runClassroomGrading'),'Reading Classroom…',async()=>{
   const assignmentId=$('#gradingClassroomAssignment').value,assignment=gradingAssignments.find(a=>a.assignmentId===assignmentId);if(!assignment)throw new Error('Find Classroom assignments and choose one before grading.');
   if(!$('#gradingClassroomRubric').value.trim())throw new Error('Add the rubric before grading Classroom submissions.');
-  const saved=await cati.saveGradingSettings({enabled:$('#gradingEnabled').checked,model:$('#gradingModel').value,classroomDraftWriteEnabled:$('#gradingClassroomWriteEnabled')?.checked===true,batchSize:Number($('#gradingBatchSize')?.value)||5});clearDirty('grading');latestGradingState={...(latestGradingState||{}),settings:{...(latestGradingState?.settings||{}),...saved}};syncClassroomWriteControls(saved);
+  const saved=await cati.saveGradingSettings({enabled:$('#gradingEnabled').checked,model:$('#gradingModel').value,classroomDraftWriteEnabled:$('#gradingClassroomWriteEnabled')?.checked===true,batchSize:Number($('#gradingBatchSize')?.value)||5,activeGradingCourseId:$('#gradingClassroomSelect')?.value||'',reviewExportEnabled:$('#gradingReviewExportEnabled')?.checked===true});if(saved.cancelled)return;clearDirty('grading');latestGradingState={...(latestGradingState||{}),settings:{...(latestGradingState?.settings||{}),...saved}};syncClassroomWriteControls(saved);syncReviewCopyControls(saved);
   let writeDrafts=$('#gradingWriteDraftsThisRun').checked===true;
   if(writeDrafts&&!saved.classroomDraftWriteEnabled)throw new Error('Classroom draft writing is off. Turn on the separate draft-write setting and save it first.');
   const result=await cati.processClassroomGrading({assignment,rubric:$('#gradingClassroomRubric').value,questionOverride:$('#gradingClassroomQuestion').value,model:$('#gradingModel').value,batchSize:Number($('#gradingBatchSize').value)||5,writeDrafts});
   if(result?.cancelled){toast('Draft-grade batch cancelled. No Classroom grade was changed.');return;}
-  renderClassroomGradingResult(result);toast(writeDrafts?`Classroom grading finished. ${Number(result.summary?.draftsSaved||0)} draft score${Number(result.summary?.draftsSaved||0)===1?'':'s'} saved and verified.`:'Classroom grading preview finished. No grades were changed.');
+  renderClassroomGradingResult(result);const reviewNote=result.reviewExport?.folderPath?' Private review copies were saved.':result.reviewExport?.error?' The review copy needs attention.':'';toast((writeDrafts?`Classroom grading finished. ${Number(result.summary?.draftsSaved||0)} draft score${Number(result.summary?.draftsSaved||0)===1?'':'s'} saved and verified.`:'Classroom grading preview finished. No grades were changed.')+reviewNote);
 }).catch(e=>toast(e.message,true));
 
 function machineRoleLabel(role){return ({primary:'Main computer',backup:'Backup computer',manual:'Manual only'}[role]||'Main computer');}
@@ -407,7 +438,7 @@ function meaningForProblem(msg){const s=friendlyMessage(msg||'');if(/sign in/i.t
 async function loadHelpSummary(){const d=latestDashboard||await cati.getDashboard();latestDashboard=d;const diag=d.diagnostics||{},block=(diag.currentBlockers||[])[0],failure=diag.unresolvedFailure||null,last=block?.message||failure?.message||'',supportCode=block?.supportCode||failure?.supportCode||'';const code=$('#helpCode');if(!last){$('#helpLastProblem').textContent='No current problems';$('#helpMeaning').textContent='Auto Turn-In is not reporting a current problem.';$('#helpAction').textContent='No action is needed right now.';code.textContent='';code.classList.add('hidden');return}const [title,action]=meaningForProblem(last);$('#helpLastProblem').textContent=title;$('#helpMeaning').textContent=friendlyMessage(last);$('#helpAction').textContent=action;if(supportCode){code.textContent=`Support code: ${supportCode}`;code.classList.remove('hidden')}else{code.textContent='';code.classList.add('hidden')}}
 $('#refreshLogs').onclick=()=>withBusy($('#refreshLogs'),'Refreshing…',async()=>{await loadLogs();await loadHelpSummary()});$('#openLogs').onclick=()=>cati.openLogs();$('#cleanupLogs').onclick=()=>withBusy($('#cleanupLogs'),'Cleaning…',async()=>{const r=await cati.cleanupDiagnostics();toast(`Removed ${r.removed} old support file${r.removed===1?'':'s'}.`);await loadLogs()});
 $('#runDiagnostics').onclick=()=>withBusy($('#runDiagnostics'),'Checking…',async()=>{await Promise.all([checkEnvironment([]),loadDashboard(),loadLogs()]);await loadHelpSummary();toast('App health checked.');});
-$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`Classroom Auto Turn-In v0.9.20`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
+$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.21 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
 
 cati.onAiDraftReady(d=>{toast(`Week ${d.week} AI lesson-plan draft is ready for review.`);loadDashboard();if($('#ai')?.classList.contains('active'))loadAi()});
 

@@ -18,7 +18,7 @@ exports.default = async function afterPackWindows(context) {
   const productName = appInfo.productName || 'Classroom Auto Turn-In';
   const exeName = `${appInfo.productFilename || productName}.exe`;
   const exePath = path.join(context.appOutDir, exeName);
-  const iconPath = path.join(__dirname, '..', 'assets', 'icon.ico');
+  const iconPath = path.join(__dirname, '..', 'assets', 'GoClassroom.ico');
 
   if (!fs.existsSync(exePath)) throw new Error(`Windows resource hook could not find packaged executable: ${exePath}`);
   if (!fs.existsSync(iconPath)) throw new Error(`Windows resource hook could not find icon: ${iconPath}`);

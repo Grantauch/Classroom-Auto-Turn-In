@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 $root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$setup=Get-ChildItem (Join-Path $root 'dist') -Filter 'Classroom-Auto-Turn-In-Setup-0.9.20-*.exe' | Select-Object -First 1
+$setup=Get-ChildItem (Join-Path $root 'dist') -Filter 'Classroom-Auto-Turn-In-Setup-0.9.21-*.exe' | Select-Object -First 1
 if(-not $setup){ throw 'Installer EXE was not produced.' }
 
 $productionTasks=@(
@@ -75,7 +75,7 @@ try {
   $versionInfo=(Get-Item $appExe).VersionInfo
   if([string]$versionInfo.ProductName -ne 'Classroom Auto Turn-In'){throw "Installed EXE ProductName resource is wrong: $($versionInfo.ProductName)"}
   if([string]$versionInfo.FileDescription -ne 'Classroom Auto Turn-In'){throw "Installed EXE FileDescription resource is wrong: $($versionInfo.FileDescription)"}
-  if(([string]$versionInfo.FileVersion) -notlike '0.9.20*'){throw "Installed EXE FileVersion resource is wrong: $($versionInfo.FileVersion)"}
+  if(([string]$versionInfo.FileVersion) -notlike '0.9.21*'){throw "Installed EXE FileVersion resource is wrong: $($versionInfo.FileVersion)"}
 
   $first=Run-SelfTest $appExe $test1 $userData
   $marker=Join-Path $userData 'data\ci-preserve-marker.txt'
@@ -106,7 +106,7 @@ try {
   Assert-PerUserInstall $appExe
   $versionInfo=(Get-Item $appExe).VersionInfo
   if([string]$versionInfo.ProductName -ne 'Classroom Auto Turn-In'){throw 'Reinstalled EXE lost its ProductName resource.'}
-  if(([string]$versionInfo.FileVersion) -notlike '0.9.20*'){throw 'Reinstalled EXE lost its expected FileVersion resource.'}
+  if(([string]$versionInfo.FileVersion) -notlike '0.9.21*'){throw 'Reinstalled EXE lost its expected FileVersion resource.'}
   $second=Run-SelfTest $appExe $test2 $userData
   if(-not (Test-Path $marker)){throw 'Isolated application-data marker was not preserved through reinstall.'}
   foreach($name in $productionTasks){

@@ -134,14 +134,15 @@ function getGradingService(){
 function gradingState(){return getGradingService().state()}
 async function saveGradingSettings(v={}){
   const service=getGradingService(),current=service.loadSettings();
-  if(v.classroomDraftWriteEnabled===true&&!current.classroomDraftWriteEnabled){
-    const ans=await dialog.showMessageBox({type:'warning',buttons:['Cancel','Allow draft-grade writing'],defaultId:0,cancelId:0,title:'Allow Classroom draft-grade writing?',message:'CATI may enter validated draft scores into Google Classroom.',detail:'CATI will never click Return. Draft grades remain hidden from students until you choose to return work in Classroom. Existing grades are never overwritten.'});
-    if(ans.response!==1)return {...current,cancelled:true};
-  }
+  if(v.classroomDraftWriteEnabled===true&&!current.classroomDraftWriteEnabled){const ans=await dialog.showMessageBox({type:'warning',buttons:['Cancel','Allow draft-grade writing'],defaultId:0,cancelId:0,title:'Allow Classroom draft-grade writing?',message:'GoClassroom may enter validated draft scores into Google Classroom.',detail:'GoClassroom will never click Return. Draft grades remain hidden from students until you choose to return work in Classroom. Existing grades are never overwritten.'});if(ans.response!==1)return {...current,cancelled:true}}
+  if(v.reviewExportEnabled===true&&!current.reviewExportEnabled){const ans=await dialog.showMessageBox({type:'warning',buttons:['Cancel','Save private review copies'],defaultId:0,cancelId:0,title:'Save grading review copies?',message:'This will intentionally save student work and AI-assisted grading data in the folder you chose.',detail:'Keep that folder private and follow your school or district retention rules. GoClassroom will not share the folder or make it public. You can turn review copies off at any time.'});if(ans.response!==1)return {...current,cancelled:true}}
   return service.saveSettings(v||{});
 }
-function createDraftGrade(v){return getGradingService().grade(v||{})}
-function discoverGradingAssignments(){return getGradingService().discoverAssignments()}
+function createDraftGrade(v){return getGradingService().grade(v||{})}function discoverGradingAssignments(courseId){return getGradingService().discoverAssignments(courseId)}
+async function selectGradingClassroom(){return withExclusiveBrowserOperation('Grading Classroom selection',async()=>{const out=await runNodeScript('select-grading-course.js'),selected=lastPayload(out,'grading-course');if(!selected)throw new Error('GoClassroom did not receive a grading Classroom selection.');return getGradingService().addGradingClassroom(selected)})}
+function removeGradingClassroom(courseId){return getGradingService().removeGradingClassroom(courseId)}
+async function selectGradingReviewFolder(){ensureAutomationIdle();const result=await dialog.showOpenDialog({title:'Choose a private grading review folder',properties:['openDirectory','createDirectory']});if(result.canceled||!result.filePaths[0])return null;return getGradingService().saveSettings({...getGradingService().loadSettings(),reviewFolderPath:path.resolve(result.filePaths[0])})}
+async function openGradingReviewFolder(){const settings=getGradingService().loadSettings();if(!settings.reviewFolderPath)throw new Error('Choose a grading review folder first.');const result=await shell.openPath(settings.reviewFolderPath);if(result)throw new Error(result);return true}
 const processClassroomGrading=createGradingRequestHandler({dialog,getGradingService});
 
 function getRunLockInfo(){try{return JSON.parse(fs.readFileSync(path.join(dataDir(),'automation.lock'),'utf8'))}catch{return null}}
@@ -400,7 +401,7 @@ async function finishFirstRunSetup(time){
 }
 
 function createWindow(){
-  mainWindow=new BrowserWindow({width:1280,height:840,minWidth:820,minHeight:680,backgroundColor:'#f4f6f9',autoHideMenuBar:true,icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,webviewTag:false}});
+  mainWindow=new BrowserWindow({width:1280,height:840,minWidth:820,minHeight:680,backgroundColor:'#f2f8fe',autoHideMenuBar:true,icon:path.join(__dirname,'assets','GoClassroom.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,webviewTag:false}});
   mainWindow.setMenu(null);
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
@@ -487,7 +488,11 @@ handleIpc('ai:dismiss',(_e,id)=>{ensureAutomationIdle();const all=loadAiDrafts()
 handleIpc('grading:get-state',()=>gradingState());
 handleIpc('grading:save-settings',(_e,v)=>saveGradingSettings(v||{}));
 handleIpc('grading:grade',(_e,v)=>createDraftGrade(v||{}));
-handleIpc('grading:discover-classroom',()=>discoverGradingAssignments());
+handleIpc('grading:select-classroom',()=>selectGradingClassroom());
+handleIpc('grading:remove-classroom',(_e,courseId)=>removeGradingClassroom(courseId));
+handleIpc('grading:discover-classroom',(_e,courseId)=>discoverGradingAssignments(courseId));
 handleIpc('grading:process-classroom',(_e,v)=>processClassroomGrading(v||{}));
+handleIpc('grading:select-review-folder',()=>selectGradingReviewFolder());
+handleIpc('grading:open-review-folder',()=>openGradingReviewFolder());
 handleIpc('diagnostics:cleanup',()=>{const cfg=loadConfig();return cleanupDiagnostics(cfg.diagnosticRetentionDays||45)});
 handleIpc('logs:open',()=>{const dir=path.join(dataDir(),'logs');fs.mkdirSync(dir,{recursive:true});return shell.openPath(dir)});

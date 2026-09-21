@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),cp=require('child_process'),os=require('os');
 const root=path.join(__dirname,'..');
-const files=['main.js','preload.js','renderer/app.js','main-services/local-data.js','main-services/engine-runner.js','main-services/ai-service.js','main-services/grading-service.js','main-services/scheduler-service.js','engine/app-config.js','engine/json-store.js','engine/protocol.js','engine/classroom-actions.js','engine/classroom-discovery.js','engine/lib.js','engine/safety.js','engine/browser.js','engine/classroom-picker.js','engine/drive-picker.js','engine/preflight.js','engine/submit-weekly.js','engine/select-course.js','engine/discover-topics.js','engine/select-drive-folder.js','engine/scan-drive-folder.js','engine/scheduler.js','engine/dom-helpers.js','engine/validation.js','engine/ai-recovery.js','engine/grading.js','engine/docx-writer.js','engine/upload-draft-plan.js','engine/retry-policy.js','engine/browser-mode.js','engine/page-evidence.js'];
+const files=['main.js','preload.js','renderer/app.js','main-services/local-data.js','main-services/engine-runner.js','main-services/ai-service.js','main-services/grading-service.js','main-services/scheduler-service.js','engine/app-config.js','engine/json-store.js','engine/protocol.js','engine/classroom-actions.js','engine/classroom-discovery.js','engine/lib.js','engine/safety.js','engine/browser.js','engine/classroom-picker.js','engine/drive-picker.js','engine/preflight.js','engine/submit-weekly.js','engine/select-course.js','engine/select-grading-course.js','engine/discover-topics.js','engine/select-drive-folder.js','engine/scan-drive-folder.js','engine/scheduler.js','engine/dom-helpers.js','engine/validation.js','engine/ai-recovery.js','engine/grading.js','engine/docx-writer.js','engine/upload-draft-plan.js','engine/retry-policy.js','engine/browser-mode.js','engine/page-evidence.js'];
 for(const f of files){const p=path.join(root,f);if(!fs.existsSync(p))throw new Error(`Missing ${f}`);cp.execFileSync(process.execPath,['--check',p],{stdio:'inherit'});}
 
 // Git may materialize text as LF or CRLF depending on checkout settings.
@@ -172,7 +172,7 @@ const htmlSource=fs.readFileSync(path.join(root,'renderer/index.html'),'utf8');
 for(const required of ['Naming & safety options','Add or correct a plan manually','More status details','Finish & turn on','Help & support'])if(!htmlSource.includes(required))throw new Error(`Commercial Teacher UI element missing: ${required}`);
 if(htmlSource.includes('id="saveSchedule"'))throw new Error('Teacher UI still exposes a save-without-install schedule button');
 if(htmlSource.includes('planWeekOf'))throw new Error('Retired plan-week-start mode is still exposed in Teacher Edition');
-if(!htmlSource.includes('v0.9.20'))throw new Error('Teacher Edition sidebar version is stale');
+if(!htmlSource.includes('v0.9.21'))throw new Error('Teacher Edition sidebar version is stale');
 if(htmlSource.indexOf('id="wizPlanRegex"')>htmlSource.indexOf('id="wizScanDrive"'))throw new Error('Custom Drive naming rule is still inaccessible before the required Drive scan');
 if(!htmlSource.includes('must be on and signed in'))throw new Error('Teacher UI does not explain that the computer must be on and signed in');
 if(!mainSource.includes('mainWindow.setMenu(null)')||!mainSource.includes('autoHideMenuBar:true'))throw new Error('Generic Electron application menu is still exposed');
@@ -199,7 +199,7 @@ if(!actionSource.includes("querySelectorAll('[data-file-id],[data-doc-id],[data-
 const topicsSource=fs.readFileSync(path.join(root,'engine/discover-topics.js'),'utf8');
 if(!topicsSource.includes('accounts\\.google\\.com'))throw new Error('Topic discovery does not diagnose expired Google sign-in');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-if(pkg.version!=='0.9.20')throw new Error('package.json version is not 0.9.20');
+if(pkg.version!=='0.9.21')throw new Error('package.json version is not 0.9.21');
 if(String(pkg.dependencies['playwright-core']).startsWith('^')||String(pkg.devDependencies.electron).startsWith('^')||String(pkg.devDependencies['electron-builder']).startsWith('^'))throw new Error('Top-level build/runtime dependencies are not pinned exactly');
 const portableNode=fs.readFileSync(path.join(root,'scripts/Get-PortableNode.ps1'),'utf8');
 if(!portableNode.includes("$version = 'v22.19.0'"))throw new Error('Portable Node build version is not pinned');
@@ -231,13 +231,15 @@ if(!gradingSource.includes('format:GRADE_SCHEMA')||!gradingSource.includes('thin
 if(!gradingSource.includes('Rubric possible points do not add up to max_score.')||!gradingSource.includes('Reported score does not equal the rubric point total.'))throw new Error('Local grading arithmetic validation is missing');
 if(!gradingSource.includes("['127.0.0.1','localhost','::1','[::1]']")||!gradingServiceSource.includes('baseUrl=DEFAULT_OLLAMA_URL')&&!gradingServiceSource.includes('baseUrl:DEFAULT_OLLAMA_URL'))throw new Error('Local grading is not restricted to loopback Ollama');
 if(gradingServiceSource.includes('studentWork')&&gradingServiceSource.includes("writeJson('grading-drafts"))throw new Error('Local grading persists student work unexpectedly');
-if(!htmlSource.includes('Local draft grading')||!htmlSource.includes('CATI never clicks <b>Return</b>')||!rendererSource.includes('Preview only. No Classroom grade was changed.')||!rendererSource.includes('CATI never clicks Return'))throw new Error('Teacher-facing local grading / draft-only safety boundary is missing');
+if(!htmlSource.includes('Draft grading')||!htmlSource.includes('GoClassroom never clicks <b>Return</b>')||!rendererSource.includes('Preview only. No Classroom grade was changed.')||!rendererSource.includes('GoClassroom never clicks Return'))throw new Error('Teacher-facing local grading / draft-only safety boundary is missing');
 const classroomGradingSource=fs.readFileSync(path.join(root,'engine/classroom-grading.js'),'utf8');
 const gradingPreloadSource=fs.readFileSync(path.join(root,'preload.js'),'utf8');
 const classroomGradingDiscoverSource=fs.readFileSync(path.join(root,'engine/grading-classroom-discover.js'),'utf8');
 const classroomGradingExtractSource=fs.readFileSync(path.join(root,'engine/grading-classroom-extract.js'),'utf8');
 const classroomGradingWriteSource=fs.readFileSync(path.join(root,'engine/grading-classroom-write.js'),'utf8');
 if(!mainSource.includes("handleIpc('grading:discover-classroom'")||!mainSource.includes("handleIpc('grading:process-classroom'")||!gradingPreloadSource.includes('discoverGradingAssignments')||!gradingPreloadSource.includes('processClassroomGrading'))throw new Error('Classroom draft-grading IPC bridge is missing');
+if(!mainSource.includes("handleIpc('grading:select-classroom'")||!mainSource.includes("handleIpc('grading:remove-classroom'")||!gradingPreloadSource.includes('selectGradingClassroom')||!htmlSource.includes('gradingClassroomSelect'))throw new Error('Independent multi-Classroom grading controls are missing');
+if(!gradingServiceSource.includes('gradingClassrooms')||!gradingServiceSource.includes('reviewExportEnabled')||!gradingServiceSource.includes('exportReviewPacket')||!htmlSource.includes('gradingReviewExportEnabled'))throw new Error('Multi-Classroom settings or teacher-controlled review exports are missing');
 if(!gradingServiceSource.includes('classroomDraftWriteEnabled:false')||!gradingServiceSource.includes("if(writeDrafts&&!settings.classroomDraftWriteEnabled)")||!gradingServiceSource.includes("status==='SAFE_DRAFT'"))throw new Error('Classroom draft-write opt-in / SAFE_DRAFT gate is missing');
 if(!classroomGradingExtractSource.includes('supported Google Doc attachment')&&!classroomGradingExtractSource.includes('GOOGLE DOC ATTACHMENT'))throw new Error('Classroom grading extraction does not include supported Google Docs evidence');
 if(!classroomGradingExtractSource.includes('At least one student attachment could not be read safely'))throw new Error('Classroom grading extraction no longer fails closed on incomplete evidence');
@@ -255,7 +257,7 @@ if(!rendererSource.includes('function applyAiVisibility')||!rendererSource.inclu
 if(!rendererSource.includes('optedIn:false,enabled:false'))throw new Error('Teacher cannot fully opt out and hide optional AI recovery');
 if(!mainSource.includes("coreIssueNames=new Set(['config.json','plans.json'])"))throw new Error('Optional AI data corruption can still leak into core Auto Turn-In blockers');
 if(!htmlSource.includes('Content-Security-Policy'))throw new Error('Renderer Content Security Policy is missing');
-if(!htmlSource.includes('v0.9.20'))throw new Error('Teacher Edition sidebar version is not v0.9.20');
+if(!htmlSource.includes('v0.9.21'))throw new Error('Teacher Edition sidebar version is not v0.9.21');
 
 const preloadText=fs.readFileSync(path.join(root,'preload.js'),'utf8');
 const errorCatalog=fs.readFileSync(path.join(root,'engine/user-errors.js'),'utf8');
@@ -270,4 +272,4 @@ if(!htmlSource.includes('Files for school technology support')||!rendererSource.
 
 if(!protocolSource.includes("const PREFIX='CATI_EVENT:'")||!runnerSource.includes("lastPayload(output,'run-result')"))throw new Error('Versioned child-process protocol is not wired end-to-end');
 try{fs.rmSync(testData,{recursive:true,force:true})}catch{/* best-effort fallback */}
-console.log('Project syntax, Trust/Reliability safety, Teacher Edition, v0.8.2 stabilization, v0.9.0 silent retry, v0.9.17 free-AI, v0.9.18 local grading, and v0.9.20 Classroom draft-grading hardening checks passed.');
+console.log('Project syntax, Trust/Reliability safety, Teacher Edition, multi-Classroom grading, optional private review export, and v0.9.21 GoClassroom preview checks passed.');
