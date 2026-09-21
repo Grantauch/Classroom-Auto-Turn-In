@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),os=require('os'),cp=require('child_process');
 const {collectStrictTopicAssignmentsDom,collectDrivePlanRowsDom}=require('../engine/dom-helpers');
 const {markWeekInstructionsDom}=require('../engine/classroom-discovery');
-const {collectStudentEvidenceDom,readAssignmentMaxPointsDom,markTotalGradeInputDom}=require('../engine/classroom-grading');
+const {collectStudentEvidenceDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,collectStudentSubmissionRowsDom}=require('../engine/classroom-grading');
 function browserPath(){
   const guesses=process.platform==='win32'?[
     process.env.LOCALAPPDATA&&path.join(process.env.LOCALAPPDATA,'Google','Chrome','Application','chrome.exe'),
@@ -44,6 +44,7 @@ const instructionsFn=markWeekInstructionsDom.toString();
 const evidenceFn=collectStudentEvidenceDom.toString();
 const assignmentPointsFn=readAssignmentMaxPointsDom.toString();
 const gradeFieldFn=markTotalGradeInputDom.toString();
+const studentRowsFn=collectStudentSubmissionRowsDom.toString();
 let rows=runFixture('classroom-duplicate-no-ids',`<section id="topic"><div role="listitem" class="card"><span>Week 5 - Lesson Plans</span><span>Due Sep 15</span></div><div role="listitem" class="card"><span>Week 5 - Lesson Plans</span><span>Due Sep 15</span></div></section>`,`const fn=${assignmentFn};const r=fn(document.getElementById('topic'),{source:${JSON.stringify(assignmentSource)},flags:'i'});document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
 if(rows.length!==2||new Set(rows.map(x=>x.rootKey)).size!==2)throw new Error(`Classroom duplicate fixture expected 2 distinct cards, got ${JSON.stringify(rows)}`);
 rows=runFixture('classroom-one-card-many-matches',`<section id="topic"><div role="listitem" class="card"><div>Week 5 - Lesson Plans</div><span aria-label="Week 5 - Lesson Plans">Week 5 - Lesson Plans</span><span>Due Sep 15</span></div></section>`,`const fn=${assignmentFn};const r=fn(document.getElementById('topic'),{source:${JSON.stringify(assignmentSource)},flags:'i'});document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
@@ -64,5 +65,7 @@ rows=runFixture('grading-unlabelled-number-field',`<main role="main"><div><input
 if(rows.ok)throw new Error(`Unlabelled numeric input was mistaken for the Classroom total-grade field: ${JSON.stringify(rows)}`);
 rows=runFixture('grading-student-attachment-scope',`<main role="main"><div>Assignment materials <a href="https://docs.google.com/document/d/teacher/edit">Teacher source</a></div><div role="listitem">Alice submission attachment <a href="https://docs.google.com/document/d/student/edit">Alice essay</a></div></main>`,`const fn=${evidenceFn};const r=fn('Alice');document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
 if(rows.attachments.length!==1||!rows.attachments[0].href.includes('/student/'))throw new Error(`Teacher materials leaked into student evidence: ${JSON.stringify(rows)}`);
+rows=runFixture('grading-student-submission-links',`<main role="main"><div role="row" class="card"><a href="https://classroom.google.com/g/tg/course_1/assignment_1?authuser=0#u=student_1">Alice</a><span>Turned in</span><input aria-label="Grade out of 10" value=""></div><div role="row" class="card"><a href="https://classroom.google.com/g/tg/course_1/assignment_1?authuser=0#u=student_2">Bob</a><span>Turned in</span></div><div role="row" class="card"><a href="https://classroom.google.com/g/tg/course_1/other_assignment?authuser=0#u=student_3">Other</a></div></main>`,`const fn=${studentRowsFn};const r=fn('assignment_1');document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
+if(rows.length!==2||rows[0].studentUrl!=='https://classroom.google.com/g/tg/course_1/assignment_1?authuser=0#u=student_1'||rows[1].studentId!=='student_2')throw new Error(`Teacher-side /g/tg student links were not collected safely: ${JSON.stringify(rows)}`);
 fs.rmSync(dir,{recursive:true,force:true});
 console.log('Chromium DOM fixture checks passed.');

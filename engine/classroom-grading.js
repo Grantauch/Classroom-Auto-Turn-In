@@ -37,9 +37,16 @@ function assignmentUrls(courseId,assignmentId){
   const root=`https://classroom.google.com/c/${c}/a/${a}`;
   return {
     detailUrl:`${root}/details`,
-    studentWorkUrl:`${root}/submissions/by-status/and-sort-last-name/done`,
-    studentWorkAllUrl:`${root}/submissions/by-status/and-sort-last-name/all`
+    // The current Classroom teacher queue includes the trailing /all segment.
+    // It is important: the shorter legacy URL can render the roster shell without
+    // the per-student teacher-side links CATI needs for evidence extraction.
+    studentWorkUrl:`${root}/submissions/by-status/and-sort-name/done/all`,
+    studentWorkAllUrl:`${root}/submissions/by-status/and-sort-name/not-done/all`
   };
+}
+function studentSubmissionUrl(courseId,assignmentId,studentId){
+  const c=safeId(courseId,'Classroom course ID'),a=safeId(assignmentId,'Classroom assignment ID'),s=safeId(studentId,'Classroom student ID');
+  return `https://classroom.google.com/g/tg/${c}/${a}?authuser=0#u=${encodeURIComponent(s)}`;
 }
 function parseStudentSubmissionUrl(value){
   try{
@@ -47,8 +54,19 @@ function parseStudentSubmissionUrl(value){
     if(!/(^|\.)classroom\.google\.com$/i.test(u.hostname))return {courseId:'',assignmentId:'',studentId:''};
     const parts=u.pathname.split('/').filter(Boolean);
     const ids=parseClassroomIds(u.href);let studentId='';
+    for(let i=0;i<parts.length-3;i++)if(parts[i]==='g'&&parts[i+1]==='tg'){
+      const course=parts[i+2]||'',assignment=parts[i+3]||'';
+      if(course===ids.courseId&&assignment===ids.assignmentId){
+        try{studentId=new URLSearchParams(u.hash.replace(/^#/,'')).get('u')||''}catch{/* malformed fragment */}
+        break;
+      }
+    }
     for(let i=0;i<parts.length-1;i++)if(parts[i]==='student'){studentId=parts[i+1]||'';break}
-    return {courseId:ids.courseId,assignmentId:ids.assignmentId,studentId};
+    return {
+      courseId:/^[A-Za-z0-9_-]+$/.test(ids.courseId)?ids.courseId:'',
+      assignmentId:/^[A-Za-z0-9_-]+$/.test(ids.assignmentId)?ids.assignmentId:'',
+      studentId:/^[A-Za-z0-9_-]+$/.test(studentId)?studentId:''
+    };
   }catch{return {courseId:'',assignmentId:'',studentId:''}}
 }
 function googleAttachmentInfo(value){
@@ -109,7 +127,7 @@ function collectTeacherAssignmentsDom(expectedCourseId){
       numericId,
       title:title||`Assignment ${numericId}`,
       detailUrl:`https://classroom.google.com/c/${course}/a/${assignmentId}/details`,
-      studentWorkUrl:`https://classroom.google.com/c/${course}/a/${assignmentId}/submissions/by-status/and-sort-last-name/done`
+      studentWorkUrl:`https://classroom.google.com/c/${course}/a/${assignmentId}/submissions/by-status/and-sort-name/done/all`
     });
   }
   return rows;
@@ -138,10 +156,7 @@ function collectClassroomAssignmentsDom(expectedCourseId){
         const lines=clean(card.innerText).split(/\s{2,}|\n/).map(clean).filter(Boolean);
         title=lines.find(x=>x.length>2&&!/^(?:due|posted|turned in|assigned|graded|returned|missing)\b/i.test(x))||'';
       }
-      let submissionHref='';
-      const submissionAnchor=card?[...card.querySelectorAll('a[href]')].find(x=>/\/a\/[^/]+\/submissions\//.test(x.href||'')):null;
-      if(submissionAnchor)submissionHref=submissionAnchor.href;
-      rows.push({courseId:c,assignmentId,title:title||`Assignment ${assignmentId}`,detailUrl:`https://classroom.google.com/c/${c}/a/${assignmentId}/details`,studentWorkUrl:submissionHref||`https://classroom.google.com/c/${c}/a/${assignmentId}/submissions/by-status/and-sort-last-name/done`});
+      rows.push({courseId:c,assignmentId,title:title||`Assignment ${assignmentId}`,detailUrl:`https://classroom.google.com/c/${c}/a/${assignmentId}/details`,studentWorkUrl:`https://classroom.google.com/c/${c}/a/${assignmentId}/submissions/by-status/and-sort-name/done/all`});
       seen.add(assignmentId);
     }catch{/* ignore malformed page links */}
   }
@@ -154,12 +169,16 @@ function collectStudentSubmissionRowsDom(expectedAssignmentId){
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
   const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
   const out=[],seen=new Set(),expected=String(expectedAssignmentId||'');
-  for(const a of [...document.querySelectorAll('a[href*="/submissions/"][href*="/student/"]')].filter(visible)){
+  for(const a of [...document.querySelectorAll('a[href]')].filter(visible)){
     try{
-      const u=new URL(a.href,location.href),m=u.pathname.match(/\/a\/([^/]+)\/submissions\/[^#?]*?\/student\/([^/?#]+)/);
-      if(!m||m[1]!==expected||seen.has(m[2]))continue;
+      const u=new URL(a.href,location.href),parts=u.pathname.split('/').filter(Boolean);
+      if(!/(^|\.)classroom\.google\.com$/i.test(u.hostname))continue;
+      let courseId='',assignmentId='',studentId='';
+      for(let i=0;i<parts.length-3;i++)if(parts[i]==='g'&&parts[i+1]==='tg'){courseId=parts[i+2]||'';assignmentId=parts[i+3]||'';try{studentId=new URLSearchParams(u.hash.replace(/^#/,'')).get('u')||''}catch{/* ignore malformed fragment */}break}
+      if(!studentId){const m=u.pathname.match(/\/a\/([^/]+)\/submissions\/[^#?]*?\/student\/([^/?#]+)/);if(m){assignmentId=m[1];studentId=m[2]}}
+      if(!assignmentId||assignmentId!==expected||!studentId||!/^[A-Za-z0-9_-]+$/.test(studentId)||seen.has(studentId))continue;
       const root=a.closest('[role="row"],li,[role="listitem"],article,[role="article"],[data-student-id]')||a.parentElement||a;
-      const text=clean(root.innerText||root.textContent),name=clean(a.innerText||a.getAttribute('aria-label')||a.getAttribute('title'))||`Student ${m[2]}`;
+      const text=clean(root.innerText||root.textContent),name=clean(a.innerText||a.getAttribute('aria-label')||a.getAttribute('title'))||`Student ${studentId}`;
       let status='';
       for(const label of ['Turned in','Draft grade','Graded','Returned','Assigned','Missing'])if(new RegExp(`\\b${label.replace(' ','\\s+')}\\b`,'i').test(text)){status=label;break}
       const inputs=[...root.querySelectorAll('input,[role="spinbutton"],[role="textbox"]')].filter(visible);
@@ -168,7 +187,9 @@ function collectStudentSubmissionRowsDom(expectedAssignmentId){
         const label=clean(input.getAttribute('aria-label')||input.getAttribute('title'));
         if(/grade|points?/i.test(label)||inputs.length===1){const value=clean(input.value||input.getAttribute('value'));if(/^\d+(?:\.\d+)?$/.test(value)){existingGrade=value;break}}
       }
-      out.push({studentId:m[2],studentName:name,studentUrl:u.href,status,existingGrade,rowText:text.slice(0,1200)});seen.add(m[2]);
+      let studentUrl=u.href;
+      if(courseId&&assignmentId)studentUrl=`https://classroom.google.com/g/tg/${courseId}/${assignmentId}?authuser=0#u=${encodeURIComponent(studentId)}`;
+      out.push({studentId,studentName:name,studentUrl,status,existingGrade,rowText:text.slice(0,1200)});seen.add(studentId);
     }catch{/* ignore malformed links */}
   }
   return out;
@@ -296,5 +317,5 @@ function findGradeInputsDom(){
 
 module.exports={
   MAX_CLASSROOM_BATCH,DEFAULT_CLASSROOM_BATCH,MAX_PAYLOAD_CHARS,MAX_EVIDENCE_CHARS,MAX_ATTACHMENT_COUNT,clean,strictNumber,sameNumber,clampBatch,safeId,encodePayload,decodePayload,assignmentUrls,parseStudentSubmissionUrl,
-  googleAttachmentInfo,pointCandidatesFromText,extractMaxPoints,collectClassroomAssignmentsDom,collectTeacherAssignmentsDom,collectStudentSubmissionRowsDom,collectStudentEvidenceDom,extractAssignmentTextDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,findGradeInputsDom
+  googleAttachmentInfo,pointCandidatesFromText,extractMaxPoints,studentSubmissionUrl,collectClassroomAssignmentsDom,collectTeacherAssignmentsDom,collectStudentSubmissionRowsDom,collectStudentEvidenceDom,extractAssignmentTextDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,findGradeInputsDom
 };

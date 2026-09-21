@@ -2,16 +2,19 @@ const fs=require('fs'),path=require('path'),os=require('os');
 const {createGradingService}=require('../main-services/grading-service');
 const {createLocalData}=require('../main-services/local-data');
 const {encode}=require('../engine/protocol');
-const {decodePayload,assignmentUrls,parseStudentSubmissionUrl,googleAttachmentInfo,extractMaxPoints,sameNumber,clampBatch}=require('../engine/classroom-grading');
+const {decodePayload,assignmentUrls,studentSubmissionUrl,parseStudentSubmissionUrl,googleAttachmentInfo,extractMaxPoints,sameNumber,clampBatch}=require('../engine/classroom-grading');
 
 function assert(condition,message){if(!condition)throw new Error(message)}
 function response(data,{status=200}={}){return {ok:status>=200&&status<300,status,text:async()=>JSON.stringify(data),json:async()=>data}}
 
 const urls=assignmentUrls('course_1','assignment_1');
 assert(urls.detailUrl==='https://classroom.google.com/c/course_1/a/assignment_1/details','Assignment detail URL contract changed');
-assert(urls.studentWorkUrl.includes('/submissions/'),'Student-work URL contract changed');
-const parsed=parseStudentSubmissionUrl('https://classroom.google.com/c/course_1/a/assignment_1/submissions/by-status/and-sort-last-name/done/student/student_1');
+assert(urls.studentWorkUrl.endsWith('/submissions/by-status/and-sort-name/done/all'),'Student-work URL contract changed');
+assert(urls.studentWorkAllUrl.endsWith('/submissions/by-status/and-sort-name/not-done/all'),'Fallback student-work URL contract changed');
+const parsed=parseStudentSubmissionUrl(studentSubmissionUrl('course_1','assignment_1','student_1'));
 assert(parsed.courseId==='course_1'&&parsed.assignmentId==='assignment_1'&&parsed.studentId==='student_1','Student submission URL parser failed');
+const legacyParsed=parseStudentSubmissionUrl('https://classroom.google.com/c/course_1/a/assignment_1/submissions/by-status/and-sort-last-name/done/student/student_1');
+assert(legacyParsed.courseId==='course_1'&&legacyParsed.assignmentId==='assignment_1'&&legacyParsed.studentId==='student_1','Legacy student submission URL compatibility was lost');
 assert(googleAttachmentInfo('https://docs.google.com/document/d/doc123/edit')?.supported===true,'Google Docs attachments must remain readable');
 assert(googleAttachmentInfo('https://docs.google.com/spreadsheets/d/sheet123/edit')?.supported===false,'Sheets must fail closed until explicitly supported');
 assert(extractMaxPoints('Due tomorrow\n10 points')===10,'Classroom point-total parser failed');
@@ -59,10 +62,10 @@ const good={
         assignment:{courseId:'course_1',assignmentId:'assignment_1',title:'Industrialization',detailUrl:urls.detailUrl,studentWorkUrl:urls.studentWorkUrl,question:'Why did industrialization cause cities to grow?',questionComplete:true,questionReason:'',maxPoints:10,maxPointsReason:''},
         totalStudentRows:4,alreadyGraded:1,
         packets:[
-          {studentId:'student_1',studentName:'Alice',studentUrl:'https://classroom.google.com/c/course_1/a/assignment_1/submissions/by-status/and-sort-last-name/done/student/student_1',existingGrade:'',extractionComplete:true,extractionReason:'',studentWork:'Factories created jobs so people moved to cities for work.',attachments:[]},
-          {studentId:'student_2',studentName:'Bob',studentUrl:'https://classroom.google.com/c/course_1/a/assignment_1/submissions/by-status/and-sort-last-name/done/student/student_2',existingGrade:'',extractionComplete:false,extractionReason:'A PDF attachment could not be read safely.',studentWork:'',attachments:[{kind:'drive-file',supported:false}]},
-          {studentId:'student_3',studentName:'Cara',studentUrl:'https://classroom.google.com/c/course_1/a/assignment_1/submissions/by-status/and-sort-last-name/done/student/student_3',existingGrade:'8',extractionComplete:false,extractionReason:'A draft grade already exists.',studentWork:'',attachments:[]},
-          {studentId:'student_1',studentName:'Alice duplicate',studentUrl:'https://classroom.google.com/c/course_1/a/assignment_1/submissions/by-status/and-sort-last-name/done/student/student_1',existingGrade:'',extractionComplete:true,extractionReason:'',studentWork:'Factories created jobs so people moved to cities for work.',attachments:[]}
+          {studentId:'student_1',studentName:'Alice',studentUrl:studentSubmissionUrl('course_1','assignment_1','student_1'),existingGrade:'',extractionComplete:true,extractionReason:'',studentWork:'Factories created jobs so people moved to cities for work.',attachments:[]},
+          {studentId:'student_2',studentName:'Bob',studentUrl:studentSubmissionUrl('course_1','assignment_1','student_2'),existingGrade:'',extractionComplete:false,extractionReason:'A PDF attachment could not be read safely.',studentWork:'',attachments:[{kind:'drive-file',supported:false}]},
+          {studentId:'student_3',studentName:'Cara',studentUrl:studentSubmissionUrl('course_1','assignment_1','student_3'),existingGrade:'8',extractionComplete:false,extractionReason:'A draft grade already exists.',studentWork:'',attachments:[]},
+          {studentId:'student_1',studentName:'Alice duplicate',studentUrl:studentSubmissionUrl('course_1','assignment_1','student_1'),existingGrade:'',extractionComplete:true,extractionReason:'',studentWork:'Factories created jobs so people moved to cities for work.',attachments:[]}
         ]
       })+'\n';
     }

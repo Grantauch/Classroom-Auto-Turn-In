@@ -57,7 +57,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* v0.9.20 Classroom draft grading bridge hardening */
 .grading-classroom-grid{margin-top:14px}.grading-classroom-results{margin-top:16px;display:grid;gap:12px}.grading-classroom-summary{display:grid;gap:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:12px}.grading-classroom-summary b{font-size:14px}.grading-classroom-summary span,.grading-classroom-summary small{color:var(--muted)}.classroom-grade-list{display:grid;gap:8px}.classroom-grade-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}.classroom-grade-name{display:flex;gap:8px;align-items:center;min-width:0}.classroom-grade-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.classroom-grade-score{font-weight:800;font-size:16px;white-space:nowrap}.classroom-grade-row p{grid-column:1/-1;margin:0;color:#445169;font-size:12.5px}.classroom-grade-row small{grid-column:1/-1;color:var(--muted)}
 
-/* v0.9.21 GoClassroom teacher-first visual system */
+/* v0.9.22 GoClassroom teacher-first visual system */
 :root{
   --ink:#0e2a56;--muted:#587094;--subtle:#7890ad;--line:#d7e6f5;--line-strong:#bfd4e8;
   --surface:#fff;--surface-2:#f7fbff;--surface-3:#f2f8fe;--nav:#061b3a;--nav-hover:#0b2b63;

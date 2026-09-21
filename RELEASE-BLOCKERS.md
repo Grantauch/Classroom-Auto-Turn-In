@@ -1,6 +1,6 @@
-# v0.9.21 GoClassroom Release Blockers
+# v0.9.22 GoClassroom Release Blockers
 
-v0.9.21 is a release candidate. Automated Windows/source evidence and live-Classroom evidence are tracked separately below.
+v0.9.22 is a release candidate. Automated Windows/source evidence and live-Classroom evidence are tracked separately below.
 
 ## Completed source/offline gates
 
@@ -18,23 +18,24 @@ v0.9.21 is a release candidate. Automated Windows/source evidence and live-Class
 - [x] Student grading content is not persisted in app data; external review packets require a teacher-chosen folder, explicit enablement, and native warning.
 - [x] Lesson-plan Classroom remains separate from the saved grading-Classroom list.
 - [x] Six-class switching, deduplication, unsaved-course rejection, and local-only removal have offline regression coverage.
+- [x] Current teacher-side `/g/tg/...#u=...` student navigation, fragment parsing, hash-only reload handling, and legacy URL compatibility have DOM/source regression coverage.
 
 ## Windows distribution gate
 
-All items below must pass before calling a v0.9.21 Setup EXE verified:
+All items below must pass before calling a v0.9.22 Setup EXE verified:
 
 - [x] `npm ci --no-audit --no-fund` from the committed lockfile on the Windows release-builder environment.
 - [x] `npm run check:deep`.
 - [x] Chromium DOM fixtures and real-Chrome browser smoke checks.
 - [x] Offline Classroom/Drive engine end-to-end simulator: 21 scenarios.
 - [x] Build unsigned NSIS installer with the pinned toolchain.
-- [x] Packaged-app self-test with isolated user data, v0.9.21 resources, supplied GoClassroom assets, and packaged Chrome launch.
-- [x] Backed-up in-place upgrade from the existing teacher installation to v0.9.21; checked teacher data and the production scheduled-task definition remained unchanged.
+- [x] Packaged-app self-test with isolated user data, v0.9.22 resources, supplied GoClassroom assets, and packaged Chrome launch.
+- [x] Backed-up in-place upgrade from the existing teacher installation to v0.9.22; checked teacher data and the production scheduled-task definition remained unchanged.
 - [x] Microsoft Defender targeted installer scan: no threats found.
 - [ ] Clean current-user install/uninstall/data-preserving reinstall validation on a fresh disposable environment, followed by a second packaged-browser self-test. The earlier hosted lifecycle was v0.9.20 historical evidence.
-- [x] Release hashes generated from every finished downloadable artifact in the accompanying `SHA256SUMS-v0.9.21.txt` delivery manifest at packaging time.
+- [x] Release hashes generated from every finished downloadable artifact in the accompanying `SHA256SUMS-v0.9.22.txt` delivery manifest at packaging time.
 
-Historical baseline: the corresponding v0.9.20 installer and disposable clean lifecycle passed. Those results do not by themselves verify the changed v0.9.21 package.
+Historical baseline: the corresponding v0.9.20 installer and disposable clean lifecycle passed. Those results do not by themselves verify the changed v0.9.22 package.
 
 The visible shortcut/SmartScreen experience and district-managed Windows restrictions still require the controlled school-PC/IT pilot. They do not block source/package integrity status, but they do block describing the release as field validated.
 

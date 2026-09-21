@@ -1,4 +1,4 @@
-# GoClassroom v0.9.21 — Product Specification
+# GoClassroom v0.9.22 — Product Specification
 
 ## Product goal
 
@@ -6,7 +6,7 @@ Help a teacher reliably manage recurring lesson-plan submission and optional AI-
 
 ## Preserved Auto Turn-In behavior
 
-v0.9.21 preserves the existing verified recurring lesson-plan workflow, schedule/retry behavior, Google sign-in model, duplicate prevention, multi-PC controls, approval-required AI lesson-plan recovery, fail-closed submission rules, and the v0.9.20 Classroom Draft Grading Bridge hardening.
+v0.9.22 preserves the existing verified recurring lesson-plan workflow, schedule/retry behavior, Google sign-in model, duplicate prevention, multi-PC controls, approval-required AI lesson-plan recovery, fail-closed submission rules, and the v0.9.20 Classroom Draft Grading Bridge hardening.
 
 ## Local grading
 
@@ -26,7 +26,7 @@ Requirements:
 
 ## Classroom Draft Grading Bridge
 
-The v0.9.21 bridge may:
+The v0.9.22 bridge may:
 
 1. save up to 20 grading Classrooms independently of the lesson-plan Classroom selected in Setup;
 2. discover assignments only from the currently selected saved grading Classroom;
@@ -96,4 +96,4 @@ When the teacher explicitly enables private review copies, the selected external
 
 ## Release acceptance
 
-Before broad school-PC release, v0.9.21 requires the Windows distribution gate, packaged browser/e2e checks, a controlled six-class picker/switching validation, controlled live Classroom extraction/write validation, private-review-folder policy review, and teacher benchmark testing. Automated/source checks alone are not sufficient for 1.0 promotion.
+Before broad school-PC release, v0.9.22 requires the Windows distribution gate, packaged browser/e2e checks, a controlled six-class picker/switching validation, controlled live Classroom extraction/write validation, private-review-folder policy review, and teacher benchmark testing. Automated/source checks alone are not sufficient for 1.0 promotion.

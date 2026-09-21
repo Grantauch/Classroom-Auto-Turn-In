@@ -1,8 +1,8 @@
-# GoClassroom v0.9.21 — Multi-Class Grading Preview Release Candidate
+# GoClassroom v0.9.22 — Multi-Class Grading Preview Release Candidate
 
-GoClassroom is the working, pre-1.0 display name for Classroom Auto Turn-In (CATI), a teacher-controlled Windows app for safe scheduled Google Classroom lesson-plan turn-in and local draft grading. v0.9.21 preserves the stable Windows app ID, install identity, saved setup, browser profile, and scheduled-task names so an existing teacher installation is not stranded by the visual rename.
+GoClassroom is the working, pre-1.0 display name for Classroom Auto Turn-In (CATI), a teacher-controlled Windows app for safe scheduled Google Classroom lesson-plan turn-in and local draft grading. v0.9.22 preserves the stable Windows app ID, install identity, saved setup, browser profile, and scheduled-task names so an existing teacher installation is not stranded by the visual rename.
 
-v0.9.21 fixes the architectural assumption that the lesson-plan destination Classroom must also be the grading Classroom. The lesson-plan Classroom remains in Setup; grading now has its own saved list of up to 20 classes, an explicit class switcher, per-class assignment discovery, and course-bound write confirmation. A teacher can add five, six, or more teaching classes without changing automatic lesson-plan turn-in.
+v0.9.22 fixes the architectural assumption that the lesson-plan destination Classroom must also be the grading Classroom. The lesson-plan Classroom remains in Setup; grading now has its own saved list of up to 20 classes, an explicit class switcher, per-class assignment discovery, and course-bound write confirmation. A teacher can add five, six, or more teaching classes without changing automatic lesson-plan turn-in.
 
 The supplied GoClassroom production SVG/icon pack is used directly in the new teacher-first interface. “GoClassroom” remains a preview name pending a formal trademark/domain review; the current installer retains the proven Classroom Auto Turn-In compatibility identity.
 
@@ -28,7 +28,7 @@ For the selected assignment CATI currently supports:
 
 Sheets, Slides, PDFs, arbitrary Drive files, images, and other unsupported attachments cause the affected submission to stop at `TEACHER_REVIEW` rather than grading from partial evidence.
 
-By default, student work and grading results are held in memory for the run and are not intentionally persisted in application data files. v0.9.21 adds an explicit teacher-controlled exception: **Private grading review copies**. If the teacher chooses a private folder, accepts the student-data warning, and turns the option on, GoClassroom writes one review folder per run containing the assignment context, exact evidence used, proposed grade, rubric breakdown, safety classification, independent validation, and Classroom write status. The feature is off by default and never changes Drive sharing permissions.
+By default, student work and grading results are held in memory for the run and are not intentionally persisted in application data files. v0.9.22 adds an explicit teacher-controlled exception: **Private grading review copies**. If the teacher chooses a private folder, accepts the student-data warning, and turns the option on, GoClassroom writes one review folder per run containing the assignment context, exact evidence used, proposed grade, rubric breakdown, safety classification, independent validation, and Classroom write status. The feature is off by default and never changes Drive sharing permissions.
 
 ## Local AI contract
 
@@ -52,7 +52,7 @@ By default, student work and grading results are held in memory for the run and 
 9. If desired, separately enable Classroom draft writing, save that setting, check the per-run write box, and confirm the native Cancel-by-default batch dialog, which names the grading Classroom and assignment.
 10. GoClassroom enters only validated draft scores after rechecking the grade-field denominator, reloads each student page, and verifies the saved number. It never clicks Return.
 
-See `GOCLASSROOM-MULTI-CLASS-GRADING-v0.9.21.md` for the new multi-class and review-copy contract. The v0.9.19 and v0.9.20 grading documents remain in this package as historical baseline documentation.
+See `GOCLASSROOM-MULTI-CLASS-GRADING-v0.9.22.md` for the new multi-class and review-copy contract. The v0.9.19 and v0.9.20 grading documents remain in this package as historical baseline documentation.
 
 ## Release status
 
@@ -75,7 +75,7 @@ npm run check:release-ready
 
 The end-to-end/browser checks remain separate because they require the packaged/browser environment.
 
-For a Windows installer build, extract this source package to a short local path such as `C:\CATI-Build\v0.9.21` before running `BUILD-SETUP-EXE.bat`. The pinned NSIS 3.0.4.1 toolchain still uses legacy Windows path handling and can fail when the source is nested under a very long folder path even though the source checks pass.
+For a Windows installer build, extract this source package to a short local path such as `C:\CATI-Build\v0.9.22` before running `BUILD-SETUP-EXE.bat`. The pinned NSIS 3.0.4.1 toolchain still uses legacy Windows path handling and can fail when the source is nested under a very long folder path even though the source checks pass.
 
 ## Important files
 

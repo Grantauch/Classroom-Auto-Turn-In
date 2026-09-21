@@ -1,10 +1,10 @@
-# GoClassroom v0.9.21 Teacher Field Checklist
+# GoClassroom v0.9.22 Teacher Field Checklist
 
-> Use only after the v0.9.21 Windows installer has passed the Windows distribution gate. Use controlled test Classrooms/assignments and test accounts before trying draft writeback with real student grades.
+> Use only after the v0.9.22 Windows installer has passed the Windows distribution gate. Use controlled test Classrooms/assignments and test accounts before trying draft writeback with real student grades.
 
 ## Install and normal Auto Turn-In
 
-- [ ] Install the finished v0.9.21 Setup EXE on the intended teacher PC.
+- [ ] Install the finished v0.9.22 Setup EXE on the intended teacher PC.
 - [ ] Confirm the existing Classroom, Drive folder, schedule, Safety Check, and normal Auto Turn-In behavior still work.
 - [ ] Confirm optional external-provider AI lesson-plan recovery remains separate from local student grading.
 

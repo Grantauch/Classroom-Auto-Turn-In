@@ -2,7 +2,7 @@
 
 This is the final validation ledger before v1.0.0. A check is only marked PASS when it was actually observed on the Windows/district-Google environment.
 
-## v0.9.21 GoClassroom additions
+## v0.9.22 GoClassroom additions
 
 - [ ] Add at least five teaching Classrooms through the dedicated Draft grading picker.
 - [ ] Switch classes and confirm assignment discovery changes to the selected class only.

@@ -1,4 +1,4 @@
-# Privacy — GoClassroom v0.9.21
+# Privacy — GoClassroom v0.9.22
 
 ## Normal Auto Turn-In
 
@@ -34,7 +34,7 @@ The teacher may choose a Google Drive for desktop folder, but GoClassroom does n
 
 ## Draft-grade writeback
 
-When the teacher separately enables draft-grade writing and explicitly confirms a write-enabled batch in the native Cancel-by-default dialog, GoClassroom may enter validated numeric scores into the Classroom total-grade field. The one-time authorization exists only in memory, expires after five minutes, is bound to one saved grading course/assignment, and cannot be reused. GoClassroom does not click Return, does not publish the grade to students, and does not write model feedback into Classroom in v0.9.21.
+When the teacher separately enables draft-grade writing and explicitly confirms a write-enabled batch in the native Cancel-by-default dialog, GoClassroom may enter validated numeric scores into the Classroom total-grade field. The one-time authorization exists only in memory, expires after five minutes, is bound to one saved grading course/assignment, and cannot be reused. GoClassroom does not click Return, does not publish the grade to students, and does not write model feedback into Classroom in v0.9.22.
 
 Existing draft/final grades are not overwritten. Unsupported or incomplete evidence is held for teacher review instead of being graded from partial information.
 

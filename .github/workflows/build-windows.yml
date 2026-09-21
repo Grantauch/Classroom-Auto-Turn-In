@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - 'v0.9.21*'
+      - 'v0.9.22*'
       - 'v1.*'
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path package-lock.json)) {
-            throw "package-lock.json is required for v0.9.21 and 1.x release builds. Run PREPARE-RC-LOCKFILE.bat, retain the lockfile, and commit/package it before release."
+            throw "package-lock.json is required for v0.9.22 and 1.x release builds. Run PREPARE-RC-LOCKFILE.bat, retain the lockfile, and commit/package it before release."
           }
 
       - name: Install exact locked dependencies
@@ -66,7 +66,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: GoClassroom-v0.9.21-Windows
+          name: GoClassroom-v0.9.22-Windows
           path: |
             dist/Classroom-Auto-Turn-In-Setup-*.exe
             dist/*.blockmap

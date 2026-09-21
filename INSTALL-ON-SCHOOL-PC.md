@@ -1,14 +1,14 @@
-# Installing v0.9.21 on the school PC
+# Installing v0.9.22 on the school PC
 
-> Do not use this source folder as the school-PC release. Use these instructions only after the Windows distribution gate has produced and verified a v0.9.21 Setup EXE.
+> Do not use this source folder as the school-PC release. Use these instructions only after the Windows distribution gate has produced and verified a v0.9.22 Setup EXE.
 
 ## Before installing
 
-1. Obtain `Classroom-Auto-Turn-In-Setup-0.9.21-x64.exe` and the release SHA-256 list from the same verified build.
+1. Obtain `Classroom-Auto-Turn-In-Setup-0.9.22-x64.exe` and the release SHA-256 list from the same verified build.
 2. In PowerShell, verify the hash:
 
 ```powershell
-Get-FileHash .\Classroom-Auto-Turn-In-Setup-0.9.21-x64.exe
+Get-FileHash .\Classroom-Auto-Turn-In-Setup-0.9.22-x64.exe
 ```
 
 3. Compare it with the published build hash before running the installer.

@@ -4,6 +4,23 @@ const {assertGoogleSession}=require('./classroom-actions');
 const {clean,strictNumber,sameNumber,decodePayload,parseStudentSubmissionUrl,markTotalGradeInputDom}=require('./classroom-grading');
 const {emit,emitError}=require('./protocol');
 
+async function openStudentPage(page,studentUrl,courseId,assignmentId,studentId){
+  const waitForStudentView=async()=>{
+    await page.locator('main,[role="main"],[role="table"],[role="grid"],a[href*="/g/tg/"],a[href*="/submissions/"]').first().waitFor({state:'visible',timeout:15000}).catch(()=>{});
+    await page.waitForTimeout(650);
+  };
+  await page.goto(studentUrl,{waitUntil:'domcontentloaded',timeout:45000});
+  await assertGoogleSession(page,'Classroom draft grade');
+  await waitForStudentView();
+  // #u= is a fragment selector; force a reload so a hash-only move cannot
+  // leave the prior student's grade field in the DOM.
+  await page.reload({waitUntil:'domcontentloaded',timeout:45000});
+  await assertGoogleSession(page,'Classroom draft grade after student selection');
+  await waitForStudentView();
+  const actual=parseStudentSubmissionUrl(page.url());
+  if(actual.courseId!==courseId||actual.assignmentId!==assignmentId||actual.studentId!==studentId)throw new Error('Classroom opened different student work than CATI expected.');
+}
+
 async function prepareGradeField(page,expectedMax){
   const found=await page.evaluate(markTotalGradeInputDom).catch(()=>({ok:false,count:0}));
   if(!found?.ok)throw new Error(found?.reason||(found?.count>1?'CATI found more than one possible total-grade field and stopped instead of guessing.':'CATI could not identify the total-grade field for this student.'));
@@ -15,7 +32,7 @@ async function prepareGradeField(page,expectedMax){
 
 (async()=>{
   const input=decodePayload(process.argv[2]),cfg=loadConfig();
-  const courseId=clean(input.courseId,300),assignmentId=clean(input.assignmentId,300),writes=Array.isArray(input.writes)?input.writes.slice(0,10):[];
+  const courseId=clean(input.courseId,300),assignmentId=clean(input.assignmentId,300),writes=Array.isArray(input.writes)?input.writes.slice(0,60):[];
   if(!courseId||!assignmentId||!writes.length)throw new Error('No validated Classroom draft grades were supplied to the write step.');
   const studentIds=writes.map(item=>clean(item?.studentId,300));
   if(studentIds.some(id=>!id)||new Set(studentIds).size!==studentIds.length)throw new Error('The validated Classroom draft-grade batch contains a missing or duplicate student identity.');
@@ -31,12 +48,7 @@ async function prepareGradeField(page,expectedMax){
         if(item.classification!=='SAFE_DRAFT')throw new Error('The writer received a grade that was not classified SAFE_DRAFT.');
         if(score===null||maxScore===null||score<0||maxScore<=0||maxScore>100000||score>maxScore)throw new Error('The validated draft score is outside the assignment point range.');
         emit('status',{message:`Saving validated draft grade ${i+1} of ${writes.length}.`});
-        await page.goto(studentUrl,{waitUntil:'domcontentloaded',timeout:45000});
-        await assertGoogleSession(page,'Classroom draft grade');
-        await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:15000});
-        await page.waitForTimeout(650);
-        const actual=parseStudentSubmissionUrl(page.url());
-        if(actual.courseId!==courseId||actual.assignmentId!==assignmentId||actual.studentId!==base.studentId)throw new Error('Classroom opened different student work than CATI expected.');
+        await openStudentPage(page,studentUrl,courseId,assignmentId,base.studentId);
         let target=await prepareGradeField(page,maxScore);
         if(target.current){
           if(sameNumber(target.current,score)){results.push({...base,status:'ALREADY_SAVED',message:'The same draft grade was already present, so CATI made no change.'});continue}

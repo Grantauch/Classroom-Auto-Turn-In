@@ -1,4 +1,4 @@
-# GoClassroom — v0.9.21 Multi-Class Grading Preview Release Candidate Architecture
+# GoClassroom — v0.9.22 Multi-Class Grading Preview Release Candidate Architecture
 
 ## Design goal
 
@@ -99,7 +99,7 @@ AI remains outside the core Auto Turn-In requirement and stays OFF by default.
 
 ### `main-services/grading-service.js`
 
-Owns teacher-controlled local grading and the v0.9.21 multi-Classroom draft bridge:
+Owns teacher-controlled local grading and the v0.9.22 multi-Classroom draft bridge:
 
 - grading enable/model settings;
 - separate Classroom draft-write opt-in and bounded batch size;
@@ -265,7 +265,7 @@ Windows release builds additionally require:
 - `ui-e2e-check.js` launches the real desktop app with `electron-main-preload.js`, which points the scheduler service at a mock `powershell.exe` backed by `mock-task-scheduler.js`.
 - `scripts/scheduler-powershell-check.js` proves the generated Task Scheduler scripts in Constrained Language Mode.
 
-v0.9.13, v0.9.16, v0.9.17, v0.9.18, v0.9.19, v0.9.20, v0.9.21 and 1.x require a frozen `package-lock.json` before the normal release builder may install dependencies. Release builds use `npm ci` only.
+v0.9.13, v0.9.16, v0.9.17, v0.9.18, v0.9.19, v0.9.20, v0.9.22 and 1.x require a frozen `package-lock.json` before the normal release builder may install dependencies. Release builds use `npm ci` only.
 
 ## Multi-PC layer
 

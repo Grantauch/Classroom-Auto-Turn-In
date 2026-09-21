@@ -1,33 +1,33 @@
-# v0.9.21 GoClassroom Multi-Class Grading Preview Verification Report
+# v0.9.22 GoClassroom Multi-Class Grading Preview Verification Report
 
 ## Readiness statement
 
-**Release-candidate / controlled-test ready; not field-validated 1.0.** The v0.9.21 source, simulated Classroom/Drive workflow, DOM fixtures, real-Chrome smoke checks, Windows package, isolated packaged runtime, Microsoft Defender scan, and backed-up in-place upgrade passed their available gates on September 20, 2026.
+**Release-candidate / controlled-test ready; not field-validated 1.0.** The v0.9.22 source, simulated Classroom/Drive workflow, DOM fixtures, real-Chrome smoke checks, Windows package, isolated packaged runtime, Microsoft Defender scan, and backed-up in-place upgrade passed their available gates on September 20, 2026.
 
-The installed app on the teacher PC is now v0.9.21. The existing current-user application data and the `Classroom Auto Turn-In` scheduled-task definition were backed up before installation. The task definition remained byte-for-byte identical, and the installed package passed an isolated self-test that launched packaged Chrome. No live Classroom assignment was opened, graded, written, returned, or published during this verification.
+The installed app on the teacher PC is now v0.9.22. The existing current-user application data and the `Classroom Auto Turn-In` scheduled-task definition were backed up before installation in `C:\CATI-Build\backup-20260920-2218-v0.9.21-pre-v0.9.22`. The task definition remained byte-for-byte identical, and the installed package passed an isolated self-test that launched packaged Chrome. No live Classroom assignment was opened, graded, written, returned, or published during this verification.
 
 ## Baseline and environment
 
 - Baseline archive: `Classroom-Auto-Turn-In-v0.9.19-Classroom-Draft-Grading-Bridge-Source-and-Builder.zip`
 - Baseline SHA-256: `1EA661933B1F938A308430AAF67C1B7CDA2F6CEF0CBA5B4E00CD9B5D4FB98F19`
 - Baseline archive validation: 124 safe ZIP entries; no absolute or parent-traversal paths.
-- Release version: `0.9.21`.
+- Release version: `0.9.22`.
 - Electron: `38.1.2`.
 - Electron Builder: `26.0.12`.
 - Installer format: unsigned, one-click, current-user NSIS x64.
-- Release-builder short path: `C:\CATI-Build\v0.9.21-goclassroom-20260920`.
+- Release-builder path: `C:\CATI-Build\gc-repo`.
 
 ## Source and dependency checks
 
 | Check | Result | Evidence boundary |
 |---|---|---|
-| `npm ci --no-audit --no-fund` | PASS | 384 packages installed from the frozen lockfile in the short-path Windows build copy. |
+| `npm ci --include=dev --no-audit --no-fund` | PASS | 384 packages installed in 18 seconds from the frozen lockfile; npm reported deprecation warnings only. |
 | `npm run check:deep` | PASS | Syntax, trust/reliability, builder schema, Windows build rules, adversarial/fuzz, AI recovery, grading, six-class bridge/review export, confirmation, teacher error language, UI integrity, stabilization, architecture, migration, release-candidate, multi-PC, recovery, action scope, distribution isolation, verified build, and scheduler checks passed. |
 | `npm run check:dom` | PASS | Chromium DOM fixtures passed, including ambiguous totals and grade-field scoping. |
 | `npm run check:browser` | PASS | Real Google Chrome background smoke checks passed for Classroom/default grading picker and Drive picker, including dedicated “Add grading Classroom.” |
 | `npm run check:e2e` engine gate | PASS | 21 offline Classroom/Drive scenarios passed. |
 | `npm run check:e2e` UI gate | NOT RUN BY DESIGN | The Windows UI gate would register real scheduled tasks; the isolated installed-package gate is used instead. |
-| `npm run check:visual -- validation-evidence-v0.9.21` | PASS | Teacher dashboard and draft-grading screenshots rendered with supplied assets; no asserted horizontal overflow. |
+| `npm run check:visual -- validation-evidence-v0.9.22-url-fix-20260920` | PASS | Teacher dashboard and draft-grading screenshots rendered with supplied assets; no asserted horizontal overflow. Evidence is preserved at `C:\CATI-Build\validation-evidence-v0.9.22-url-fix-20260920`. |
 | `npm run check:grading-bridge` | PASS | Six independent classes, lesson-plan separation, unsaved-course rejection, local-only removal, review packet completion, preview/write safety, and no Return path. |
 | `npm run check:release-ready` | PASS | Release manifest, version, docs, package, and source consistency checks passed after the final manifest was regenerated. |
 | Production dependency audit | PASS | `npm audit --omit=dev --audit-level=high` reported no high-severity production dependency vulnerability. |
@@ -59,31 +59,32 @@ This is an intentional privacy exception. A Google Drive for desktop folder may 
 
 The first installer attempt from the deeply nested workspace reached NSIS but failed because the legacy NSIS include path exceeded Windows path handling limits. Rebuilding the identical source from the short path above succeeded. The source package instructs builders to extract to a short local path.
 
-- Final installer: `Classroom-Auto-Turn-In-Setup-0.9.21-x64.exe`
-- Size: `90,666,558` bytes.
-- SHA-256: `9B9CD243B05E7BB54600E489D28F723032FE82FA5DED38B862509FF0A4498B26`.
+- Final installer: `Classroom-Auto-Turn-In-Setup-0.9.22-x64.exe`
+- Size: `90,670,650` bytes.
+- SHA-256: `0908A0A158B1D03BEE3552C74942F5A07FEB91469F5045E21393FC0D5855BFB2`.
 - Authenticode: unsigned, as expected for this release candidate.
-- Installer resource version: `0.9.21`.
+- Installer resource version: `0.9.22`.
 - Installer product name: `Classroom Auto Turn-In` (stable compatibility identity).
-- Unpacked packaged-app resource version: `0.9.21.0`.
+- Unpacked packaged-app resource version: `0.9.22.0`.
 - Packaged-app isolated-user-data self-test: PASS.
 - Packaged Chrome launch: PASS.
 - Microsoft Defender targeted scan: PASS; the finished installer scan reported no threats.
 
-The installer was also applied in place on this Windows PC. The installer exited `0`; the installed executable reports file/product version `0.9.21.0`; and the installed packaged-browser self-test passed with isolated user data.
+The installer was also applied in place on this Windows PC. The installer exited `0`; the installed executable reports file/product version `0.9.22.0`; and the installed packaged-browser self-test passed with isolated user data.
 
 ## Backed-up in-place upgrade evidence
 
 Before installation, the following additive backup was created:
 
-- Backup folder: `validation-evidence-v0.9.21\\pre-upgrade-v0.9.20-20260920-195156`.
-- Existing installed executable: `0.9.20.0`.
-- Existing executable SHA-256: `5E66A918A3FB20E7F4E361D9911B2350FD0D6AF65B347BD8D471E8BCF5E74A7E`.
-- Teacher-local data backup: 1,409 files / 285,580,584 bytes.
+- Backup folder: `C:\CATI-Build\backup-20260920-2218-v0.9.21-pre-v0.9.22`.
+- Existing installed executable: `0.9.21.0`.
+- Existing executable SHA-256: `D9A251B6ABBB2F3D010573F0C9D2B689AD3D74E9787B70C00069C1C5A15AC0CD`.
+- Teacher-local data backup: 1,931 files / 453,388,348 bytes.
 - Existing task XML SHA-256 before: `A5C3ECAEE7F7499495AB652B19A13B49EDA8F944EF820D8D418BD2266E9F1FA9`.
 - Existing task XML SHA-256 after: `A5C3ECAEE7F7499495AB652B19A13B49EDA8F944EF820D8D418BD2266E9F1FA9`.
 - Task state after upgrade: Ready.
-- Task action after upgrade: current-user v0.9.21 executable with `--background-run`.
+- Task action after upgrade: current-user v0.9.22 executable with `--background-run`.
+- Installed executable after upgrade: `0.9.22.0`; SHA-256 `A919AE26406BE4D450ECBD2C6646A776D280D074C0ABBD5FB5382F83CC6B2C37`.
 - Checked `data` settings hashes (`ai-secrets.json`, `ai-settings.json`, `config.json`, `machine.json`, `plans.json`, and `state.json`): unchanged from the backup.
 
 The app windows were closed gracefully before the upgrade; no unrelated process was changed. The app was not launched into the teacher's real Classroom account for this check.
