@@ -78,6 +78,44 @@ function extractMaxPoints(text){
 }
 
 // Browser-context function. Keep self-contained so Playwright can serialize it.
+// A teacher's Classwork page renders collapsed cards that carry no assignment links at all.
+// Each card does carry data-stream-item-id, the assignment's numeric id, and Classroom's own
+// URLs are the base64 of that number. The caller verifies one card against a real link before
+// trusting the rest, and falls back to expanding every card when that check fails.
+function collectTeacherAssignmentsDom(expectedCourseId){
+  const clean=v=>String(v||'').replace(/[ \t]+/g,' ').trim();
+  const course=String(expectedCourseId||'');
+  const noise=/^(?:assignment|material|quiz assignment|question|more_vert|More options|Collapse|Expand|View|Posted\b.*|Due\b.*|Edited\b.*|No due date.*|\d+\s+(?:Turned in|Assigned|Graded).*)$/i;
+  const rows=[],seen=new Set();
+  for(const item of document.querySelectorAll('li[data-stream-item-id]')){
+    const numericId=clean(item.getAttribute('data-stream-item-id'));
+    if(!/^\d{6,}$/.test(numericId)||seen.has(numericId))continue;
+    let assignmentId='';
+    try{assignmentId=btoa(numericId)}catch{assignmentId=''}
+    if(!assignmentId)continue;
+    const lines=clean(item.innerText).split('\n').map(clean).filter(Boolean);
+    let title=lines.find(line=>line.length>1&&!noise.test(line))||'';
+    if(!title){
+      title=clean(item.innerText)
+        .replace(/^(?:assignment|material|quiz assignment|question)\s+/i,'')
+        .replace(/\s+(?:Posted|Due|Edited)\b.*$/i,'')
+        .replace(/\s*more_vert\b.*$/i,'')
+        .trim();
+    }
+    seen.add(numericId);
+    rows.push({
+      courseId:course,
+      assignmentId,
+      numericId,
+      title:title||`Assignment ${numericId}`,
+      detailUrl:`https://classroom.google.com/c/${course}/a/${assignmentId}/details`,
+      studentWorkUrl:`https://classroom.google.com/c/${course}/a/${assignmentId}/submissions/by-status/and-sort-last-name/done`
+    });
+  }
+  return rows;
+}
+
+// Browser-context function. Keep self-contained so Playwright can serialize it.
 function collectClassroomAssignmentsDom(expectedCourseId){
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
   const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
@@ -258,5 +296,5 @@ function findGradeInputsDom(){
 
 module.exports={
   MAX_CLASSROOM_BATCH,DEFAULT_CLASSROOM_BATCH,MAX_PAYLOAD_CHARS,MAX_EVIDENCE_CHARS,MAX_ATTACHMENT_COUNT,clean,strictNumber,sameNumber,clampBatch,safeId,encodePayload,decodePayload,assignmentUrls,parseStudentSubmissionUrl,
-  googleAttachmentInfo,pointCandidatesFromText,extractMaxPoints,collectClassroomAssignmentsDom,collectStudentSubmissionRowsDom,collectStudentEvidenceDom,extractAssignmentTextDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,findGradeInputsDom
+  googleAttachmentInfo,pointCandidatesFromText,extractMaxPoints,collectClassroomAssignmentsDom,collectTeacherAssignmentsDom,collectStudentSubmissionRowsDom,collectStudentEvidenceDom,extractAssignmentTextDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,findGradeInputsDom
 };

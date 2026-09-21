@@ -1,7 +1,8 @@
 const {launchTeacherContext}=require('./browser');
 const {loadConfig,log}=require('./lib');
 const {assertGoogleSession}=require('./classroom-actions');
-const {clean,collectClassroomAssignmentsDom}=require('./classroom-grading');
+const {clean}=require('./classroom-grading');
+const {readCourseAssignments}=require('./classwork-assignments');
 const {emit,emitError}=require('./protocol');
 
 const MAX_CLASSROOMS=20;
@@ -11,7 +12,9 @@ const MAX_CLASSROOMS=20;
 // lesson plans, sit under "Enrolled" and are deliberately left out.
 function collectTeachingClassroomsDom(){
   const courseHref=/^\/(?:u\/\d+\/)?c\/([^/?#]+)\/?$/i;
-  const sectionHeading=/^(Teaching|Enrolled|Archived classes|To-do|To review)$/i;
+  // Only the real section headings. "To review" and "To-do" sit between a heading and its
+  // classes, so treating them as headings loses the Teaching and Enrolled split entirely.
+  const sectionHeading=/^(Teaching|Enrolled|Archived classes)$/i;
   const notACourseName=/^(?:Classroom|Google Classroom|Home|Stream|Classwork|People|Grades|Marks|Your work|To-do|To do|To review|To-review|Calendar|Settings|Archived classes|Enrolled|Teaching|Main menu|Class drive folder|Google Calendar)$/i;
   const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_ELEMENT);
   const found=[],seen=new Set();
@@ -26,29 +29,14 @@ function collectTeachingClassroomsDom(){
     if(!match)continue;
     const courseId=match[1];
     if(section!=='teaching'||seen.has(courseId))continue;
-    const label=String(element.innerText||element.textContent||'').replace(/\s+/g,' ').trim();
+    // Sidebar rows start with the class avatar letter, as in "H Hidden History 6th Hour".
+    const label=String(element.innerText||element.textContent||'').replace(/\s+/g,' ').trim()
+      .replace(/^([A-Za-z0-9])\s+(?=\1)/i,'');
     if(!label||notACourseName.test(label)||label.length>160)continue;
     seen.add(courseId);
     found.push({courseId,courseDisplayName:label});
   }
   return found;
-}
-
-async function collectAssignments(page,courseId){
-  const seen=new Map();
-  for(let pass=0;pass<8;pass++){
-    const rows=await page.evaluate(collectClassroomAssignmentsDom,courseId).catch(()=>[]);
-    for(const row of rows||[])if(row?.assignmentId&&!seen.has(row.assignmentId))seen.set(row.assignmentId,row);
-    const moved=await page.evaluate(()=>{
-      const root=document.scrollingElement||document.documentElement;
-      const before=root.scrollTop,max=Math.max(0,root.scrollHeight-root.clientHeight);
-      root.scrollTop=Math.min(max,before+Math.max(500,root.clientHeight*0.8));
-      return {before,after:root.scrollTop,max};
-    }).catch(()=>({before:0,after:0,max:0}));
-    if(moved.after>=moved.max-5||moved.after===moved.before)break;
-    await page.waitForTimeout(350);
-  }
-  return [...seen.values()].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
 }
 
 (async()=>{
@@ -75,7 +63,7 @@ async function collectAssignments(page,courseId){
         await page.goto(`https://classroom.google.com/w/${course.courseId}/t/all`,{waitUntil:'domcontentloaded',timeout:45000});
         await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:20000});
         await page.waitForTimeout(900);
-        course.assignments=await collectAssignments(page,course.courseId);
+        course.assignments=await readCourseAssignments(page,course.courseId,{log});
       }catch(error){
         course.assignments=[];
         course.assignmentsReason=String(error?.message||error).replace(/\s+/g,' ').trim().slice(0,300);
