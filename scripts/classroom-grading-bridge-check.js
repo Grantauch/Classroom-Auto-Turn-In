@@ -18,7 +18,7 @@ assert(extractMaxPoints('Due tomorrow\n10 points')===10,'Classroom point-total p
 assert(extractMaxPoints('Total points: 10. Criterion A: 4 points. Criterion B: 6 points.')===10,'Explicit rubric total did not take priority over criterion points');
 assert(extractMaxPoints('Criterion A: 4 points. Criterion B: 6 points.')===null,'Ambiguous criterion points were mistaken for an assignment total');
 assert(!sameNumber('',0)&&!sameNumber(null,0)&&sameNumber('0',0),'Blank Classroom grade values must never verify as a saved zero');
-assert(clampBatch(99)===10&&clampBatch(0)===5,'Classroom grading batch bounds changed unexpectedly');
+assert(clampBatch(999)===60&&clampBatch(0)===5&&clampBatch(19)===19,'Classroom grading batch bounds changed unexpectedly');
 
 const writerSource=fs.readFileSync(path.join(__dirname,'..','engine','grading-classroom-write.js'),'utf8');
 assert(!writerSource.includes('.click('),'Draft-grade writer must not click Classroom actions such as Return');

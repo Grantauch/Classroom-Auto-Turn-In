@@ -235,7 +235,7 @@
           <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh assignments</span></button><button id="removeGradingClassroom" class="btn text-btn" type="button">Remove this class</button></div>
           <label class="wide field">Rubric <small class="muted">Optional. Leave blank and GoClassroom grades from the directions, out of the points Classroom already shows.</small><textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric, or leave this blank."></textarea></label>
           <label class="wide field">Directions <small class="muted">Optional. Leave blank to use the directions in Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only needed if the Classroom directions are unclear."></textarea></label>
-          <label class="field">Students per run<input id="gradingBatchSize" type="number" min="1" max="10" value="5"></label>
+          <label class="field">Students per run <small class="muted">Up to 60. Set it to your class size to grade everyone in one pass.</small><input id="gradingBatchSize" type="number" min="1" max="60" value="5"></label>
           <label class="check wide"><input id="gradingClassroomWriteEnabled" type="checkbox"><span>Let GoClassroom put confident scores into Classroom as hidden drafts</span></label>
           <label class="check wide"><input id="gradingWriteDraftsThisRun" type="checkbox"><span>Save drafts on this run. Leave off to preview only.</span></label>
         </div>

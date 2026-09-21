@@ -1,6 +1,6 @@
 const {parseClassroomIds}=require('./safety');
 
-const MAX_CLASSROOM_BATCH=10;
+const MAX_CLASSROOM_BATCH=60;
 const DEFAULT_CLASSROOM_BATCH=5;
 const MAX_PAYLOAD_CHARS=250000;
 const MAX_EVIDENCE_CHARS=60000;

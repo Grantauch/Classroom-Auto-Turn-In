@@ -7,7 +7,7 @@ const {parseClassroomIds}=require('../engine/safety');
 const {lastPayload}=require('../engine/protocol');
 
 const WRITE_AUTHORIZATION_TTL_MS=5*60*1000;
-const CLASSROOM_BATCH_DEADLINE_MS=12*60*1000;
+const CLASSROOM_BATCH_DEADLINE_MS=60*60*1000;
 const MAX_GRADING_CLASSROOMS=20;
 
 function createGradingService({localData,ensureAutomationIdle,compactError,runNodeScript=null,runExclusiveBrowser=null}){
@@ -334,7 +334,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       courseId,assignmentId,title,detailUrl:canonicalUrls.detailUrl,studentWorkUrl:canonicalUrls.studentWorkUrl,
       batchSize,questionOverride
     });
-    const scanOut=await exclusive('Classroom grading submission scan',()=>runNodeScript('grading-classroom-extract.js',[extractArgs],false,{timeoutMs:10*60*1000}));
+    const scanOut=await exclusive('Classroom grading submission scan',()=>runNodeScript('grading-classroom-extract.js',[extractArgs],false,{timeoutMs:25*60*1000}));
     const scan=lastPayload(scanOut,'grading-submissions');
     if(!scan||!scan.assignment||!Array.isArray(scan.packets)||scan.assignment.courseId!==courseId||scan.assignment.assignmentId!==assignmentId)throw new Error('CATI could not read a matching Classroom student-work queue safely.');
     const question=questionOverride||optionalBoundedText(scan.assignment.question,'Classroom assignment directions',20000),questionComplete=!!questionOverride||scan.assignment.questionComplete===true;
@@ -375,7 +375,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
         const safeWrites=writeCandidates.filter(item=>Math.abs(Number(item.maxScore)-classroomMax)<=0.001);
         if(safeWrites.length){
           const writeArgs=encodePayload({courseId,assignmentId,writes:safeWrites.map(({studentId,studentName,studentUrl,score,maxScore,classification})=>({studentId,studentName,studentUrl,score,maxScore,classification}))});
-          const writeOut=await exclusive('Classroom draft grade write',()=>runNodeScript('grading-classroom-write.js',[writeArgs],false,{timeoutMs:8*60*1000}));
+          const writeOut=await exclusive('Classroom draft grade write',()=>runNodeScript('grading-classroom-write.js',[writeArgs],false,{timeoutMs:25*60*1000}));
           const writePayload=lastPayload(writeOut,'grading-write-result');
           if(!writePayload||writePayload.courseId!==courseId||writePayload.assignmentId!==assignmentId||!Array.isArray(writePayload.results))throw new Error('CATI rejected an unmatched Classroom draft-write verification result.');
           const byStudent=new Map();for(const item of writePayload.results){if(item?.studentId&&byStudent.has(item.studentId))throw new Error('CATI rejected duplicate student results from the Classroom draft writer.');if(item?.studentId)byStudent.set(item.studentId,item)}
