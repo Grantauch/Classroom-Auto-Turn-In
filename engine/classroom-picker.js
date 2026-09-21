@@ -60,8 +60,11 @@ function installClassroomPicker(options={}){
         try{
           const url=new URL(anchor.href,location.href);
           const found=url.hostname.toLowerCase()==='classroom.google.com'&&url.pathname.match(/^\/(?:u\/\d+\/)?c\/([^/?#]+)\/?$/i);
-          const label=String(anchor.textContent||'').replace(/\s+/g,' ').trim();
-          return found&&found[1]===courseId&&label.length<=160?label:'';
+          if(!found||found[1]!==courseId)return '';
+          // innerText keeps the rendered break between the class name and its section, so
+          // "U.S. History" and "1st Hour" do not run together as "U.S. History1st Hour".
+          const label=String(anchor.innerText||anchor.textContent||'').replace(/\s+/g,' ').trim();
+          return label.length<=160?label:'';
         }catch{return ''}
       }).find(label=>label&&!notName.test(label))||'';
       if(typeof window.catiPickClassroom!=='function')throw new Error('The Classroom picker is not connected to the app.');
