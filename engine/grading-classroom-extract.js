@@ -53,7 +53,7 @@ async function extractOneStudent({context,page,row,courseId,assignmentId}){
   if(ids.courseId!==courseId||ids.assignmentId!==assignmentId||ids.studentId!==row.studentId)throw new Error('A student-work link did not match the selected Classroom assignment.');
   await page.goto(row.studentUrl,{waitUntil:'domcontentloaded',timeout:45000});
   await assertGoogleSession(page,'student work for local grading');
-  await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:15000});
+  await page.locator('main,[role="main"],[role="table"],[role="grid"],a[href*="/submissions/"]').first().waitFor({state:'visible',timeout:30000}).catch(()=>{});
   await page.waitForTimeout(700);
   const actual=parseStudentSubmissionUrl(page.url());
   if(actual.courseId!==courseId||actual.assignmentId!==assignmentId||actual.studentId!==row.studentId)throw new Error('Classroom opened different student work than CATI expected.');
@@ -97,7 +97,7 @@ async function extractOneStudent({context,page,row,courseId,assignmentId}){
     emit('status',{message:`Reading assignment directions for ${title||'the selected assignment'}.`});
     await page.goto(detailUrl,{waitUntil:'domcontentloaded',timeout:45000});
     await assertGoogleSession(page,'assignment directions for local grading');
-    await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:15000});
+    await page.locator('main,[role="main"],[role="table"],[role="grid"],a[href*="/submissions/"]').first().waitFor({state:'visible',timeout:30000}).catch(()=>{});
     await page.waitForTimeout(700);
     const assignmentText=await page.evaluate(extractAssignmentTextDom,title).catch(()=>({text:'',mainText:'',truncated:true}));
     const points=await page.evaluate(readAssignmentMaxPointsDom).catch(()=>({ok:false,value:null,reason:'CATI could not read the Classroom assignment point total safely.'}));
@@ -107,14 +107,14 @@ async function extractOneStudent({context,page,row,courseId,assignmentId}){
     emit('status',{message:`Looking for turned-in student work for ${title||'the selected assignment'}.`});
     await page.goto(studentPageUrl,{waitUntil:'domcontentloaded',timeout:45000});
     await assertGoogleSession(page,'Classroom student work');
-    await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:15000});
+    await page.locator('main,[role="main"],[role="table"],[role="grid"],a[href*="/submissions/"]').first().waitFor({state:'visible',timeout:30000}).catch(()=>{});
     await page.waitForTimeout(900);
     let rows=await collectStudentRows(page,assignmentId);
     if(!rows.length&&studentPageUrl!==urls.studentWorkAllUrl){
       studentPageUrl=urls.studentWorkAllUrl;
       await page.goto(studentPageUrl,{waitUntil:'domcontentloaded',timeout:45000});
       await assertGoogleSession(page,'Classroom student work');
-      await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:15000});
+      await page.locator('main,[role="main"],[role="table"],[role="grid"],a[href*="/submissions/"]').first().waitFor({state:'visible',timeout:30000}).catch(()=>{});
       await page.waitForTimeout(900);
       rows=await collectStudentRows(page,assignmentId);
     }
