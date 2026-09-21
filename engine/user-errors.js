@@ -31,6 +31,7 @@ const FALLBACK={
   'grading:save-settings':['AT-GRD-102','Local grading settings could not be saved. Nothing was published to Classroom.'],
   'grading:grade':['AT-GRD-103','The local draft grade could not be created safely. Nothing was written to Classroom.'],
   'grading:discover-classroom':['AT-GRD-104','CATI could not read the selected Classroom assignment list safely. No grades were changed.'],
+  'grading:discover-my-classrooms':['AT-GRD-190','GoClassroom could not read your class list. Your saved classes and grades were not changed.'],
   'grading:process-classroom':['AT-GRD-105','CATI could not finish the Classroom draft-grading batch safely. No uncertain grade was written.'],
   'diagnostics:cleanup':['AT-SUP-102','Old support files could not be cleaned up. This does not affect automatic turn-in.'],
   'logs:open':['AT-SUP-104','Windows could not open the Auto Turn-In support folder.'],

@@ -94,6 +94,18 @@ function buildGradePrompt({question,rubric,studentWork}){
   ].join('\n');
 }
 
+// Used when the teacher did not paste a rubric. Google Classroom's own point total is the
+// scale, so the model derives criteria from the directions but can never change the total.
+function derivedRubricText(maxPoints){
+  return [
+    'No teacher rubric was provided for this assignment.',
+    `Google Classroom lists this assignment as worth exactly ${maxPoints} points. That total must not change.`,
+    'Derive two to five grading criteria directly from the assignment directions in this packet.',
+    'Give each criterion a possible point value, and make those possible values add up to exactly the Classroom total.',
+    'Do not invent requirements that the directions do not state.'
+  ].join(' ');
+}
+
 function normalizeGrade(raw){
   if(!raw||typeof raw!=='object'||Array.isArray(raw))return raw;
   const numberOrInvalid=value=>typeof value==='number'&&Number.isFinite(value)?value:Number.NaN;
@@ -219,8 +231,16 @@ async function getOllamaStatus({baseUrl=DEFAULT_OLLAMA_URL,timeoutMs=5000}={}){
   return {available:true,baseUrl:root,models};
 }
 
-async function createOllamaGrade({model=DEFAULT_GRADING_MODEL,question,rubric,studentWork,baseUrl=DEFAULT_OLLAMA_URL,timeoutMs=120000}={}){
-  const root=assertLocalOllamaUrl(baseUrl),selected=cleanModel(model),prompt=buildGradePrompt({question,rubric,studentWork});
+async function createOllamaGrade({model=DEFAULT_GRADING_MODEL,question,rubric,studentWork,maxPoints=null,baseUrl=DEFAULT_OLLAMA_URL,timeoutMs=120000}={}){
+  const root=assertLocalOllamaUrl(baseUrl),selected=cleanModel(model);
+  // A teacher rubric always wins. With no rubric, the Classroom point total becomes the scale.
+  // Only a real teacher rubric is handed to the validator, because the criterion-copy check
+  // exists to stop invented criteria and cannot apply to criteria the model was asked to derive.
+  const teacherRubric=clean(rubric,30000);
+  const classroomTotal=Number(maxPoints);
+  const rubricForPrompt=teacherRubric||(isFiniteNumber(classroomTotal)&&classroomTotal>0?derivedRubricText(classroomTotal):'');
+  const rubricSource=teacherRubric?'teacher':'directions';
+  const prompt=buildGradePrompt({question,rubric:rubricForPrompt,studentWork});
   if(detectStudentPromptInjection(studentWork))return {status:'TEACHER_REVIEW',reason:'The student submission contains instruction-like text that could be a prompt-injection attempt. CATI did not send it to Ollama or write a grade.',grade:null,validation:null,model:selected,doneReason:null,createdAt:null,schemaVersion:GRADING_SCHEMA_VERSION};
   const body={
     model:selected,
@@ -242,12 +262,12 @@ async function createOllamaGrade({model=DEFAULT_GRADING_MODEL,question,rubric,st
     if(/context|token|too large|too long/i.test(serverMessage))throw new Error('Local Ollama grading failed because the evidence packet exceeded the selected model\'s context limit.');
     throw new Error(`Local Ollama grading failed with HTTP ${response.status}.`);
   }
-  const parsed=parseOllamaGrade(data),decision=gradingDecision(parsed,{rubric,studentWork});
-  return {...decision,model:data?.model||selected,doneReason:data?.done_reason||null,createdAt:data?.created_at||null,schemaVersion:GRADING_SCHEMA_VERSION};
+  const parsed=parseOllamaGrade(data),decision=gradingDecision(parsed,{rubric:teacherRubric,studentWork});
+  return {...decision,rubricSource,model:data?.model||selected,doneReason:data?.done_reason||null,createdAt:data?.created_at||null,schemaVersion:GRADING_SCHEMA_VERSION};
 }
 
 module.exports={
   DEFAULT_OLLAMA_URL,DEFAULT_GRADING_MODEL,GRADING_SCHEMA_VERSION,MAX_GRADE_POINTS,GRADE_SCHEMA,GRADING_SYSTEM_INSTRUCTIONS,
-  clean,cleanModel,assertLocalOllamaUrl,boundedRequiredText,detectStudentPromptInjection,buildGradePrompt,normalizeGrade,validateGrade,gradingDecision,
+  clean,cleanModel,assertLocalOllamaUrl,boundedRequiredText,detectStudentPromptInjection,buildGradePrompt,derivedRubricText,normalizeGrade,validateGrade,gradingDecision,
   parseOllamaGrade,getOllamaStatus,createOllamaGrade
 };

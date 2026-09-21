@@ -209,6 +209,35 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     return {...payload,courseDisplayName:course.courseDisplayName};
   }
 
+  // Finds every class the teacher teaches and reads each one's assignments in a single browser
+  // pass. The save runs after the exclusive browser operation has released, because saveSettings
+  // calls ensureAutomationIdle. Classes the teacher is only enrolled in are never included.
+  async function discoverTeachingClassrooms(){
+    ensureAutomationIdle();requireBrowserRunner();
+    const out=await exclusive('Teaching Classroom discovery',()=>runNodeScript('discover-teaching-classrooms.js',[],false,{timeoutMs:9*60*1000}));
+    const payload=lastPayload(out,'teaching-classrooms');
+    const discovered=(Array.isArray(payload?.classrooms)?payload.classrooms:[]).map(normalizeDiscoveredClassroom).filter(Boolean);
+    if(!discovered.length)throw new Error('GoClassroom could not read the classes you teach. Add a class with Add grading Classroom instead.');
+    const current=loadSettings();
+    const gradingClassrooms=uniqueClassrooms([...discovered,...current.gradingClassrooms]);
+    const activeGradingCourseId=gradingClassrooms.some(course=>course.courseId===current.activeGradingCourseId)?current.activeGradingCourseId:(discovered[0]?.courseId||'');
+    const settings=saveSettings({...current,gradingClassrooms,activeGradingCourseId});
+    const assignmentsByCourse={};
+    for(const course of discovered)assignmentsByCourse[course.courseId]=course.assignments;
+    const assignmentCount=discovered.reduce((total,course)=>total+course.assignments.length,0);
+    appLog(`Teaching Classroom discovery saved ${discovered.length} grading class(es) with ${assignmentCount} assignment(s). The lesson-plan Classroom was not changed.`);
+    return {settings,assignmentsByCourse,classroomCount:discovered.length,assignmentCount,classrooms:discovered.map(({courseId,courseDisplayName,assignments})=>({courseId,courseDisplayName,assignmentCount:assignments.length}))};
+  }
+
+  function normalizeDiscoveredClassroom(value={}){
+    const item=normalizeGradingClassroom(value);
+    if(!item)return null;
+    const assignments=(Array.isArray(value.assignments)?value.assignments:[])
+      .filter(row=>row&&clean(row.assignmentId,300)&&row.courseId===item.courseId)
+      .map(row=>({...row,courseDisplayName:item.courseDisplayName}));
+    return {...item,assignments};
+  }
+
   function safeFilePart(value,fallback){
     const text=String(value||'').replace(/[<>:"/\\|?*\u0000-\u001f]/g,' ').replace(/\s+/g,' ').trim().replace(/[. ]+$/,'').slice(0,90);
     return text||fallback;
@@ -239,6 +268,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
         attachments:Array.isArray(packet.attachments)?packet.attachments.map(item=>({kind:item?.kind||'',name:item?.name||'',supported:item?.supported===true})):[],
         proposedGrade:result.grade||null,
         classification:result.status,
+        rubricSource:result.rubricSource||null,
         reviewReason:result.reason||null,
         independentValidation:result.validation||null,
         classroomWrite:{requested:!!writeDrafts,status:result.writeStatus,message:result.writeMessage},
@@ -294,7 +324,10 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     const {courseId,assignmentId,title,courseDisplayName}=validateAssignmentScope(assignment);
     const course=gradingClassroom(courseId,settings);
     if(writeDrafts)consumeWriteAuthorization(input.writeAuthorization,{courseId,assignmentId});
-    const rubric=boundedRequiredText(input.rubric,'rubric',30000),questionOverride=optionalBoundedText(input.questionOverride,'assignment directions override',20000);
+    // The rubric is optional. Without one, Classroom's own point total is the scale and the
+    // criteria come from the assignment directions. Every other validator stays in force.
+    const rubric=optionalBoundedText(input.rubric,'rubric',30000),rubricProvided=rubric.length>0;
+    const questionOverride=optionalBoundedText(input.questionOverride,'assignment directions override',20000);
     const canonicalUrls=assignmentUrls(courseId,assignmentId);
 
     const extractArgs=encodePayload({
@@ -305,7 +338,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     const scan=lastPayload(scanOut,'grading-submissions');
     if(!scan||!scan.assignment||!Array.isArray(scan.packets)||scan.assignment.courseId!==courseId||scan.assignment.assignmentId!==assignmentId)throw new Error('CATI could not read a matching Classroom student-work queue safely.');
     const question=questionOverride||optionalBoundedText(scan.assignment.question,'Classroom assignment directions',20000),questionComplete=!!questionOverride||scan.assignment.questionComplete===true;
-    const classroomMax=Number(scan.assignment.maxPoints),maxKnown=Number.isFinite(classroomMax)&&classroomMax>0&&classroomMax<=100000,rubricMax=extractMaxPoints(rubric);
+    const classroomMax=Number(scan.assignment.maxPoints),maxKnown=Number.isFinite(classroomMax)&&classroomMax>0&&classroomMax<=100000,rubricMax=rubricProvided?extractMaxPoints(rubric):null;
     const results=[],writeCandidates=[],seenStudents=new Set(),deadline=Date.now()+CLASSROOM_BATCH_DEADLINE_MS;
 
     for(const packet of scan.packets){
@@ -316,19 +349,19 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       if(!packet.extractionComplete){results.push(reviewResult(packet,packet.extractionReason||'CATI could not read the complete student submission safely.'));continue}
       if(!question||!questionComplete){results.push(reviewResult(packet,scan.assignment.questionReason||'CATI could not read the complete assignment directions safely. Add an assignment-directions override and try again.'));continue}
       if(!maxKnown){results.push(reviewResult(packet,scan.assignment.maxPointsReason||'CATI could not verify one positive Classroom assignment point total.'));continue}
-      if(rubricMax===null){results.push(reviewResult(packet,'The rubric needs one explicit total-points value before CATI can independently verify a draft score.'));continue}
-      if(Math.abs(rubricMax-classroomMax)>0.001){results.push(reviewResult(packet,`The rubric explicitly totals ${rubricMax} points, but Classroom shows ${classroomMax} points. CATI will not scale or guess.`));continue}
+      if(rubricProvided&&rubricMax===null){results.push(reviewResult(packet,'The rubric needs one explicit total-points value before CATI can independently verify a draft score.'));continue}
+      if(rubricProvided&&Math.abs(rubricMax-classroomMax)>0.001){results.push(reviewResult(packet,`The rubric explicitly totals ${rubricMax} points, but Classroom shows ${classroomMax} points. CATI will not scale or guess.`));continue}
       const remaining=deadline-Date.now();
       if(remaining<15000){results.push(reviewResult(packet,'The bounded Classroom grading window ended before this student could be graded. Run another preview batch to continue.'));continue}
       let graded;
       try{
-        graded=await createOllamaGrade({model,baseUrl:settings.baseUrl,question,rubric,studentWork:packet.studentWork,timeoutMs:Math.min(120000,Math.max(15000,remaining-5000))});
+        graded=await createOllamaGrade({model,baseUrl:settings.baseUrl,question,rubric,maxPoints:classroomMax,studentWork:packet.studentWork,timeoutMs:Math.min(120000,Math.max(15000,remaining-5000))});
       }catch(error){graded={status:'TEACHER_REVIEW',reason:teacherSafeFailure(compactError(error)),grade:null,validation:null,model,schemaVersion:GRADING_SCHEMA_VERSION};}
       let status=graded.status,reason=graded.reason||null;
       if(status==='SAFE_DRAFT'&&Math.abs(Number(graded.grade?.max_score)-classroomMax)>0.001){
         status='TEACHER_REVIEW';reason=`The rubric totals ${graded.grade?.max_score} points, but Classroom shows ${classroomMax} points. CATI will not scale or guess.`;
       }
-      const row={studentId:packet.studentId,studentName:packet.studentName,status,reason,grade:graded.grade||null,validation:graded.validation||null,writeStatus:'NOT_WRITTEN',writeMessage:'No Classroom grade was changed.'};
+      const row={studentId:packet.studentId,studentName:packet.studentName,status,reason,grade:graded.grade||null,validation:graded.validation||null,rubricSource:graded.rubricSource||(rubricProvided?'teacher':'directions'),writeStatus:'NOT_WRITTEN',writeMessage:'No Classroom grade was changed.'};
       results.push(row);
       if(status==='SAFE_DRAFT'&&graded.grade?.score!==null&&graded.grade?.score!==undefined){
         writeCandidates.push({studentId:packet.studentId,studentName:packet.studentName,studentUrl:packet.studentUrl,score:graded.grade.score,maxScore:graded.grade.max_score,classification:'SAFE_DRAFT',row});
@@ -363,7 +396,9 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       draftsSaved:results.filter(x=>x.writeStatus==='SAVED_DRAFT'||x.writeStatus==='ALREADY_SAVED').length,
       writeFailures:results.filter(x=>x.writeStatus==='WRITE_FAILED'||x.writeStatus==='BLOCKED').length,
       alreadyGraded:Number(scan.alreadyGraded)||0,
-      classroomMaxPoints:maxKnown?classroomMax:null
+      classroomMaxPoints:maxKnown?classroomMax:null,
+      rubricSource:rubricProvided?'teacher':'directions',
+      gradedWithoutRubric:results.filter(x=>x.rubricSource==='directions'&&x.grade).length
     };
     appLog(`Classroom local grading processed ${summary.scanned} submission(s): ${summary.safeDrafts} safe draft(s), ${summary.teacherReview} teacher-review item(s), ${summary.draftsSaved} Classroom draft score(s) verified.`);
     let reviewExport=null;
@@ -380,7 +415,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     finally{classroomBatchActive=false}
   }
 
-  return {loadSettings,saveSettings,addGradingClassroom,removeGradingClassroom,state,grade,discoverAssignments,authorizeWriteBatch,processClassroomAssignment};
+  return {loadSettings,saveSettings,addGradingClassroom,removeGradingClassroom,state,grade,discoverAssignments,discoverTeachingClassrooms,authorizeWriteBatch,processClassroomAssignment};
 }
 
 module.exports={createGradingService};

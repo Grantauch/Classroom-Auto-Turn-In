@@ -127,6 +127,7 @@ These codes are used only if the normal typed main-process error cannot cross th
 | `AT-GRD-193` | `grading:remove-classroom` | The grading Classroom could not be removed from the local list. Google Classroom was not changed. |
 | `AT-GRD-192` | `grading:select-review-folder` | The private grading review folder could not be selected. No student work was saved by that action. |
 | `AT-GRD-191` | `grading:open-review-folder` | Windows could not open the saved private grading review folder. |
+| `AT-GRD-190` | `grading:discover-my-classrooms` | GoClassroom could not read your class list. Saved classes and grades were not changed. |
 | `AT-SUP-198` | `diagnostics:cleanup` | Old support files could not be cleaned up. This does not affect automatic turn-in. |
 | `AT-SUP-196` | `logs:open` | Windows could not open the Auto Turn-In support folder. |
 | `AT-PC-105` | `machine:get` | Auto Turn-In could not read this computer's local role. Restart the app and try again. |

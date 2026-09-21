@@ -490,7 +490,7 @@ handleIpc('grading:save-settings',(_e,v)=>saveGradingSettings(v||{}));
 handleIpc('grading:grade',(_e,v)=>createDraftGrade(v||{}));
 handleIpc('grading:select-classroom',()=>selectGradingClassroom());
 handleIpc('grading:remove-classroom',(_e,courseId)=>removeGradingClassroom(courseId));
-handleIpc('grading:discover-classroom',(_e,courseId)=>discoverGradingAssignments(courseId));
+handleIpc('grading:discover-classroom',(_e,courseId)=>discoverGradingAssignments(courseId));handleIpc('grading:discover-my-classrooms',()=>getGradingService().discoverTeachingClassrooms());
 handleIpc('grading:process-classroom',(_e,v)=>processClassroomGrading(v||{}));
 handleIpc('grading:select-review-folder',()=>selectGradingReviewFolder());
 handleIpc('grading:open-review-folder',()=>openGradingReviewFolder());

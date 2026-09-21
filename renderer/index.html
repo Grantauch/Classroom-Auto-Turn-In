@@ -226,20 +226,20 @@
         </div>
       </div>
       <div class="panel classroom-grading-panel">
-        <div class="panel-title"><div><span class="section-kicker">YOUR TEACHING CLASSES</span><h2>Grade a Classroom assignment</h2><p class="muted">Save every class you grade here. This list is completely separate from the Classroom that receives your lesson plans.</p></div><span id="gradingClassroomBadge" class="status-badge neutral">No class selected</span></div>
-        <div class="notice compact"><b>Draft-only:</b> GoClassroom never clicks <b>Return</b>. Existing draft/final grades are not overwritten. Unsupported or incomplete student evidence goes to teacher review.</div>
+        <div class="panel-title"><div><span class="section-kicker">YOUR CLASSES</span><h2>Grade an assignment</h2><p class="muted">Your lesson plan class is kept separate from the classes you grade.</p></div><span id="gradingClassroomBadge" class="status-badge neutral">No class selected</span></div>
+        <div class="notice compact"><b>Drafts only.</b> GoClassroom never clicks <b>Return</b>, and grades already in Classroom are never changed.</div>
         <div class="form-grid grading-classroom-grid">
-          <label class="wide field">Grading Classroom<select id="gradingClassroomSelect"><option value="">Add a grading Classroom first</option></select></label>
-          <div class="wide classroom-picker-actions"><button id="addGradingClassroom" class="btn secondary" type="button"><svg><use href="#i-home"/></svg><span>Add grading Classroom</span></button><button id="removeGradingClassroom" class="btn text-btn" type="button">Remove from this list</button><span id="gradingClassroomCourse" class="muted">Your lesson-plan setup will not change.</span></div>
+          <div class="wide classroom-picker-actions"><button id="findTeachingClassrooms" class="btn" type="button" data-tip="Opens Classroom once, saves every class you teach, and reads their assignments."><svg><use href="#i-refresh"/></svg><span>Find my classes</span></button><button id="addGradingClassroom" class="btn secondary" type="button" data-tip="Pick one class by hand instead."><svg><use href="#i-home"/></svg><span>Add one class</span></button><span id="gradingClassroomCourse" class="muted">Your lesson plan setup will not change.</span></div>
+          <label class="wide field">Class<select id="gradingClassroomSelect"><option value="">No classes yet</option></select></label>
           <label class="wide field">Assignment<select id="gradingClassroomAssignment"><option value="">Find assignments first</option></select></label>
-          <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Find assignments in this class</span></button></div>
-          <label class="wide field">Rubric<textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric or point criteria for this Classroom assignment."></textarea></label>
-          <label class="wide field">Assignment directions override <small class="muted">Optional. Leave blank to use directions GoClassroom reads from Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only use this if the Classroom directions need clarification."></textarea></label>
+          <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh assignments</span></button><button id="removeGradingClassroom" class="btn text-btn" type="button">Remove this class</button></div>
+          <label class="wide field">Rubric <small class="muted">Optional. Leave blank and GoClassroom grades from the directions, out of the points Classroom already shows.</small><textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric, or leave this blank."></textarea></label>
+          <label class="wide field">Directions <small class="muted">Optional. Leave blank to use the directions in Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only needed if the Classroom directions are unclear."></textarea></label>
           <label class="field">Students per run<input id="gradingBatchSize" type="number" min="1" max="10" value="5"></label>
-          <label class="check wide"><input id="gradingClassroomWriteEnabled" type="checkbox"><span>Allow GoClassroom to save validated SAFE_DRAFT scores into Classroom as hidden draft grades</span></label>
-          <label class="check wide"><input id="gradingWriteDraftsThisRun" type="checkbox"><span>For this run, save validated SAFE_DRAFT scores to Classroom. Leave unchecked to preview only.</span></label>
+          <label class="check wide"><input id="gradingClassroomWriteEnabled" type="checkbox"><span>Let GoClassroom put confident scores into Classroom as hidden drafts</span></label>
+          <label class="check wide"><input id="gradingWriteDraftsThisRun" type="checkbox"><span>Save drafts on this run. Leave off to preview only.</span></label>
         </div>
-        <div class="form-actions"><button id="runClassroomGrading" class="btn primary"><svg><use href="#i-play"/></svg><span>Scan & grade selected assignment</span></button></div>
+        <div class="form-actions"><button id="runClassroomGrading" class="btn primary"><svg><use href="#i-play"/></svg><span>Grade this assignment</span></button></div>
         <div id="gradingClassroomResultPanel" class="grading-classroom-results hidden"></div>
       </div>
       <div class="panel review-copy-panel">
