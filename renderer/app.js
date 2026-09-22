@@ -466,7 +466,7 @@ function renderReady(state={}){
   if(!snapshot||!summary){
     $('#readyOverallStatus').textContent='NOT CHECKED';$('#readyOverallDetail').textContent='Ready has not scanned your saved Classrooms yet.';
     $('#readyBlockCount').textContent='0';$('#readyWarningCount').textContent='0';$('#readyPassCount').textContent='0';$('#readyCourseCount').textContent='0';
-    badge($('#readyGenerated'),'neutral','No report');empty.classList.remove('hidden');$('#exportReady').disabled=true;return;
+    badge($('#readyGenerated'),'neutral','No report');empty.querySelector('h3').textContent='No Ready report yet';empty.querySelector('p').textContent='Run the preflight. Nothing in Classroom will be changed.';empty.classList.remove('hidden');$('#exportReady').disabled=true;return;
   }
   $('#readyOverallStatus').textContent=readyStatusLabel(summary.status);
   $('#readyOverallDetail').textContent=summary.status==='READY'
