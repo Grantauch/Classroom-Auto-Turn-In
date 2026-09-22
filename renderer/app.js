@@ -64,12 +64,13 @@ async function go(id,{force=false}={}){
   if(id==='plans')await loadPlans();
   if(id==='ai')await loadAi();
   if(id==='grading')await loadGrading();
+  if(id==='ready')await loadReady();
   if(id==='automation')await loadAutomation();
   renderUnsaved();
   const heading=$('.page.active h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
   return true;
 }
-async function reloadSection(id){if(id==='setup')return loadSetup();if(id==='plans')return loadPlans();if(id==='ai')return loadAi();if(id==='grading')return loadGrading();if(id==='automation')return loadAutomation();}
+async function reloadSection(id){if(id==='setup')return loadSetup();if(id==='plans')return loadPlans();if(id==='ai')return loadAi();if(id==='grading')return loadGrading();if(id==='ready')return loadReady();if(id==='automation')return loadAutomation();}
 $$('.nav').forEach(b=>b.onclick=()=>go(b.dataset.page));
 $$('[data-go]').forEach(b=>b.onclick=()=>go(b.dataset.go));
 
@@ -447,6 +448,62 @@ $('#installSchedule').onclick=()=>withBusy($('#installSchedule'),'Saving…',per
 $('#removeSchedule').onclick=async()=>{if(!(await askConfirm('Pause automatic checks?','Auto Turn-In will stop opening Classroom on its schedule until you save a schedule again.',{ok:'Pause checks',danger:true})))return;await withBusy($('#removeSchedule'),'Pausing…',async()=>{await cati.removeSchedule();clearDirty('automation');await loadAutomation();await loadDashboard();toast('Automatic checks are paused.');}).catch(e=>toast(e.message,true));};
 async function run(dry){if(running)return false;running=true;$('#runTest').disabled=true;$('#runLive').disabled=true;setStatus(dry?'Safety Check is running…':'Checking for anything due now…');try{const r=await cati[dry?'runTest':'runLive']();const result=r?.result||{};const message=dry?'Safety Check passed. Nothing was attached or submitted.':(Number(result.submitted||0)>0?`Auto Turn-In successfully turned in ${Number(result.submitted)} lesson plan${Number(result.submitted)===1?'':'s'}.`:'Nothing needs to be turned in right now.');setStatus(message);return true}catch(e){setStatus(e.message,true);return false}finally{running=false;$('#runTest').disabled=false;cfg=await cati.getConfig();renderMode(!cfg.dryRun);await loadLogs();await loadDashboard()}}
 $('#runTest').onclick=()=>withBusy($('#runTest'),'Checking…',()=>run(true)).catch(e=>toast(e.message,true));$('#runLive').onclick=()=>withBusy($('#runLive'),'Checking…',()=>run(false)).catch(e=>toast(e.message,true));
+
+function readyStatusLabel(status){
+  return ({READY:'READY',NEEDS_ATTENTION:'NEEDS ATTENTION',BLOCKED:'BLOCKED'}[String(status||'').toUpperCase()]||'NOT CHECKED');
+}
+function renderReadyCheck(course,check){
+  const row=document.createElement('div');
+  row.className=`ready-check-row ${check.status||'warning'}`;
+  const status=check.status==='block'?'BLOCKING':check.status==='warning'?'WARNING':'PASSED';
+  row.innerHTML=`<span class="ready-check-state">${escapeHtml(status)}</span><div class="ready-check-copy"><strong>${escapeHtml(check.label||'Ready check')}</strong><small>${escapeHtml(course.courseName||'Classroom')}${check.assignmentTitle?` · ${escapeHtml(check.assignmentTitle)}`:''}</small><p>${escapeHtml(check.detail||'')}</p>${check.suggestedAction?`<p class="ready-next"><b>Next:</b> ${escapeHtml(check.suggestedAction)}</p>`:''}</div>`;
+  return row;
+}
+function renderReady(state={}){
+  const snapshot=state.snapshot||null,summary=state.summary||null;
+  const empty=$('#readyEmpty'),exceptions=$('#readyExceptions'),all=$('#readyAllChecks');
+  exceptions.innerHTML='';all.innerHTML='';
+  if(!snapshot||!summary){
+    $('#readyOverallStatus').textContent='NOT CHECKED';$('#readyOverallDetail').textContent='Ready has not scanned your saved Classrooms yet.';
+    $('#readyBlockCount').textContent='0';$('#readyWarningCount').textContent='0';$('#readyPassCount').textContent='0';$('#readyCourseCount').textContent='0';
+    badge($('#readyGenerated'),'neutral','No report');empty.classList.remove('hidden');$('#exportReady').disabled=true;return;
+  }
+  $('#readyOverallStatus').textContent=readyStatusLabel(summary.status);
+  $('#readyOverallDetail').textContent=summary.status==='READY'
+    ?`All ${summary.total} checks passed. Nothing in this report needs you.`
+    :summary.status==='BLOCKED'
+      ?`${summary.block} blocking check${summary.block===1?'':'s'} and ${summary.warning} warning${summary.warning===1?'':'s'} need attention.`
+      :`${summary.warning} warning${summary.warning===1?'':'s'} need a look; nothing is blocking.`;
+  $('#readyBlockCount').textContent=String(summary.block||0);$('#readyWarningCount').textContent=String(summary.warning||0);$('#readyPassCount').textContent=String(summary.pass||0);$('#readyCourseCount').textContent=String(snapshot.courses?.length||0);
+  badge($('#readyGenerated'),summary.status==='READY'?'good':summary.status==='BLOCKED'?'bad':'warn',relativeTime(snapshot.generatedAt));
+  const exceptionRows=[];
+  for(const course of snapshot.courses||[]){
+    for(const check of course.checks||[]){
+      all.appendChild(renderReadyCheck(course,check));
+      if(check.status!=='pass')exceptionRows.push({course,check});
+    }
+  }
+  empty.classList.remove('hidden');
+  if(exceptionRows.length){
+    empty.classList.add('hidden');
+    for(const item of exceptionRows)exceptions.appendChild(renderReadyCheck(item.course,item.check));
+  }else{
+    empty.querySelector('h3').textContent='Everything in this report is clear';
+    empty.querySelector('p').textContent='Ready did not find a blocking item or warning.';
+  }
+  $('#exportReady').disabled=false;
+}
+async function loadReady(){
+  const state=await cati.getReadyState();
+  renderReady(state||{});
+  return state;
+}
+$('#runReady').onclick=()=>withBusy($('#runReady'),'Checking…',async()=>{
+  const state=await cati.runReadyScan();renderReady(state);toast(state.summary?.status==='READY'?'Ready check passed. Nothing needs you.':'Ready check finished. Review the exception queue.');
+}).catch(e=>toast(e.message,true));
+$('#exportReady').onclick=()=>withBusy($('#exportReady'),'Saving…',async()=>{
+  const file=await cati.exportReadySnapshot();if(file)toast('Ready report saved.');
+}).catch(e=>toast(e.message,true));
 
 async function loadLogs(){const box=$('#logBox');if(box)box.textContent='Support files are stored on this computer and are not shown inside the app.';}
 function meaningForProblem(msg){const s=friendlyMessage(msg||'');if(/sign in/i.test(s))return ['Google needs your attention','Open Setup and reconnect to the correct work Google account.'];if(/lesson plan.*not found|weekly plan is missing/i.test(s))return ['A weekly plan is missing','Open Lesson plans and make sure the matching weekly file is in the approved Drive folder.'];if(/due date/i.test(s))return ['The assignment due date needs attention','Check the assignment due date in Classroom, then run Check now again.'];if(/damaged|history/i.test(s))return ['Saved Auto Turn-In information needs attention','Keep automatic turn-in paused and copy the support summary for whoever is helping you.'];if(/schedule/i.test(s))return ['The automatic schedule needs attention','Open Automatic turn-in and save the schedule again.'];return [s||'No recent problems','If something needs attention, Auto Turn-In will stop instead of guessing.'];}
