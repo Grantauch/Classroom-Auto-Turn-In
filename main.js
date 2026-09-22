@@ -6,6 +6,7 @@ const {createLocalData}=require('./main-services/local-data');
 const {createEngineRunner}=require('./main-services/engine-runner');
 const {createAiService}=require('./main-services/ai-service');
 const {createGradingService}=require('./main-services/grading-service');
+const {createReadyService}=require('./main-services/ready-service');
 const {createGradingRequestHandler}=require('./main-services/grading-confirmation');
 const {createSchedulerService}=require('./main-services/scheduler-service');
 const {createMachineService}=require('./main-services/machine-service');
@@ -144,6 +145,30 @@ function removeGradingClassroom(courseId){return getGradingService().removeGradi
 async function selectGradingReviewFolder(){ensureAutomationIdle();const result=await dialog.showOpenDialog({title:'Choose a private grading review folder',properties:['openDirectory','createDirectory']});if(result.canceled||!result.filePaths[0])return null;return getGradingService().saveSettings({...getGradingService().loadSettings(),reviewFolderPath:path.resolve(result.filePaths[0])})}
 async function openGradingReviewFolder(){const settings=getGradingService().loadSettings();if(!settings.reviewFolderPath)throw new Error('Choose a grading review folder first.');const result=await shell.openPath(settings.reviewFolderPath);if(result)throw new Error(result);return true}
 const processClassroomGrading=createGradingRequestHandler({dialog,getGradingService});
+
+let readyService=null;
+function getReadyService(){
+  if(!readyService)readyService=createReadyService({
+    localData,ensureAutomationIdle,runNodeScript,getGradingService,
+    runExclusiveBrowser:withExclusiveBrowserOperation
+  });
+  return readyService;
+}
+function readyState(){return getReadyService().latest()}
+function runReadyScan(){return getReadyService().scan()}
+async function exportReadySnapshot(){
+  ensureAutomationIdle();
+  const current=getReadyService().latest();
+  if(!current.snapshot)throw new Error('Run Ready once before saving a report.');
+  const result=await dialog.showSaveDialog({
+    title:'Save Ready report',
+    defaultPath:`GoClassroom-Ready-${new Date().toISOString().slice(0,10)}.json`,
+    filters:[{name:'GrantDesk Ready snapshot',extensions:['json']}]
+  });
+  if(result.canceled||!result.filePath)return null;
+  fs.writeFileSync(result.filePath,JSON.stringify(current.snapshot,null,2),'utf8');
+  return result.filePath;
+}
 
 function getRunLockInfo(){try{return JSON.parse(fs.readFileSync(path.join(dataDir(),'automation.lock'),'utf8'))}catch{return null}}
 function acquireMainAutomationLock(label='setup action'){
@@ -494,5 +519,8 @@ handleIpc('grading:discover-classroom',(_e,courseId)=>discoverGradingAssignments
 handleIpc('grading:process-classroom',(_e,v)=>processClassroomGrading(v||{}));
 handleIpc('grading:select-review-folder',()=>selectGradingReviewFolder());
 handleIpc('grading:open-review-folder',()=>openGradingReviewFolder());
+handleIpc('ready:get-latest',()=>readyState());
+handleIpc('ready:scan',()=>runReadyScan());
+handleIpc('ready:export',()=>exportReadySnapshot());
 handleIpc('diagnostics:cleanup',()=>{const cfg=loadConfig();return cleanupDiagnostics(cfg.diagnosticRetentionDays||45)});
 handleIpc('logs:open',()=>{const dir=path.join(dataDir(),'logs');fs.mkdirSync(dir,{recursive:true});return shell.openPath(dir)});
