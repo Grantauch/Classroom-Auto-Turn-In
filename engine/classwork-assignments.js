@@ -27,7 +27,7 @@ async function expandCard(page,numericId){
   return false;
 }
 
-function mergeRows(anchorRows,teacherRows){
+function mergeRows(anchorRows,teacherRows,{preserveOrder=false}={}){
   const byId=new Map();
   for(const row of anchorRows||[])if(row?.assignmentId)byId.set(row.assignmentId,row);
   for(const row of teacherRows||[]){
@@ -38,11 +38,12 @@ function mergeRows(anchorRows,teacherRows){
     // scraped from an expanded card picks up things like "19 Turned in" instead.
     byId.set(row.assignmentId,{...known,title:/^Assignment\s/.test(row.title||'')?known.title:row.title});
   }
-  return [...byId.values()].sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+  const rows=[...byId.values()];
+  return preserveOrder?rows:rows.sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
 }
 
 // Reads every assignment on a Classwork page, as a student sees it or as its teacher does.
-async function readCourseAssignments(page,courseId,{log=()=>{}}={}){
+async function readCourseAssignments(page,courseId,{log=()=>{},preserveOrder=false}={}){
   const anchorSeen=new Map(),teacherSeen=new Map();
   for(let pass=0;pass<SCROLL_PASSES;pass++){
     for(const row of (await page.evaluate(collectClassroomAssignmentsDom,courseId).catch(()=>[]))||[]){
@@ -56,7 +57,7 @@ async function readCourseAssignments(page,courseId,{log=()=>{}}={}){
     await page.waitForTimeout(350);
   }
   const teacherRows=[...teacherSeen.values()];
-  if(!teacherRows.length)return mergeRows([...anchorSeen.values()],[]);
+  if(!teacherRows.length)return mergeRows([...anchorSeen.values()],[],{preserveOrder});
 
   // One card is opened and checked against Classroom's own link before the rest are trusted.
   const sample=teacherRows[0];
@@ -69,7 +70,7 @@ async function readCourseAssignments(page,courseId,{log=()=>{}}={}){
   }
   if(verified){
     log(`Classwork card identity verified against Classroom for ${teacherRows.length} assignment(s).`);
-    return mergeRows([...anchorSeen.values()],teacherRows);
+    return mergeRows([...anchorSeen.values()],teacherRows,{preserveOrder});
   }
 
   // The shortcut did not hold on this page, so every card is opened and read directly.
@@ -80,7 +81,7 @@ async function readCourseAssignments(page,courseId,{log=()=>{}}={}){
       if(found?.assignmentId&&!anchorSeen.has(found.assignmentId))anchorSeen.set(found.assignmentId,found);
     }
   }
-  return mergeRows([...anchorSeen.values()],[]);
+  return mergeRows([...anchorSeen.values()],[],{preserveOrder});
 }
 
 module.exports={readCourseAssignments};
