@@ -1,8 +1,9 @@
+const fs=require('fs');
 const {encodePayload}=require('../engine/classroom-grading');
 const {lastPayload}=require('../engine/protocol');
 const {validateReadySnapshot,summarizeReadySnapshot}=require('../engine/ready-snapshot');
 
-function createReadyService({localData,ensureAutomationIdle,runNodeScript,getGradingService,runExclusiveBrowser=null}){
+function createReadyService({localData,ensureAutomationIdle,runNodeScript,getGradingService,runExclusiveBrowser=null,dialog=null}){
   const {readJson,writeJson,loadConfig,appLog}=localData;
   const exclusive=runExclusiveBrowser||((_label,fn)=>fn());
 
@@ -39,7 +40,18 @@ function createReadyService({localData,ensureAutomationIdle,runNodeScript,getGra
     return {snapshot,summary};
   }
 
-  return {savedCourses,latest,scan};
+  async function exportSnapshot(){
+    ensureAutomationIdle();
+    if(!dialog)throw new Error('Ready report saving is unavailable in this build.');
+    const current=latest();
+    if(!current.snapshot)throw new Error('Run Ready once before saving a report.');
+    const result=await dialog.showSaveDialog({title:'Save Ready report',defaultPath:`GoClassroom-Ready-${new Date().toISOString().slice(0,10)}.json`,filters:[{name:'GrantDesk Ready report',extensions:['json']}]});
+    if(result.canceled||!result.filePath)return null;
+    fs.writeFileSync(result.filePath,JSON.stringify(current.snapshot,null,2),'utf8');
+    return result.filePath;
+  }
+
+  return {savedCourses,latest,scan,exportSnapshot};
 }
 
 module.exports={createReadyService};
