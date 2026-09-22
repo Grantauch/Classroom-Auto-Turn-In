@@ -1,0 +1,37 @@
+name: Pull Request Safety Check
+
+on:
+  pull_request:
+    branches:
+      - feature/goclassroom-multiclass-v0.9.21
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: goclassroom-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  source-safety:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout proposed source
+        uses: actions/checkout@v4
+
+      - name: Use pinned Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run deep source and safety checks
+        run: npm run check:deep
+
+      - name: Run Classroom DOM fixtures
+        run: npm run check:dom
