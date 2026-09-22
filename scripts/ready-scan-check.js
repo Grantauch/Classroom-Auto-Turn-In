@@ -72,5 +72,3 @@ function checks(overrides={}){
 
 console.log('Ready scanner contract: PASS — sanitized snapshot, due-date fail-closed rules, directions/resource warnings, and overall status verified.');
 
-const root=path.join(__dirname,'..');
-
