@@ -84,3 +84,20 @@ main{background:transparent}
 select{cursor:pointer}
 @media(max-width:1080px){.space-banner{height:100px}.space-banner:after{width:95px;height:88px}.brand-logo{width:166px}}
 @media(max-width:860px){.brand-logo{width:42px;height:42px;object-fit:cover;object-position:left}.space-banner img{width:300px}.review-folder-row{align-items:flex-start;flex-direction:column}.review-folder-row .actions{width:100%}.review-folder-row .actions .btn{flex:1}}
+
+
+/* GrantDesk Ready V1 */
+.ready-check-list{display:grid;gap:10px;margin-top:14px}
+.ready-check-row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;align-items:start;border:1px solid var(--line);border-radius:14px;background:#f9fcff;padding:14px}
+.ready-check-row.block{border-color:#efc3c7;background:var(--red-soft)}
+.ready-check-row.warning{border-color:#f2d397;background:#fffaf0}
+.ready-check-row.pass{border-color:#bde2d0;background:var(--green-soft)}
+.ready-check-state{display:inline-flex;min-height:28px;align-items:center;justify-content:center;border-radius:999px;background:#e7eef7;color:#405a78;font-size:10px;font-weight:850;letter-spacing:.08em}
+.ready-check-row.block .ready-check-state{background:#f6d5d8;color:#9c2e35}
+.ready-check-row.warning .ready-check-state{background:#f9e3b3;color:#8b5700}
+.ready-check-row.pass .ready-check-state{background:#d7f0e2;color:#087548}
+.ready-check-copy strong{display:block;color:var(--ink);font-size:14px}
+.ready-check-copy small{display:block;margin-top:3px;color:var(--muted);font-size:11px}
+.ready-check-copy p{margin:7px 0 0;color:#445169;font-size:12.5px;line-height:1.45}
+.ready-check-copy .ready-next{color:var(--ink)}
+@media(max-width:720px){.ready-check-row{grid-template-columns:1fr}.ready-check-state{width:max-content;padding:0 11px}}

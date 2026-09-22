@@ -39,6 +39,7 @@
       <button class="nav" data-page="automation" data-tip="Automatic turn-in"><svg><use href="#i-clock"/></svg><span class="nav-label">Automatic turn-in</span></button>
       <button class="nav" data-page="setup" data-tip="Setup"><svg><use href="#i-gear"/></svg><span class="nav-label">Setup</span></button>
       <button id="aiNav" class="nav hidden" data-page="ai" data-tip="AI recovery"><svg><use href="#i-spark"/></svg><span class="nav-label">AI recovery</span></button>
+      <button class="nav" data-page="ready" data-tip="Ready preflight"><svg><use href="#i-shield"/></svg><span class="nav-label">Ready</span></button>
       <button class="nav" data-page="grading" data-tip="Draft grading"><svg><use href="#i-check"/></svg><span class="nav-label">Draft grading</span></button>
       <button class="nav" data-page="logs" data-tip="Help & support"><svg><use href="#i-help"/></svg><span class="nav-label">Help & support</span></button>
     </nav>
@@ -207,6 +208,38 @@
       </div>
       <div class="panel"><div class="panel-title"><div><span class="section-kicker">WAITING FOR YOU</span><h2>Drafts</h2><p class="muted">Review the Word file, make any edits, then approve it.</p></div><span id="aiDraftCount" class="status-badge neutral">0 waiting</span></div><div id="aiDraftList" class="ai-draft-list"><div class="empty-state">No AI drafts are waiting for review.</div></div></div>
       <details class="panel"><summary><div><span class="section-kicker">MORE OPTIONS</span><h2>AI writing options</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><div class="form-grid ai-advanced"><label>Writing model<select id="aiModel"><option value="openai/gpt-oss-20b">GPT-OSS 20B — free on Groq</option><option value="qwen/qwen3.8-27b">Qwen 3.8 27B — free on Groq</option><option value="openai/gpt-oss-120b">GPT-OSS 120B — free on Groq</option></select></label><label>How generated files are named<input id="aiFileNameTemplate" value="Week {week2} - Lesson Plans.docx"></label><label>Maximum missing plans to draft in one check<input id="aiMaxDrafts" type="number" min="1" max="3" value="1"></label><div class="wide notice compact"><b>Optional feature:</b> Normal Auto Turn-In does not need AI. <button id="disableAiFeature" class="btn text-btn" type="button">Stop using and hide AI recovery</button></div></div></details>
+    </section>
+
+    <section id="ready" class="page" aria-labelledby="readyTitle">
+      <div class="page-head">
+        <div><span class="page-kicker">CLASSROOM PREFLIGHT</span><h1 id="readyTitle">Ready</h1><p>Check the Classrooms GoClassroom already knows before the problems become tomorrow's problems.</p></div>
+        <button id="runReady" class="btn primary"><svg><use href="#i-shield"/></svg><span>Run Ready check</span></button>
+      </div>
+      <div class="mode-card">
+        <div class="mode-icon"><svg><use href="#i-shield"/></svg></div>
+        <div class="grow"><span class="eyebrow dark">READ-ONLY PREFLIGHT</span><h2 id="readyOverallStatus">NOT CHECKED</h2><p id="readyOverallDetail">Ready has not scanned your saved Classrooms yet.</p></div>
+        <span id="readyGenerated" class="status-badge neutral">No report</span>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-warning"/></svg></div><div><span>Blocking</span><strong id="readyBlockCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-clock"/></svg></div><div><span>Warnings</span><strong id="readyWarningCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-check"/></svg></div><div><span>Passed checks</span><strong id="readyPassCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-home"/></svg></div><div><span>Classes checked</span><strong id="readyCourseCount">0</strong></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><div><span class="section-kicker">WHAT NEEDS YOU</span><h2>What needs you</h2><p class="muted">Passing checks stay out of the way. Blocking items and warnings show up here.</p></div></div>
+        <div id="readyEmpty" class="empty-state"><div class="empty-icon"><svg><use href="#i-shield"/></svg></div><h3>No Ready report yet</h3><p>Run the preflight. Nothing in Classroom will be changed.</p></div>
+        <div id="readyExceptions" class="ready-check-list"></div>
+      </div>
+      <details class="panel">
+        <summary><div><span class="section-kicker">EVERY CHECK</span><h2>Class-by-class details</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+        <div id="readyAllChecks" class="ready-check-list"></div>
+      </details>
+      <div class="panel">
+        <div class="panel-title"><div><span class="section-kicker">GRANTDESK BRIDGE</span><h2>Save a Ready report</h2><p class="muted">This saves the same private-safe Ready report format the GrantDesk Ready page already understands. It does not include student names, submissions, grades, PINs, internal Classroom identifiers, or private links.</p></div></div>
+        <div class="form-actions"><button id="exportReady" class="btn secondary" disabled><svg><use href="#i-doc"/></svg><span>Save Ready report</span></button></div>
+        <div class="notice compact"><b>V1 is read-only.</b> Ready can report a problem, but it cannot change a due date, attachment, assignment, grade, or submission.</div>
+      </div>
     </section>
 
     <section id="grading" class="page" aria-labelledby="gradingTitle">

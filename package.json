@@ -11,7 +11,7 @@
     "check": "node scripts/check.js",
     "dist:win": "electron-builder --win nsis",
     "dist:installer": "electron-builder --win nsis",
-    "check:deep": "node scripts/check.js && node scripts/electron-builder-schema-check.js && node scripts/windows-build-config-check.js && node scripts/offline-adversarial-check.js && node scripts/offline-fuzz-check.js && node scripts/ai-recovery-check.js && node scripts/grading-check.js && node scripts/classroom-grading-bridge-check.js && node scripts/grading-confirmation-check.js && node scripts/grading-classroom-lock-check.js && node scripts/grading-no-rubric-check.js && node scripts/error-language-check.js && node scripts/ui-integrity-check.js && node scripts/field-stabilization-check.js && node scripts/silent-retry-check.js && node scripts/architecture-check.js && node scripts/migration-check.js && node scripts/release-candidate-check.js && node scripts/multi-pc-check.js && node scripts/field-hotfix-v0913-check.js && node scripts/builder-bootstrap-check.js && node scripts/recovery-audit-check.js && node scripts/submission-action-scope-check.js && node scripts/distribution-isolation-check.js && node scripts/verified-build-v0914-check.js && node scripts/scheduler-powershell-check.js",
+    "check:deep": "node scripts/check.js && node scripts/electron-builder-schema-check.js && node scripts/windows-build-config-check.js && node scripts/offline-adversarial-check.js && node scripts/offline-fuzz-check.js && node scripts/ai-recovery-check.js && node scripts/grading-check.js && node scripts/classroom-grading-bridge-check.js && node scripts/grading-confirmation-check.js && node scripts/grading-classroom-lock-check.js && node scripts/grading-no-rubric-check.js && node scripts/ready-scan-check.js && node scripts/error-language-check.js && node scripts/ui-integrity-check.js && node scripts/field-stabilization-check.js && node scripts/silent-retry-check.js && node scripts/architecture-check.js && node scripts/migration-check.js && node scripts/release-candidate-check.js && node scripts/multi-pc-check.js && node scripts/field-hotfix-v0913-check.js && node scripts/builder-bootstrap-check.js && node scripts/recovery-audit-check.js && node scripts/submission-action-scope-check.js && node scripts/distribution-isolation-check.js && node scripts/verified-build-v0914-check.js && node scripts/scheduler-powershell-check.js",
     "check:dom": "node scripts/dom-fixture-check.js",
     "check:browser": "node scripts/background-browser-smoke.js",
     "check:visual": "node scripts/ui-visual-check.js",
@@ -24,7 +24,8 @@
     "check:e2e:engine": "node scripts/e2e/engine-e2e-check.js",
     "check:e2e:ui": "node scripts/e2e/ui-e2e-check.js",
     "check:grading": "node scripts/grading-check.js",
-    "check:grading-bridge": "node scripts/classroom-grading-bridge-check.js"
+    "check:grading-bridge": "node scripts/classroom-grading-bridge-check.js",
+    "check:ready": "node scripts/ready-scan-check.js"
   },
   "dependencies": {
     "playwright-core": "1.55.0"

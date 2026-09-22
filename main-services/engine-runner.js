@@ -10,7 +10,8 @@ function createEngineRunner({engineDir,execPath,envProvider,onLog=()=>{},onProto
     'discover-topics.js':3*60*1000,
     'preflight.js':60*1000,
     'select-course.js':10*60*1000,
-    'select-drive-folder.js':10*60*1000
+    'select-drive-folder.js':10*60*1000,
+    'ready-scan.js':20*60*1000
   };
   const childTimeoutFor=file=>timeoutTable[file]||3*60*1000;
   function terminateChildTree(child){
