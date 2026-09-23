@@ -73,7 +73,8 @@ function compactError(err){
 
 function userSafeError(operation,err){
   const info=publicError(err,operation);
-  appLog(`[${info.code}] ${operation} failed: ${info.technical}`);
+  const technical=String(operation||'').startsWith('roster:')?'Sensitive roster error detail redacted at IPC boundary.':info.technical;
+  appLog(`[${info.code}] ${operation} failed: ${technical}`);
   return info;
 }
 function handleIpc(channel,handler){
