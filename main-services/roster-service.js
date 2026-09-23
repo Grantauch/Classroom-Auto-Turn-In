@@ -11,10 +11,11 @@ const DEFAULT_OPERATIONS_BRIDGE={
   studentEmailDomain:'students.mtmorrisschools.org'
 };
 const ROSTER_WRITE_CONFIRMATION='APPLY SAFE ROSTER CHANGES';
+const ROSTER_RECOVERY_RELEASE_CONFIRMATION='RELEASE PENDING ROSTER BATCH';
 const ROSTER_SOURCE_MAX_AGE_MS=10*60*1000;
 function emptyState(){return {schemaVersion:1,lastDiscoveryAt:'',snapshot:{schemaVersion:1,source:'google-classroom-ui',discoveredAt:'',classes:[]},lastDiff:{added:[],removed:[],changed:[],counts:{added:0,removed:0,changed:0,unresolved:0}},issues:[]}}
 function emptyOperationsState(){return {schemaVersion:1,lastReadAt:'',serverNow:'',bridgeContract:'',writeContract:'',revision:'',roster:[]}}
-function emptyPendingWrite(){return {schemaVersion:1,status:'NONE',createdAt:'',request:null}}
+function emptyPendingWrite(){return {schemaVersion:1,status:'NONE',createdAt:'',request:null,recoveryReviewRequired:false,recoveryReviewAt:''}}
 function emptyLastWrite(){return {schemaVersion:1,appliedAt:'',result:null}}
 function normalizeBridgeSettings(value={}){
   const url=String(value.url||DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim(),studentEmailDomain=String(value.studentEmailDomain||DEFAULT_OPERATIONS_BRIDGE.studentEmailDomain||'').trim().toLowerCase();
@@ -23,7 +24,7 @@ function normalizeBridgeSettings(value={}){
 function encodeBridgeArg(value){return Buffer.from(JSON.stringify(value),'utf8').toString('base64url')}
 function publicPending(value={}){
   if(value?.status!=='PENDING'||!value.request)return {status:'NONE',createdAt:'',count:0};
-  return {status:'PENDING',createdAt:String(value.createdAt||''),requestId:String(value.request.requestId||''),count:(value.request.add?.length||0)+(value.request.updateName?.length||0),add:Number(value.request.add?.length||0),updateName:Number(value.request.updateName?.length||0)};
+  return {status:'PENDING',createdAt:String(value.createdAt||''),requestId:String(value.request.requestId||''),count:(value.request.add?.length||0)+(value.request.updateName?.length||0),add:Number(value.request.add?.length||0),updateName:Number(value.request.updateName?.length||0),reviewRequired:value.recoveryReviewRequired===true,reviewAt:String(value.recoveryReviewAt||'')};
 }
 
 function createRosterService({localData,secureData,ensureAutomationIdle,runNodeScript,runExclusiveBrowser,compactError}){
@@ -126,7 +127,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       : buildNewWriteRequest(`gcr-${crypto.randomUUID()}`,bridge);
     const current=buildNewWriteRequest(reviewed.requestId,bridge);
     if(!sameWriteRequest(reviewed,current))throw new Error('The roster comparison changed while the confirmation window was open. Review the refreshed batch before applying anything.');
-    secureData.write('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:new Date().toISOString(),request:reviewed});
+    secureData.write('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:new Date().toISOString(),request:reviewed,recoveryReviewRequired:false,recoveryReviewAt:''});
     return reviewed;
   }
   function verifyAppliedRequest(request,rows,result={}){
@@ -156,6 +157,13 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       payload=lastPayload(out,'operations-roster-applied');
       if(!payload||payload.ok!==true||String(payload.requestId||'')!==request.requestId)throw new Error('GoClassroom could not verify the approved roster write response. Retry the same approved batch.');
     }catch(error){
+      if(String(error?.code||'')==='ROSTER_RECOVERY_REVIEW_REQUIRED'){
+        const pending=loadPendingWrite();
+        if(pending.status!=='PENDING'||!pending.request||pending.request.requestId!==request.requestId)throw error;
+        secureData.write('roster-write-pending.secure.json',{...pending,recoveryReviewRequired:true,recoveryReviewAt:new Date().toISOString()});
+        appLog(`Approved roster batch ${request.requestId} reached an ambiguous STARTED recovery state. No additional roster change was applied; teacher review is required before the pending batch can be released.`);
+        return {state:publicState(),verified:false,verificationNeeded:true,recoveryReviewRequired:true};
+      }
       if(String(error?.code||'')==='ROSTER_REJECTED_NO_EFFECTS'){
         try{
           secureData.write('operations-roster.secure.json',emptyOperationsState());
@@ -187,6 +195,28 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       return {result:payload,state:publicState(),refreshNeeded:true,verified:false,verificationNeeded:true};
     }
   }
-  return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
+  async function resolvePendingRecovery(){
+    ensureAutomationIdle();
+    if(typeof runNodeScript!=='function')throw new Error('The Hall Pass / Check-In roster recovery bridge is not available in this build.');
+    const pending=loadPendingWrite();
+    if(pending.status!=='PENDING'||!pending.request||pending.recoveryReviewRequired!==true)throw new Error('This roster batch is not waiting for a reviewed recovery release.');
+    const bridge=loadBridgeSettings(),request=validateWriteRequest(pending.request,{studentEmailDomain:bridge.studentEmailDomain});
+    const arg=encodeBridgeArg({bridge,request,recoveryResolution:{confirmation:ROSTER_RECOVERY_RELEASE_CONFIRMATION}});
+    const execute=()=>runNodeScript('apply-operations-roster.js',[arg],false,{timeoutMs:5*60*1000});
+    let payload;
+    try{
+      const out=typeof runExclusiveBrowser==='function'?await runExclusiveBrowser('Reviewed Hall Pass roster recovery',execute):await execute();
+      payload=lastPayload(out,'operations-roster-recovery-released');
+      if(!payload||String(payload.status||'')!=='RECOVERY_RELEASED_FOR_RECOMPARE'||String(payload.requestId||'')!==request.requestId||String(payload.writeContract||'')!==bridge.writeContract)throw new Error('GoClassroom could not verify the reviewed roster recovery release. The pending request remains protected.');
+    }catch(error){
+      appLog(`Reviewed roster recovery for ${request.requestId} did not complete. The encrypted pending request was retained.${safeRosterLogCode(error)}`);
+      throw error;
+    }
+    secureData.write('operations-roster.secure.json',emptyOperationsState());
+    secureData.write('roster-write-pending.secure.json',emptyPendingWrite());
+    appLog(`Teacher reviewed and released pending roster batch ${request.requestId} without applying any additional roster change. A fresh live comparison is required before another batch.`);
+    return {resolved:true,result:payload,state:publicState()};
+  }
+  return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges,resolvePendingRecovery};
 }
 module.exports={DEFAULT_OPERATIONS_BRIDGE,ROSTER_WRITE_CONFIRMATION,ROSTER_SOURCE_MAX_AGE_MS,normalizeBridgeSettings,createRosterService};

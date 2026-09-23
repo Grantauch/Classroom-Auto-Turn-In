@@ -35,6 +35,8 @@ const genericPlan=planOperationsRosterSync(genericPreview,[
 assert.equal(genericPlan.counts.add,0,'A generic period label must never propose a duplicate membership beside an existing descriptive period label.');
 assert.equal(genericPlan.counts.deactivate,0,'A generic/descriptive period collision must not create an automatic removal candidate.');
 assert.ok(genericPlan.held.some(row=>row.reason==='CLASS_PERIOD_LABEL_MISMATCH'),'Generic/descriptive period collisions must stop for explicit class-label resolution.');
+const rosterApplySource=fs.readFileSync(path.join(__dirname,'../engine/apply-operations-roster.js'),'utf8');
+assert.ok(/evaluate\(\(\{request,writeContract,recoveryResolution\}\)=>/.test(rosterApplySource),'Reviewed recovery resolution must be explicitly carried into the isolated browser evaluate callback.');
 const discoverySource=fs.readFileSync(path.join(__dirname,'../engine/discover-classroom-rosters.js'),'utf8');
 assert.ok(discoverySource.includes('if(atEnd){await capture();scrollComplete=true;break;}'),'Roster discovery must collect the final viewport before declaring traversal complete.');
 const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
@@ -74,7 +76,7 @@ assert.equal(nameOnlyResult.counts.verifiedCredentialMemberships,0,'A name-only 
 
 console.log('GoClassroom roster contract checks passed: verified identities, unique mappings, revision-bound safe writes, and no automatic removals.');
 
-function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false,verifiedCredentialMemberships=1}={}){
+function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false,verifiedCredentialMemberships=1,prewriteRecoveryReview=false}={}){
   const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
   const {encode}=require('../engine/protocol');
   const plain=new Map(),secure=new Map(),calls=[],logs=[];let applyAttempts=0,readCount=0,requestIds=[];
@@ -92,7 +94,15 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
     if(file==='apply-operations-roster.js'){
       applyAttempts++;const packed=decodeBridgeArg(args[0]),req=validateWriteRequest(packed.request,{studentEmailDomain:packed.bridge.studentEmailDomain});requestIds.push(req.requestId);
       assert.equal(packed.bridge.writeContract,DEFAULT_OPERATIONS_BRIDGE.writeContract);assert.equal(req.baseRevision,REVISION_A);assert.equal(req.add.length,1);assert.equal(req.updateName.length,1);assert.equal(req.deactivate,undefined);
+      if(prewriteRecoveryReview&&packed.recoveryResolution){
+        assert.equal(packed.recoveryResolution.confirmation,'RELEASE PENDING ROSTER BATCH');
+        return encode('operations-roster-recovery-released',{ok:false,schemaVersion:1,status:'RECOVERY_RELEASED_FOR_RECOMPARE',requestId:req.requestId,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,code:'ROSTER_RECOVERY_RELEASED',reviewCount:1,resolvedAt:'2026-09-22T19:06:00Z'});
+      }
       if(terminalReject){const error=new Error('The roster changed before anything was applied. Compare rosters again.');error.code='ROSTER_REJECTED_NO_EFFECTS';throw error;}
+      if(prewriteRecoveryReview){
+        if(applyAttempts===1)throw new Error('simulated roster append failure before membership write');
+        const error=new Error('An earlier approved roster step was marked started, but its intended live result is not present now.');error.code='ROSTER_RECOVERY_REVIEW_REQUIRED';throw error;
+      }
       if(failFirstApply&&applyAttempts===1)throw new Error(applyErrorMessage);
       return encode('operations-roster-applied',{ok:true,schemaVersion:1,requestId:req.requestId,appliedAt:'2026-09-22T19:05:00Z',writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:verifiedCredentialMemberships?1:0,verifiedCredentialMemberships}});
     }
@@ -138,6 +148,24 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const credentialUnverified=await missingCredential.service.applySafeChanges();assert.equal(credentialUnverified.verified,false);assert.equal(credentialUnverified.state.pendingWrite.status,'PENDING','A live membership without verified PIN credential material must not clear recovery.');assert.equal(credentialUnverified.verificationNeeded,true);
   console.log('GoClassroom credential readback check passed: membership-only success cannot clear an approved pending roster batch.');
 
+  const prewriteRecovery=makeHarness({prewriteRecoveryReview:true});await prewriteRecovery.service.readOperationsRoster();
+  await assert.rejects(()=>prewriteRecovery.service.applySafeChanges(),/append failure before membership write/i);
+  assert.equal(prewriteRecovery.service.publicState().pendingWrite.status,'PENDING');
+  const reviewNeeded=await prewriteRecovery.service.applySafeChanges();
+  assert.equal(reviewNeeded.recoveryReviewRequired,true);
+  assert.equal(reviewNeeded.state.pendingWrite.status,'PENDING');
+  assert.equal(reviewNeeded.state.pendingWrite.reviewRequired,true,'The ambiguous STARTED state must survive restart as an explicit teacher-review requirement.');
+  await assert.rejects(()=>prewriteRecovery.service.readOperationsRoster(),/previously approved roster batch still needs recovery/i,'A new comparison must remain blocked until the teacher resolves the exact pending batch.');
+  const released=await prewriteRecovery.service.resolvePendingRecovery();
+  assert.equal(released.resolved,true);
+  assert.equal(released.state.pendingWrite.status,'NONE');
+  assert.equal(released.state.operations.lastReadAt,'','Reviewed release must invalidate the stale operations comparison before unlocking a new comparison.');
+  const freshAfterRelease=await prewriteRecovery.service.readOperationsRoster();
+  assert.ok(freshAfterRelease.operations.lastReadAt,'A fresh comparison must be allowed after reviewed release.');
+  assert.equal(prewriteRecovery.requestIds[0],prewriteRecovery.requestIds[1]);
+  assert.equal(prewriteRecovery.requestIds[1],prewriteRecovery.requestIds[2],'Reviewed release must bind to the exact original request ID.');
+  console.log('GoClassroom pre-write recovery check passed: ambiguous STARTED state requires explicit reviewed release, then forces a fresh comparison.');
+
   const terminal=makeHarness({terminalReject:true});await terminal.service.readOperationsRoster();
   await assert.rejects(()=>terminal.service.applySafeChanges(),/roster changed/i);
   const terminalState=terminal.service.publicState();assert.equal(terminalState.pendingWrite.status,'NONE','A structured no-effects rejection may resolve the local pending request.');assert.equal(terminalState.operations.lastReadAt,'','A terminal stale rejection must invalidate the stale comparison so a fresh compare can run.');
@@ -152,6 +180,9 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const reviewedPayload={confirmation:'APPLY SAFE ROSTER CHANGES',requestId:'gcr-reviewed-immutable',baseRevision:REVISION_A,add:[{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard'}],updateName:[]};let submittedPayload=null;
   const boundHandler=createRosterApplyHandler({dialog:{showMessageBox:async()=>({response:1})},getRosterIntegration:()=>({validateSafeChanges:()=>reviewedPayload,state:()=>({pendingWrite:{status:'NONE'}}),applySafeChanges:async payload=>{submittedPayload=payload;return {verified:true,state:{}}}})});
   await boundHandler();assert.deepEqual(submittedPayload,reviewedPayload,'Confirmation must submit the exact immutable request the teacher reviewed.');
+  let recoveryDialog=null,recoveryApplyCalls=0,recoveryResolveCalls=0;
+  const recoveryHandler=createRosterApplyHandler({dialog:{showMessageBox:async options=>{recoveryDialog=options;return {response:1}}},getRosterIntegration:()=>({validateSafeChanges:()=>reviewedPayload,state:()=>({pendingWrite:{status:'PENDING',reviewRequired:true}}),applySafeChanges:async()=>{recoveryApplyCalls++},resolvePendingRecovery:async()=>{recoveryResolveCalls++;return {resolved:true,state:{pendingWrite:{status:'NONE'}}}}})});
+  const reviewedRecovery=await recoveryHandler();assert.equal(reviewedRecovery.resolved,true);assert.equal(recoveryResolveCalls,1);assert.equal(recoveryApplyCalls,0,'A review-required recovery must never route back into automatic reapplication.');assert.equal(recoveryDialog.defaultId,0);assert.equal(recoveryDialog.cancelId,0);assert.match(recoveryDialog.buttons[1],/Release batch and compare again/);assert.match(recoveryDialog.detail,/no additional roster change/i);assert.match(recoveryDialog.detail,/later teacher edits/i);
 
   const approvalRace=makeHarness();await approvalRace.service.readOperationsRoster();const reviewed=approvalRace.service.validateSafeChanges();
   approvalRace.plain.set('roster-mappings.json',normalizeMappings({classMappings:{COURSE1:{classPeriod:'Period 4'}}}));

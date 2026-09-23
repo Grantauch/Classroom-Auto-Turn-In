@@ -14,6 +14,7 @@ function createRosterIntegration({safeStorage,localData,ensureAutomationIdle,com
     readOperationsRoster:()=>getService().readOperationsRoster(),
     validateSafeChanges:()=>getService().validateSafeChanges(),
     applySafeChanges:reviewedRequest=>getService().applySafeChanges(reviewedRequest||null),
+    resolvePendingRecovery:()=>getService().resolvePendingRecovery(),
     saveMappings:value=>getService().saveMappings(value||{})
   };
 }

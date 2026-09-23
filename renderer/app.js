@@ -366,8 +366,11 @@ function renderLiveRosterComparison(state=latestRosterState||{}){
   const el=$('#rosterLiveComparison'),applyBtn=$('#applyOperationsRoster');if(!el)return;
   const plan=state?.syncPlan,ops=state?.operations||{},pending=state?.pendingWrite||{};
   if(pending.status==='PENDING'){
-    if(applyBtn){applyBtn.disabled=false;const span=applyBtn.querySelector('span');if(span)span.textContent='Retry approved batch';}
-    el.innerHTML=`<div class="notice compact"><b>Approved batch needs recovery.</b> GoClassroom retained the exact encrypted request from ${pending.createdAt?relativeTime(pending.createdAt):'the previous attempt'}. Retry it before scanning, remapping, or comparing again. The server will replay the same request ID instead of creating a second batch.</div><div class="roster-operation-counts"><div><span>Pending additions</span><strong>${Number(pending.add||0)}</strong></div><div><span>Pending name updates</span><strong>${Number(pending.updateName||0)}</strong></div></div>`;
+    const reviewRequired=pending.reviewRequired===true;
+    if(applyBtn){applyBtn.disabled=false;const span=applyBtn.querySelector('span');if(span)span.textContent=reviewRequired?'Review recovery':'Retry approved batch';}
+    el.innerHTML=reviewRequired
+      ? `<div class="notice compact"><b>Recovery needs teacher review.</b> An earlier approved write started, but its intended live result is not present now. GoClassroom will not reapply that uncertain step automatically. Review the recovery to release this batch without making any additional roster change, then compare the live rosters again.</div><div class="roster-operation-counts"><div><span>Protected additions</span><strong>${Number(pending.add||0)}</strong></div><div><span>Protected name updates</span><strong>${Number(pending.updateName||0)}</strong></div></div>`
+      : `<div class="notice compact"><b>Approved batch needs recovery.</b> GoClassroom retained the exact encrypted request from ${pending.createdAt?relativeTime(pending.createdAt):'the previous attempt'}. Retry it before scanning, remapping, or comparing again. The server will replay the same request ID instead of creating a second batch.</div><div class="roster-operation-counts"><div><span>Pending additions</span><strong>${Number(pending.add||0)}</strong></div><div><span>Pending name updates</span><strong>${Number(pending.updateName||0)}</strong></div></div>`;
     return;
   }
   if(!plan||!ops.lastReadAt){if(applyBtn){applyBtn.disabled=true;const span=applyBtn.querySelector('span');if(span)span.textContent='Apply safe changes';}el.innerHTML='<div class="empty-state">Save your period mappings, then compare against the current operations roster.</div>';return}
@@ -393,6 +396,8 @@ async function applyOperationsRoster(){
   const outcome=await cati.applySafeRosterChanges();
   if(outcome?.cancelled)return outcome;
   const state=outcome?.state||await cati.getRosterState();renderRosters(state);clearDirty('rosters');
+  if(outcome?.resolved===true){toast('The interrupted roster batch was released without making any additional roster change. Compare the live rosters again before applying anything.');return outcome;}
+  if(outcome?.recoveryReviewRequired===true){toast('This recovery needs teacher review before it can be released. No additional roster change was applied.',true);return outcome;}
   const c=outcome?.result?.counts||{},changed=Number(c.added||0)+Number(c.reactivated||0)+Number(c.nameRowsUpdated||0);
   if(outcome?.verified!==true){toast(`The server accepted the approved roster batch, but GoClassroom has not verified the live result yet. The exact recovery request is still protected; use Retry approved batch.`,true);return outcome;}
   toast(`Roster sync verified: ${Number(c.added||0)} added, ${Number(c.reactivated||0)} reactivated, ${Number(c.nameRowsUpdated||0)} name update${Number(c.nameRowsUpdated||0)===1?'':'s'}. No students were removed.`);
