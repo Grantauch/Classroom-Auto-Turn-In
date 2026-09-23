@@ -394,7 +394,8 @@ async function applyOperationsRoster(){
   if(outcome?.cancelled)return outcome;
   const state=outcome?.state||await cati.getRosterState();renderRosters(state);clearDirty('rosters');
   const c=outcome?.result?.counts||{},changed=Number(c.added||0)+Number(c.reactivated||0)+Number(c.nameRowsUpdated||0);
-  toast(`Roster sync verified: ${Number(c.added||0)} added, ${Number(c.reactivated||0)} reactivated, ${Number(c.nameRowsUpdated||0)} name update${Number(c.nameRowsUpdated||0)===1?'':'s'}. No students were removed.${outcome?.refreshNeeded?' Run Compare rosters again to refresh the live view.':''}`);
+  if(outcome?.verified!==true){toast(`The server accepted the approved roster batch, but GoClassroom has not verified the live result yet. The exact recovery request is still protected; use Retry approved batch.`,true);return outcome;}
+  toast(`Roster sync verified: ${Number(c.added||0)} added, ${Number(c.reactivated||0)} reactivated, ${Number(c.nameRowsUpdated||0)} name update${Number(c.nameRowsUpdated||0)===1?'':'s'}. No students were removed.`);
   return outcome;
 }
 async function loadRosters(){
