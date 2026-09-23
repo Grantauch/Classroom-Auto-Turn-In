@@ -1,6 +1,7 @@
 const {launchTeacherContext}=require('./browser');
 const {loadConfig,log}=require('./lib');
 const {emit,emitError}=require('./protocol');
+const {resolveAppsScriptBridgeFrame}=require('./apps-script-frame');
 const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWriteResult}=require('./operations-roster-bridge');
 
 (async()=>{
@@ -13,8 +14,8 @@ const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWr
     emit('status',{message:'Applying only the roster additions and name updates you approved.'});
     await page.goto(teacherUrl(bridge.url),{waitUntil:'domcontentloaded',timeout:60000});
     if(/accounts\.google\.com/i.test(page.url()))throw new Error('Sign in to the school Google account in GoClassroom before applying roster changes.');
-    await page.waitForFunction(()=>Boolean(window.google&&google.script&&google.script.run),{timeout:35000});
-    const raw=await page.evaluate(({request,writeContract})=>new Promise((resolve,reject)=>{
+    const bridgeFrame=await resolveAppsScriptBridgeFrame(page,{timeoutMs:35000});
+    const raw=await bridgeFrame.evaluate(({request,writeContract})=>new Promise((resolve,reject)=>{
       try{
         google.script.run
           .withSuccessHandler(value=>resolve(value))
