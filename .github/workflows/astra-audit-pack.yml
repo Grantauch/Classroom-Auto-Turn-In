@@ -1,0 +1,38 @@
+name: Astra audit source pack
+on:
+  push:
+    branches:
+      - audit/astra-v0927-pack-20260923
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out exact frozen GoClassroom release
+        uses: actions/checkout@v4
+        with:
+          ref: release/goclassroom-v0.9.27-rc1
+      - name: Build source audit archive
+        shell: bash
+        run: |
+          mkdir -p astra-pack/GoClassroom
+          rsync -a ./ astra-pack/GoClassroom/ \
+            --exclude '.git/' \
+            --exclude 'node_modules/' \
+            --exclude 'dist/' \
+            --exclude '.build-tools/' \
+            --exclude 'astra-pack/'
+          printf '%s\n' \
+            'Repository: Grantauch/Classroom-Auto-Turn-In' \
+            'Frozen branch: release/goclassroom-v0.9.27-rc1' \
+            'Frozen merge commit: 1f707eb613cb15b9918f899bde2f8e8ea7019936' \
+            'All-green tested source commit/tree source: 7456b192fc0bd32626f9fb91a6aa82bd18bcc5e8' \
+            > astra-pack/GoClassroom/ASTRA_SOURCE_IDENTITY.txt
+      - name: Upload source pack
+        uses: actions/upload-artifact@v4
+        with:
+          name: Astra-GoClassroom-v0.9.27-source
+          path: astra-pack
+          if-no-files-found: error
+          retention-days: 7
