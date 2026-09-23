@@ -2,7 +2,7 @@ const assert=require('assert');
 const fs=require('fs'),path=require('path'),os=require('os');
 const testData=fs.mkdtempSync(path.join(os.tmpdir(),'goclassroom-roster-sync-check-'));
 process.env.CATI_DATA_DIR=testData;
-process.on('exit',()=>{try{fs.rmSync(testData,{recursive:true,force:true})}catch{}});
+process.on('exit',()=>{try{fs.rmSync(testData,{recursive:true,force:true})}catch{/* best-effort test cleanup */}});
 const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,buildOperationsRosterCandidate,planOperationsRosterSync,collectClassroomPeopleDom}=require('../engine/classroom-roster');
 const {collectAssignmentDueEvidenceDom}=require('../engine/classroom-discovery');
 const {resolveAppsScriptBridgeFrame}=require('../engine/apps-script-frame');
