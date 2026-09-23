@@ -23,11 +23,16 @@ function validateOperationsPayload(result,contract){
   if(!validRevision(revision)||!/^[A-Za-z0-9._:-]{8,120}$/.test(writeContract))throw new Error('The Hall Pass / Check-In roster bridge did not provide a safe write revision. Nothing was synchronized.');
   return {schemaVersion:1,bridgeContract:String(contract||''),writeContract,revision,serverNow:String(result.serverNow||''),roster};
 }
+function cleanWriteText(value,label,max){
+  const text=String(value??'').replace(/\s+/g,' ').trim();
+  if(text.length>max)throw new Error(`The approved roster batch contains a ${label} that is too long. Compare rosters again.`);
+  return text;
+}
 function normalizeAddRows(rows=[]){
-  return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:clean(row?.studentEmail,320).toLowerCase(),studentName:clean(row?.studentName,120),classPeriod:clean(row?.classPeriod,120)}));
+  return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:cleanWriteText(row?.studentEmail,'student email',320).toLowerCase(),studentName:cleanWriteText(row?.studentName,'student name',120),classPeriod:cleanWriteText(row?.classPeriod,'class period',120)}));
 }
 function normalizeNameRows(rows=[]){
-  return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:clean(row?.studentEmail,320).toLowerCase(),studentName:clean(row?.studentName,120),beforeName:clean(row?.beforeName,120),classPeriod:clean(row?.classPeriod,120)}));
+  return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:cleanWriteText(row?.studentEmail,'student email',320).toLowerCase(),studentName:cleanWriteText(row?.studentName,'student name',120),beforeName:cleanWriteText(row?.beforeName,'previous student name',120),classPeriod:cleanWriteText(row?.classPeriod,'class period',120)}));
 }
 function validateWriteRequest(request={}){
   if(!request||typeof request!=='object'||Array.isArray(request))throw new Error('The approved roster write request is invalid. Compare rosters again.');
@@ -45,7 +50,11 @@ function validateWriteRequest(request={}){
 function validateWriteResult(result,expected={}){
   if(!result||result.ok!==true||String(result.requestId||'')!==String(expected.requestId||'')||String(result.writeContract||'')!==String(expected.writeContract||''))throw new Error('The Hall Pass / Check-In roster write returned an unexpected response. Reopen GoClassroom and retry the same approved batch.');
   if(!validRevision(result.revision)||String(result.previousRevision||'')!==String(expected.baseRevision||''))throw new Error('The Hall Pass / Check-In roster write did not verify its before/after revision. Reopen GoClassroom and retry the same approved batch.');
-  const counts=result.counts&&typeof result.counts==='object'?result.counts:{};
-  return {ok:true,schemaVersion:1,requestId:String(result.requestId),appliedAt:String(result.appliedAt||''),writeContract:String(result.writeContract),previousRevision:String(result.previousRevision),revision:String(result.revision),counts:{added:Number(counts.added||0),reactivated:Number(counts.reactivated||0),nameRowsUpdated:Number(counts.nameRowsUpdated||0),requestedNameUpdates:Number(counts.requestedNameUpdates||0),createdPins:Number(counts.createdPins||0),createdPinCards:Number(counts.createdPinCards||0)}};
+  const rawCounts=result.counts&&typeof result.counts==='object'?result.counts:{};
+  const counts={added:Number(rawCounts.added||0),reactivated:Number(rawCounts.reactivated||0),nameRowsUpdated:Number(rawCounts.nameRowsUpdated||0),requestedNameUpdates:Number(rawCounts.requestedNameUpdates||0),createdPins:Number(rawCounts.createdPins||0),createdPinCards:Number(rawCounts.createdPinCards||0)};
+  if(Object.values(counts).some(value=>!Number.isInteger(value)||value<0))throw new Error('The Hall Pass / Check-In roster write returned invalid result counts. Reopen GoClassroom and retry the same approved batch.');
+  if(expected.addCount!==undefined&&counts.added+counts.reactivated!==Number(expected.addCount))throw new Error('The Hall Pass / Check-In roster write did not verify every approved addition. Reopen GoClassroom and retry the same approved batch.');
+  if(expected.updateNameCount!==undefined&&(counts.requestedNameUpdates!==Number(expected.updateNameCount)||counts.nameRowsUpdated!==Number(expected.updateNameCount)))throw new Error('The Hall Pass / Check-In roster write did not verify every approved name update. Reopen GoClassroom and retry the same approved batch.');
+  return {ok:true,schemaVersion:1,requestId:String(result.requestId),appliedAt:String(result.appliedAt||''),writeContract:String(result.writeContract),previousRevision:String(result.previousRevision),revision:String(result.revision),counts};
 }
 module.exports={decodeBridgeArg,validateBridge,teacherUrl,validRevision,validateOperationsPayload,validateWriteRequest,validateWriteResult};

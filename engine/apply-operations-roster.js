@@ -22,7 +22,7 @@ const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWr
           .applyRosterSyncChanges(request,writeContract);
       }catch(error){reject(error)}
     }),{request,writeContract:bridge.writeContract});
-    const result=validateWriteResult(raw,{requestId:request.requestId,baseRevision:request.baseRevision,writeContract:bridge.writeContract});
+    const result=validateWriteResult(raw,{requestId:request.requestId,baseRevision:request.baseRevision,writeContract:bridge.writeContract,addCount:request.add.length,updateNameCount:request.updateName.length});
     log(`Applied approved GoClassroom roster batch ${result.requestId}: ${result.counts.added} added, ${result.counts.reactivated} reactivated, ${result.counts.nameRowsUpdated} name update(s). No removals were requested.`);
     emit('operations-roster-applied',result);
   }finally{await context.close().catch(()=>{})}
