@@ -115,7 +115,7 @@ function normalizeOperationsRoster(rows=[]){
   for(const raw of Array.isArray(rows)?rows:[]){
     const studentEmail=validEmail(raw?.studentEmail||raw?.email),studentName=normalizeName(raw?.studentName||raw?.name),classPeriod=clean(raw?.classPeriod,120);
     if(!studentEmail||!studentName||!/^Period\s+[1-6](?:\b|\s|$)/i.test(classPeriod))continue;
-    out.push({studentEmail,studentName,classPeriod,active:raw?.active!==false});
+    out.push({studentEmail,studentName,classPeriod,active:raw?.active!==false,credentialReady:raw?.credentialReady===true});
   }
   return out;
 }
