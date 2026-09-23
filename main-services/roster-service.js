@@ -53,7 +53,8 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   function publicState(){
     const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState(),pending=loadPendingWrite(),lastWrite=loadLastWrite();
     const syncPlan=operations.lastReadAt?planOperationsRosterSync(preview,operations.roster):null;
-    return {...state,mappings,preview,operations:{lastReadAt:operations.lastReadAt,serverNow:operations.serverNow,count:operations.roster.length,revision:operations.revision,writeReady:Boolean(operations.revision&&operations.writeContract)},syncPlan,pendingWrite:publicPending(pending),lastWrite:{appliedAt:lastWrite.appliedAt||'',counts:lastWrite.result?.counts||null}};
+    const classPeriods=[...new Set(operations.roster.map(row=>String(row.classPeriod||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    return {...state,mappings,preview,operations:{lastReadAt:operations.lastReadAt,serverNow:operations.serverNow,count:operations.roster.length,revision:operations.revision,writeReady:Boolean(operations.revision&&operations.writeContract),classPeriods},syncPlan,pendingWrite:publicPending(pending),lastWrite:{appliedAt:lastWrite.appliedAt||'',counts:lastWrite.result?.counts||null}};
   }
   async function discover(){
     ensureAutomationIdle();assertNoPendingWrite();
