@@ -1,6 +1,6 @@
 const assert=require('assert');
 const fs=require('fs'),path=require('path');
-const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,buildOperationsRosterCandidate,planOperationsRosterSync,collectClassroomPeopleDom}=require('../engine/classroom-roster');
+const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,buildOperationsRosterCandidate,planOperationsRosterSync,collectClassroomPeopleDom,advanceRosterBottomStability}=require('../engine/classroom-roster');
 const {collectAssignmentDueEvidenceDom}=require('../engine/classroom-discovery');
 const {resolveAppsScriptBridgeFrame}=require('../engine/apps-script-frame');
 
@@ -36,7 +36,14 @@ assert.equal(genericPlan.counts.add,0,'A generic period label must never propose
 assert.equal(genericPlan.counts.deactivate,0,'A generic/descriptive period collision must not create an automatic removal candidate.');
 assert.ok(genericPlan.held.some(row=>row.reason==='CLASS_PERIOD_LABEL_MISMATCH'),'Generic/descriptive period collisions must stop for explicit class-label resolution.');
 const discoverySource=fs.readFileSync(path.join(__dirname,'../engine/discover-classroom-rosters.js'),'utf8');
-assert.ok(discoverySource.includes('if(atEnd){await capture();scrollComplete=true;break;}'),'Roster discovery must collect the final viewport before declaring traversal complete.');
+assert.ok(discoverySource.includes('advanceRosterBottomStability'),'Roster discovery must require stable bottom evidence before declaring traversal complete.');
+assert.ok(discoverySource.includes('.catch(()=>null)')&&discoverySource.includes('completion remains unconfirmed'),'Roster scroll-evaluation failures must remain incomplete instead of masquerading as the bottom.');
+let bottom={signature:'',sinceMs:null,complete:false};
+bottom=advanceRosterBottomStability(bottom,{scrollOk:true,atEnd:true,atMs:0,discoveredStudentRows:10,verifiedStudents:10,scrollMax:1000});assert.equal(bottom.complete,false);
+bottom=advanceRosterBottomStability(bottom,{scrollOk:true,atEnd:true,atMs:1350,discoveredStudentRows:10,verifiedStudents:10,scrollMax:1000});assert.equal(bottom.complete,false,'A 1.35 second quiet bottom must not be treated as complete.');
+bottom=advanceRosterBottomStability(bottom,{scrollOk:true,atEnd:true,atMs:2000,discoveredStudentRows:20,verifiedStudents:20,scrollMax:1500});assert.equal(bottom.complete,false,'A delayed lazy-load batch must reset bottom stability.');
+bottom=advanceRosterBottomStability(bottom,{scrollOk:true,atEnd:true,atMs:4600,discoveredStudentRows:20,verifiedStudents:20,scrollMax:1500});assert.equal(bottom.complete,true,'Only a multi-second stable bottom may authorize roster completeness.');
+bottom=advanceRosterBottomStability(bottom,{scrollOk:false,atEnd:true,atMs:5000,discoveredStudentRows:20,verifiedStudents:20,scrollMax:1500});assert.equal(bottom.complete,false,'A scroll-evaluation failure must clear completion evidence.');
 const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
 assert.ok(!dueCollectorSource.includes("main.querySelectorAll('div,span,time')"),'Assignment due-date fallback must not scan ordinary assignment body text.');
 assert.equal(typeof collectClassroomPeopleDom,'function');const domSource=String(collectClassroomPeopleDom);assert.ok(/mailto:/.test(domSource));assert.ok(/Students\|Classmates/.test(domSource));assert.ok(!/firstName|lastName|guess/i.test(domSource),'Roster discovery must not guess student email addresses.');
