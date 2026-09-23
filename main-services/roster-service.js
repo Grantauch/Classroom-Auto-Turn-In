@@ -135,7 +135,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     const missing=[];
     for(const row of request.add||[]){
       const live=byKey.get(`${row.studentEmail}::${row.classPeriod.toLowerCase()}`);
-      if(!live||live.studentName!==row.studentName)missing.push({studentEmail:row.studentEmail,classPeriod:row.classPeriod});
+      if(!live||live.studentName!==row.studentName||live.credentialReady!==true)missing.push({studentEmail:row.studentEmail,classPeriod:row.classPeriod});
     }
     for(const row of request.updateName||[]){
       const live=byKey.get(`${row.studentEmail}::${row.classPeriod.toLowerCase()}`);
