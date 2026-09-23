@@ -12,13 +12,27 @@ function collectAssignmentDueEvidenceDom(){
   const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
   const exactDue=v=>/^(?:No due date|Due\s+(?:Today|Tomorrow|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue(?:s)?|Wed|Thu(?:rs)?|Fri|Sat|Jan(?:uary)?\s+\d{1,2}(?:,\s*\d{4})?|Feb(?:ruary)?\s+\d{1,2}(?:,\s*\d{4})?|Mar(?:ch)?\s+\d{1,2}(?:,\s*\d{4})?|Apr(?:il)?\s+\d{1,2}(?:,\s*\d{4})?|May\s+\d{1,2}(?:,\s*\d{4})?|Jun(?:e)?\s+\d{1,2}(?:,\s*\d{4})?|Jul(?:y)?\s+\d{1,2}(?:,\s*\d{4})?|Aug(?:ust)?\s+\d{1,2}(?:,\s*\d{4})?|Sep(?:t(?:ember)?)?\s+\d{1,2}(?:,\s*\d{4})?|Oct(?:ober)?\s+\d{1,2}(?:,\s*\d{4})?|Nov(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|Dec(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)(?:,?\s+\d{1,2}:\d{2}\s*(?:AM|PM))?)$/i.test(v);
+  const excluded=el=>{
+    for(let p=el,d=0;p&&p!==document.documentElement&&d<8;p=p.parentElement,d++){
+      const semantics=clean([
+        p.getAttribute&&p.getAttribute('aria-label'),
+        p.getAttribute&&p.getAttribute('title'),
+        p.getAttribute&&p.getAttribute('data-tooltip'),
+        p.getAttribute&&p.getAttribute('data-tooltip-text'),
+        p.getAttribute&&p.getAttribute('role')
+      ].filter(Boolean).join(' '));
+      if(/\b(?:instructions?|description|class comments?|private comments?|comments?|rubric)\b/i.test(semantics))return true;
+      if(p.matches&&p.matches('p,[contenteditable="true"],[role="textbox"]'))return true;
+    }
+    return false;
+  };
   const out=[];
   // Only accept deadline values exposed through explicit element metadata. Plain
   // assignment/body text is never authoritative because instructions can contain
   // date-looking phrases such as "Due Sep 22". If Classroom does not expose a
   // semantic due-date value, fail closed and require teacher review instead.
   for(const el of document.querySelectorAll('[aria-label],[title],[data-tooltip],[data-due-date],[data-due],time')){
-    if(!visible(el))continue;
+    if(!visible(el)||excluded(el))continue;
     const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-tooltip'),el.getAttribute('data-due-date'),el.getAttribute('data-due')];
     for(const raw of labels){
       const text=clean(raw);if(!text||text.length>120||!exactDue(text))continue;out.push(text);
