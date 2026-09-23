@@ -47,7 +47,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     ensureAutomationIdle();assertNoPendingWrite();
     const mappings=normalizeMappings(value),conflicts=mappingConflicts(mappings);
     if(conflicts.length)throw new Error(`Each school period can be mapped to only one Classroom. ${conflicts.map(x=>x.classPeriod).join(', ')} ${conflicts.length===1?'is':'are'} mapped more than once.`);
-    writeJson('roster-mappings.json',mappings);invalidateOperationsComparison();return publicState();
+    invalidateOperationsComparison();writeJson('roster-mappings.json',mappings);return publicState();
   }
   function publicState(){
     const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState(),pending=loadPendingWrite(),lastWrite=loadLastWrite();
@@ -63,8 +63,8 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     if(!payload?.snapshot)throw new Error('GoClassroom could not read a safe Classroom roster snapshot. Nothing was synchronized.');
     const before=loadState(),snapshot=normalizeRosterSnapshot(payload.snapshot),diff=diffRosterSnapshots(before.snapshot,snapshot);
     const issues=(Array.isArray(payload.issues)?payload.issues:[]).map(x=>({courseId:String(x?.courseId||''),courseDisplayName:String(x?.courseDisplayName||''),message:compactError(x?.message||'Roster discovery needs review.')})).slice(0,40);
-    secureData.write('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot,lastDiff:diff,issues});
     invalidateOperationsComparison();
+    secureData.write('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot,lastDiff:diff,issues});
     const classCount=snapshot.classes.length,studentCount=snapshot.classes.reduce((n,c)=>n+c.students.length,0);
     appLog(`Classroom roster discovery cached ${studentCount} verified student email identit${studentCount===1?'y':'ies'} across ${classCount} teaching Classroom${classCount===1?'':'s'}. A fresh operations comparison is required before any approved write.`);
     return publicState();
@@ -83,19 +83,26 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     appLog(`Roster comparison read ${roster.length} active Hall Pass / Check-In membership${roster.length===1?'':'s'} at revision ${String(payload.revision||'').slice(0,10)}…. No operational record was changed.`);
     return publicState();
   }
-  function createWriteRequest(){
-    const bridge=loadBridgeSettings(),pending=loadPendingWrite();if(pending.status==='PENDING')return validateWriteRequest(pending.request,{studentEmailDomain:bridge.studentEmailDomain});
+  function buildNewWriteRequest(requestId,bridge=loadBridgeSettings()){
     const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState();
     if(!operations.lastReadAt||!operations.revision||!operations.writeContract)throw new Error('Compare with Hall Pass / Check-In immediately before applying roster changes.');
     const plan=planOperationsRosterSync(preview,operations.roster),safeCount=plan.add.length+plan.updateName.length;
     if(!safeCount)throw new Error('There are no safe additions or name updates to apply. Removal candidates stay review-only.');
-    const request=validateWriteRequest({
+    return validateWriteRequest({
       confirmation:ROSTER_WRITE_CONFIRMATION,
-      requestId:`gcr-${crypto.randomUUID()}`,
+      requestId,
       baseRevision:operations.revision,
       add:plan.add.map(x=>({studentEmail:x.studentEmail,studentName:x.studentName,classPeriod:x.classPeriod})),
       updateName:plan.updateName.map(x=>({studentEmail:x.after.studentEmail,studentName:x.after.studentName,beforeName:x.before.studentName,classPeriod:x.after.classPeriod}))
     },{studentEmailDomain:bridge.studentEmailDomain});
+  }
+  function validateSafeChanges(){
+    const bridge=loadBridgeSettings(),pending=loadPendingWrite();
+    return pending.status==='PENDING'?validateWriteRequest(pending.request,{studentEmailDomain:bridge.studentEmailDomain}):buildNewWriteRequest('gcr-preview-validation',bridge);
+  }
+  function createWriteRequest(){
+    const bridge=loadBridgeSettings(),pending=loadPendingWrite();if(pending.status==='PENDING')return validateWriteRequest(pending.request,{studentEmailDomain:bridge.studentEmailDomain});
+    const request=buildNewWriteRequest(`gcr-${crypto.randomUUID()}`,bridge);
     secureData.write('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:new Date().toISOString(),request});
     return request;
   }
@@ -114,12 +121,12 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       throw error;
     }
     secureData.write('roster-write-last.secure.json',{schemaVersion:1,appliedAt:String(payload.appliedAt||new Date().toISOString()),result:payload});
-    secureData.write('roster-write-pending.secure.json',emptyPendingWrite());
     secureData.write('operations-roster.secure.json',emptyOperationsState());
+    secureData.write('roster-write-pending.secure.json',emptyPendingWrite());
     appLog(`Approved roster batch ${request.requestId} completed. Removals were not requested. Verifying the live operations roster now.`);
     try{return {result:payload,state:await readOperationsRoster(),refreshNeeded:false}}
     catch(error){appLog(`Approved roster batch ${request.requestId} completed, but the follow-up roster read needs attention: ${compactError(error)}`);return {result:payload,state:publicState(),refreshNeeded:true}}
   }
-  return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,createWriteRequest,applySafeChanges};
+  return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
 }
 module.exports={DEFAULT_OPERATIONS_BRIDGE,ROSTER_WRITE_CONFIRMATION,normalizeBridgeSettings,createRosterService};

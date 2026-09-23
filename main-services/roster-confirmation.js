@@ -1,8 +1,8 @@
 function createRosterApplyHandler({dialog,getRosterIntegration}){
   return async function applyApprovedRosterChanges(){
-    const integration=getRosterIntegration(),state=integration.state(),pending=state?.pendingWrite||{},counts=state?.syncPlan?.counts||{};
-    const add=pending.status==='PENDING'?Number(pending.add||0):Number(counts.add||0);
-    const updateName=pending.status==='PENDING'?Number(pending.updateName||0):Number(counts.updateName||0);
+    const integration=getRosterIntegration(),validated=integration.validateSafeChanges(),state=integration.state(),pending=state?.pendingWrite||{};
+    const add=Number(validated.add?.length||0);
+    const updateName=Number(validated.updateName?.length||0);
     if(add+updateName<1)throw new Error('There are no safe roster additions or name updates to apply. Compare rosters again.');
     const retry=pending.status==='PENDING';
     const answer=await dialog.showMessageBox({

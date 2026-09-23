@@ -35,6 +35,7 @@ const bridgePayload=validateOperationsPayload({ok:true,bridgeContract:bridge.con
 assert.equal(bridgePayload.roster.length,1);assert.equal(bridgePayload.revision,REVISION_A);assert.equal(bridgePayload.writeContract,bridge.writeContract);
 assert.throws(()=>validateOperationsPayload({ok:true,bridgeContract:'wrong',writeContract:bridge.writeContract,revision:REVISION_A,roster:[]},bridge.contract),/unexpected response/i);
 assert.throws(()=>validateOperationsPayload({ok:true,bridgeContract:bridge.contract,writeContract:bridge.writeContract,revision:REVISION_A,roster:[{studentEmail:'not-an-email',studentName:'Broken',classPeriod:'Period 3'}]},bridge.contract),/invalid membership row/i);
+assert.throws(()=>validateOperationsPayload({ok:true,bridgeContract:bridge.contract,writeContract:bridge.writeContract,revision:REVISION_A,roster:[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3'},{studentEmail:'ADA@school.org',studentName:'Ada Student',classPeriod:'Period 3'}]},bridge.contract),/duplicate active membership/i,'A corrupt duplicate active membership must not be collapsed into a seemingly safe plan.');
 assert.throws(()=>validateOperationsPayload({ok:true,bridgeContract:bridge.contract,roster:[]},bridge.contract),/safe write revision/i);
 const writeRequest=validateWriteRequest({confirmation:'APPLY SAFE ROSTER CHANGES',requestId:'gcr-test-request-123',baseRevision:REVISION_A,add:[{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3'}],updateName:[{studentEmail:'ada@school.org',studentName:'Ada Student',beforeName:'Ada Old Name',classPeriod:'Period 3'}]},{studentEmailDomain:bridge.studentEmailDomain});
 assert.equal(writeRequest.add.length,1);assert.equal(writeRequest.updateName.length,1);assert.equal(writeRequest.deactivate,undefined);
@@ -43,18 +44,19 @@ assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'long
 assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ben@other.org',studentName:'Ben Student',classPeriod:'Period 3'}],updateName:[]},{studentEmailDomain:'school.org'}),/outside @school\.org/i,'Write requests must reject student addresses outside the configured school student domain before a pending batch is persisted.');
 assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ben@school.org',studentName:'=Ben Student',classPeriod:'Period 3'}],updateName:[]},{studentEmailDomain:'school.org'}),/cannot be written safely/i,'Write requests must mirror the server formula-injection guard before persistence.');
 assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3'},{studentEmail:'ada@school.org',studentName:'Ada Different',classPeriod:'Period 4'}],updateName:[]},{studentEmailDomain:'school.org'}),/conflicting names/i,'Write requests must reject conflicting desired names for one student before persistence.');
+assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3'},{studentEmail:'BEN@school.org',studentName:'Ben Student',classPeriod:'Period 3'}],updateName:[]},{studentEmailDomain:'school.org'}),/duplicate additions/i,'Write requests must mirror the server duplicate-membership guard before persistence.');
 const writeResult=validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,appliedAt:'2026-09-22T19:05:00Z',counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:1}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1});
 assert.equal(writeResult.counts.added,1);assert.equal(writeResult.counts.nameRowsUpdated,1);
 assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:0,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:0,createdPinCards:0}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1}),/every approved addition/i,'A partial or mismatched server result must not clear the pending request.');
 
 console.log('GoClassroom roster contract checks passed: verified identities, unique mappings, revision-bound safe writes, and no automatic removals.');
 
-function makeHarness({failFirstApply=false}={}){
+function makeHarness({failFirstApply=false,failComparisonClearOnce=false}={}){
   const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
   const {encode}=require('../engine/protocol');
-  const plain=new Map(),secure=new Map(),calls=[];let applyAttempts=0,readCount=0,requestIds=[];
+  const plain=new Map(),secure=new Map(),calls=[];let applyAttempts=0,readCount=0,requestIds=[],comparisonClearFailed=false;
   const localData={readJson:(name,fallback)=>plain.has(name)?JSON.parse(JSON.stringify(plain.get(name))):fallback,writeJson:(name,value)=>{plain.set(name,JSON.parse(JSON.stringify(value)));return value},appLog:()=>{}};
-  const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
+  const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{if(failComparisonClearOnce&&!comparisonClearFailed&&applyAttempts>0&&name==='operations-roster.secure.json'&&!value.lastReadAt){comparisonClearFailed=true;throw new Error('simulated local comparison clear failure')}secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
   secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:'2026-09-22T18:00:00Z',snapshot:complete,lastDiff:{counts:{}},issues:[]});plain.set('roster-mappings.json',mappings);plain.set('roster-bridge.json',{...DEFAULT_OPERATIONS_BRIDGE,studentEmailDomain:'school.org'});
   const currentBefore=[{studentEmail:'ada@school.org',studentName:'Ada Old Name',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
   const currentAfter=[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
@@ -86,7 +88,32 @@ function makeHarness({failFirstApply=false}={}){
   let failed=false;try{await recovery.service.applySafeChanges()}catch{failed=true}assert.equal(failed,true);const pending=recovery.service.publicState().pendingWrite;assert.equal(pending.status,'PENDING');assert.equal(pending.count,2);
   const recovered=await recovery.service.applySafeChanges();assert.equal(recovered.state.pendingWrite.status,'NONE');assert.equal(recovery.requestIds.length,2);assert.equal(recovery.requestIds[0],recovery.requestIds[1],'Uncertain failures must retry the exact same idempotent request ID.');
   console.log('GoClassroom roster recovery checks passed: uncertain writes stay encrypted and retry the same server request ID.');
+
+  const localRecovery=makeHarness({failComparisonClearOnce:true});await localRecovery.service.readOperationsRoster();
+  let localFailed=false;try{await localRecovery.service.applySafeChanges()}catch{localFailed=true}assert.equal(localFailed,true);assert.equal(localRecovery.service.publicState().pendingWrite.status,'PENDING','Pending approved write must remain when post-write comparison cleanup fails.');
+  const localRecovered=await localRecovery.service.applySafeChanges();assert.equal(localRecovered.state.pendingWrite.status,'NONE');assert.equal(localRecovery.requestIds[0],localRecovery.requestIds[1],'Post-write local recovery must replay the same server request ID.');
+  console.log('GoClassroom post-write local recovery check passed: pending approval is cleared only after stale comparison state is removed.');
+
+  const {createRosterApplyHandler}=require('../main-services/roster-confirmation');
+  let dialogCalls=0,applyCalls=0;
+  const invalidHandler=createRosterApplyHandler({dialog:{showMessageBox:async()=>{dialogCalls++;return {response:1}}},getRosterIntegration:()=>({validateSafeChanges:()=>{throw new Error('invalid before confirmation')},state:()=>({}),applySafeChanges:async()=>{applyCalls++}})});
+  await assert.rejects(()=>invalidHandler(),/invalid before confirmation/);assert.equal(dialogCalls,0,'Known-invalid roster batches must be rejected before the teacher confirmation dialog.');assert.equal(applyCalls,0);
+  const validHandler=createRosterApplyHandler({dialog:{showMessageBox:async()=>{dialogCalls++;return {response:0}}},getRosterIntegration:()=>({validateSafeChanges:()=>({add:[{}],updateName:[{}]}),state:()=>({pendingWrite:{status:'NONE'}}),applySafeChanges:async()=>{applyCalls++}})});
+  const cancelled=await validHandler();assert.equal(cancelled.cancelled,true);assert.equal(applyCalls,0,'Cancel-default confirmation must not apply roster changes.');
+  console.log('GoClassroom roster confirmation check passed: deterministic validation runs before the Cancel-default native confirmation.');
 })().catch(error=>{console.error(error);process.exitCode=1});
+
+{
+  const {createRosterService}=require('../main-services/roster-service');
+  const writes=[];let mappingSaved=false;
+  const localData={readJson:(_name,fallback)=>fallback,writeJson:(name,value)=>{if(name==='roster-mappings.json')mappingSaved=true;return value},appLog:()=>{}};
+  const secureData={read:(_name,fallback)=>fallback,write:(name,value)=>{writes.push(name);if(name==='operations-roster.secure.json')throw new Error('secure comparison invalidation failed');return value}};
+  const service=createRosterService({localData,secureData,ensureAutomationIdle:()=>{},compactError:error=>String(error.message||error)});
+  assert.throws(()=>service.saveMappings({classMappings:{COURSE1:{classPeriod:'Period 3'}}}),/secure comparison invalidation failed/);
+  assert.equal(mappingSaved,false,'A mapping change must not be committed if the stale operations comparison could not be cleared first.');
+  assert.equal(writes[0],'operations-roster.secure.json');
+  console.log('GoClassroom roster invalidation ordering check passed: stale operations comparisons are cleared before mapping state can change.');
+}
 
 {
   const {createRosterService}=require('../main-services/roster-service');

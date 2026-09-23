@@ -20,6 +20,7 @@ function validateOperationsPayload(result,contract){
   if(!result||result.ok!==true||String(result.bridgeContract||'')!==String(contract||'')||!Array.isArray(result.roster))throw new Error('The Hall Pass / Check-In roster bridge returned an unexpected response. Nothing was synchronized.');
   const roster=normalizeOperationsRoster(result.roster);
   if(roster.length!==result.roster.length)throw new Error('The Hall Pass / Check-In roster contained an invalid membership row. Nothing was synchronized.');
+  const rosterKeys=new Set();for(const row of roster){const key=`${row.studentEmail}::${row.classPeriod.toLowerCase()}`;if(rosterKeys.has(key))throw new Error('The Hall Pass / Check-In roster contains a duplicate active membership. Fix the roster before synchronizing.');rosterKeys.add(key)}
   const revision=String(result.revision||''),writeContract=String(result.writeContract||'');
   if(!validRevision(revision)||!/^[A-Za-z0-9._:-]{8,120}$/.test(writeContract))throw new Error('The Hall Pass / Check-In roster bridge did not provide a safe write revision. Nothing was synchronized.');
   return {schemaVersion:1,bridgeContract:String(contract||''),writeContract,revision,serverNow:String(result.serverNow||''),roster};
@@ -46,6 +47,9 @@ function validateWriteRequest(request={},expected={}){
   if(add.length+updateName.length>200)throw new Error('The approved roster batch is too large. Compare rosters again.');
   const membershipOk=row=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.studentEmail)&&row.studentName&&/^Period\s+[1-6](?:\b|\s|$)/i.test(row.classPeriod);
   if(!add.every(membershipOk)||!updateName.every(row=>membershipOk(row)&&row.beforeName))throw new Error('The approved roster batch contains an invalid membership. Compare rosters again.');
+  const addKeys=new Set(),updateKeys=new Set();
+  for(const row of add){const key=`${row.studentEmail}::${row.classPeriod.toLowerCase()}`;if(addKeys.has(key))throw new Error(`The approved roster batch contains duplicate additions for ${row.studentEmail} / ${row.classPeriod}. Compare rosters again.`);addKeys.add(key)}
+  for(const row of updateName){const key=`${row.studentEmail}::${row.classPeriod.toLowerCase()}`;if(updateKeys.has(key))throw new Error(`The approved roster batch contains duplicate name updates for ${row.studentEmail} / ${row.classPeriod}. Compare rosters again.`);if(addKeys.has(key))throw new Error(`The approved roster batch tries to both add and rename ${row.studentEmail} / ${row.classPeriod}. Compare rosters again.`);updateKeys.add(key)}
   const all=[...add,...updateName],studentEmailDomain=String(expected.studentEmailDomain||'').trim().toLowerCase();
   if(studentEmailDomain&&all.some(row=>row.studentEmail.split('@').pop()!==studentEmailDomain))throw new Error(`The approved roster batch contains a student email outside @${studentEmailDomain}. Compare rosters again.`);
   if(all.some(row=>/^[=+\-@]/.test(row.studentName))||updateName.some(row=>/^[=+\-@]/.test(row.beforeName)))throw new Error('The approved roster batch contains a student name that cannot be written safely. Compare rosters again.');
