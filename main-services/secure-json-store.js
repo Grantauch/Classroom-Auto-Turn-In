@@ -6,12 +6,14 @@ function createSecureJsonStore({safeStorage,localData}){
     assertAvailable();
     const plaintext=JSON.stringify(value);
     const encrypted=safeStorage.encryptString(plaintext).toString('base64');
-    localData.writeJson(name,{secureJsonVersion:1,encrypted});
+    const criticalPending=name==='roster-write-pending.secure.json';
+    localData.writeJson(name,{secureJsonVersion:1,encrypted},criticalPending?{requireBackup:true}:undefined);
     return value;
   }
   function read(name,fallback){
     const readEnvelope=typeof localData.readJsonStrict==='function'?localData.readJsonStrict:localData.readJson;
-    const envelope=readEnvelope(name,null);
+    const criticalPending=name==='roster-write-pending.secure.json';
+    const envelope=readEnvelope(name,null,criticalPending?{persistCorruption:true,requireBackup:true}:undefined);
     if(!envelope)return fallback;
     if(Number(envelope.secureJsonVersion)!==1||typeof envelope.encrypted!=='string'||!envelope.encrypted)throw new Error(`${name} is not a valid encrypted GoClassroom record.`);
     assertAvailable();

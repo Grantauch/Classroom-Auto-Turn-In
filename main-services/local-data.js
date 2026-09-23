@@ -22,12 +22,12 @@ function createLocalData(getUserDataDir){
       const value=readJsonWithBackup(file,{fallback,label:name,logger:appLog});issues.delete(name);return value;
     }catch(e){issues.set(name,`${name} and its backup could not be read safely.`);appLog(`${name} could not be read. Safe defaults will be used until setup is repaired.`);return fallback}
   }
-  function readJsonStrict(name,fallback){
-    const value=readJsonWithBackup(jsonPath(name),{fallback,label:name,logger:appLog,throwOnCorrupt:true});
+  function readJsonStrict(name,fallback,options={}){
+    const value=readJsonWithBackup(jsonPath(name),{fallback,label:name,logger:appLog,...options,throwOnCorrupt:true});
     issues.delete(name);
     return value;
   }
-  function writeJson(name,value){atomicWriteJson(jsonPath(name),value,{backup:true});issues.delete(name);return value}
+  function writeJson(name,value,options={}){atomicWriteJson(jsonPath(name),value,{...options,backup:true});issues.delete(name);return value}
   function loadConfig(){
     const raw=readJson('config.json',{});
     return validateConfig(migrateConfig(raw,{profileDir:defaultProfileDirForDataRoot(dataDir())}));
