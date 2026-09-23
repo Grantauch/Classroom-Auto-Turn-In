@@ -122,7 +122,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const recovered=await recovery.service.applySafeChanges();assert.equal(recovered.state.pendingWrite.status,'NONE');assert.equal(recovery.requestIds.length,2);assert.equal(recovery.requestIds[0],recovery.requestIds[1],'Uncertain failures must retry the exact same idempotent request ID.');
   console.log('GoClassroom roster recovery checks passed: uncertain writes stay encrypted and retry the same server request ID.');
 
-  const mainSource=fs.readFileSync(path.join(__dirname,'../main.js'),'utf8');assert.ok(mainSource.includes('Sensitive roster error detail redacted at IPC boundary.'),'The final IPC logger must redact roster error details before writing plaintext diagnostics.');
+  const ipcErrorSource=fs.readFileSync(path.join(__dirname,'../main-services/ipc-error-reporter.js'),'utf8');assert.ok(ipcErrorSource.includes('Sensitive roster error detail redacted at IPC boundary.'),'The final IPC logger must redact roster error details before writing plaintext diagnostics.');
   const privacy=makeHarness({failFirstApply:true,applyErrorMessage:'server rejected ada@school.org during validation'});await privacy.service.readOperationsRoster();
   await assert.rejects(()=>privacy.service.applySafeChanges(),/ada@school\.org/);assert.ok(!privacy.logs.join('\n').includes('ada@school.org'),'Plaintext roster diagnostics must not retain student email addresses from failure messages.');
   console.log('GoClassroom roster diagnostic privacy check passed: teacher-facing errors may be specific, but plaintext logs do not retain student email identities.');
