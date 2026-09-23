@@ -2,7 +2,7 @@ const {launchTeacherContext}=require('./browser');
 const {loadConfig,log}=require('./lib');
 const {assertGoogleSession}=require('./classroom-actions');
 const {emit,emitError}=require('./protocol');
-const {clean,validCourseId,collectClassroomPeopleDom,normalizeRosterSnapshot}=require('./classroom-roster');
+const {clean,validCourseId,collectClassroomPeopleDom,normalizeRosterSnapshot,advanceRosterBottomStability}=require('./classroom-roster');
 
 const MAX_CLASSROOMS=40;
 
@@ -29,7 +29,7 @@ function collectTeachingClassroomsDom(){
 }
 
 async function collectCourseRoster(page,course){
-  const byEmail=new Map();let maxRows=0,headingFound=false,scrollComplete=false;
+  const byEmail=new Map();let maxRows=0,headingFound=false,scrollComplete=false,bottomStability={signature:'',sinceMs:null,complete:false};
   const url=`https://classroom.google.com/c/${encodeURIComponent(course.courseId)}/r`;
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await assertGoogleSession(page,`People for ${course.courseDisplayName}`);
@@ -40,16 +40,19 @@ async function collectCourseRoster(page,course){
     headingFound=headingFound||snapshot.studentsHeadingFound===true;maxRows=Math.max(maxRows,Number(snapshot.discoveredStudentRows)||0);
     for(const row of snapshot.students||[])if(row?.email&&!byEmail.has(String(row.email).toLowerCase()))byEmail.set(String(row.email).toLowerCase(),row);
   };
-  for(let pass=0;pass<12;pass++){
+  for(let pass=0;pass<24;pass++){
     await capture();
     const moved=await page.evaluate(()=>{
       const roots=[...document.querySelectorAll('*')].filter(el=>{const s=getComputedStyle(el);return /auto|scroll/.test(s.overflowY||'')&&el.scrollHeight>el.clientHeight+40});
       const root=roots.sort((a,b)=>(b.scrollHeight-b.clientHeight)-(a.scrollHeight-a.clientHeight))[0]||document.scrollingElement||document.documentElement;
       const before=root.scrollTop,max=Math.max(0,root.scrollHeight-root.clientHeight);root.scrollTop=Math.min(max,before+Math.max(500,root.clientHeight*0.85));return {before,after:root.scrollTop,max};
-    }).catch(()=>({before:0,after:0,max:0}));
-    const atEnd=moved.after>=moved.max-5||moved.after===moved.before;
-    await page.waitForTimeout(atEnd?350:250);
-    if(atEnd){await capture();scrollComplete=true;break;}
+    }).catch(()=>null);
+    if(!moved){log(`Roster discovery could not verify scrolling in ${course.courseDisplayName}; completion remains unconfirmed.`);break;}
+    const atEnd=moved.after>=moved.max-5;
+    await page.waitForTimeout(atEnd?600:250);
+    await capture();
+    bottomStability=advanceRosterBottomStability(bottomStability,{scrollOk:true,atEnd,atMs:Date.now(),discoveredStudentRows:maxRows,verifiedStudents:byEmail.size,scrollMax:moved.max});
+    if(bottomStability.complete){scrollComplete=true;break;}
   }
   const students=[...byEmail.values()];
   if(!headingFound)log(`Roster discovery could not confirm the Students heading in ${course.courseDisplayName}; no guessed roster changes will be allowed.`);
