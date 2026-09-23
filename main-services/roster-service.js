@@ -129,7 +129,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     secureData.write('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:new Date().toISOString(),request:reviewed});
     return reviewed;
   }
-  function verifyAppliedRequest(request,rows){
+  function verifyAppliedRequest(request,rows,result={}){
     const current=normalizeOperationsRoster(rows||[]).filter(row=>row.active);
     const byKey=new Map(current.map(row=>[`${row.studentEmail}::${row.classPeriod.toLowerCase()}`,row]));
     const missing=[];
@@ -141,7 +141,9 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       const live=byKey.get(`${row.studentEmail}::${row.classPeriod.toLowerCase()}`);
       if(!live||live.studentName!==row.studentName)missing.push({studentEmail:row.studentEmail,classPeriod:row.classPeriod});
     }
-    return {ok:missing.length===0,missingCount:missing.length};
+    const credentialExpected=Number(request.add?.length||0),credentialVerified=Number(result?.counts?.verifiedCredentialMemberships||0);
+    const credentialsOk=credentialExpected===0||credentialVerified===credentialExpected;
+    return {ok:missing.length===0&&credentialsOk,missingCount:missing.length,credentialExpected,credentialVerified};
   }
   async function applySafeChanges(reviewedRequest=null){
     ensureAutomationIdle();
@@ -172,9 +174,9 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     appLog(`Approved roster batch ${request.requestId} returned a server completion receipt. The pending request remains protected until live membership readback succeeds.`);
     try{
       await readOperationsRoster({allowPending:true});
-      const live=loadOperationsState(),verification=verifyAppliedRequest(request,live.roster);
+      const live=loadOperationsState(),verification=verifyAppliedRequest(request,live.roster,payload);
       if(!verification.ok){
-        appLog(`Approved roster batch ${request.requestId} could not verify ${verification.missingCount} intended live membership result(s). The exact pending request was retained.`);
+        appLog(`Approved roster batch ${request.requestId} could not verify ${verification.missingCount} intended live membership result(s) and ${verification.credentialVerified}/${verification.credentialExpected} approved credential result(s). The exact pending request was retained.`);
         return {result:payload,state:publicState(),refreshNeeded:false,verified:false,verificationNeeded:true};
       }
       secureData.write('roster-write-pending.secure.json',emptyPendingWrite());

@@ -65,13 +65,16 @@ const oversizedAdd=Array.from({length:200},(_,index)=>({studentEmail:`bulk.stude
 assert.ok(estimatePendingRecoveryBytes(oversizedAdd,[])>ROSTER_RECOVERY_TARGET_BYTES,'The synthetic 200-row batch must exceed the conservative recovery envelope.');
 assert.throws(()=>validateWriteRequest({confirmation:'APPLY SAFE ROSTER CHANGES',requestId:'gcr-oversized-client-001',baseRevision:REVISION_A,add:oversizedAdd,updateName:[]},{studentEmailDomain:'school.org'}),/too large to preserve safely/i,'An unrecoverable oversized batch must be rejected before the teacher confirmation dialog.');
 
-const writeResult=validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,appliedAt:'2026-09-22T19:05:00Z',counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:1}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1});
+const writeResult=validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,appliedAt:'2026-09-22T19:05:00Z',counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:1,verifiedCredentialMemberships:1}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1});
 assert.equal(writeResult.counts.added,1);assert.equal(writeResult.counts.nameRowsUpdated,1);
-assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:0,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:0,createdPinCards:0}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1}),/every approved addition/i,'A partial or mismatched server result must not clear the pending request.');
+assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:0,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:0,createdPinCards:0,verifiedCredentialMemberships:0}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1}),/every approved addition/i,'A partial or mismatched server result must not clear the pending request.');
+assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:0,verifiedCredentialMemberships:0}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1}),/usable PIN credentials/i,'A server receipt with the membership present but no verified credential must remain unverified.');
+const nameOnlyResult=validateWriteResult({ok:true,requestId:'gcr-name-only-credential-check',writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:0,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:0,createdPinCards:0,verifiedCredentialMemberships:0}},{requestId:'gcr-name-only-credential-check',baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:0,updateNameCount:1});
+assert.equal(nameOnlyResult.counts.verifiedCredentialMemberships,0,'A name-only batch must not require PIN provisioning.');
 
 console.log('GoClassroom roster contract checks passed: verified identities, unique mappings, revision-bound safe writes, and no automatic removals.');
 
-function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false}={}){
+function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false,verifiedCredentialMemberships=1}={}){
   const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
   const {encode}=require('../engine/protocol');
   const plain=new Map(),secure=new Map(),calls=[],logs=[];let applyAttempts=0,readCount=0,requestIds=[];
@@ -91,7 +94,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
       assert.equal(packed.bridge.writeContract,DEFAULT_OPERATIONS_BRIDGE.writeContract);assert.equal(req.baseRevision,REVISION_A);assert.equal(req.add.length,1);assert.equal(req.updateName.length,1);assert.equal(req.deactivate,undefined);
       if(terminalReject){const error=new Error('The roster changed before anything was applied. Compare rosters again.');error.code='ROSTER_REJECTED_NO_EFFECTS';throw error;}
       if(failFirstApply&&applyAttempts===1)throw new Error(applyErrorMessage);
-      return encode('operations-roster-applied',{ok:true,schemaVersion:1,requestId:req.requestId,appliedAt:'2026-09-22T19:05:00Z',writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:1}});
+      return encode('operations-roster-applied',{ok:true,schemaVersion:1,requestId:req.requestId,appliedAt:'2026-09-22T19:05:00Z',writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:verifiedCredentialMemberships?1:0,verifiedCredentialMemberships}});
     }
     throw new Error(`Unexpected child ${file}`);
   }});
@@ -130,6 +133,10 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const missingReadback=makeHarness({afterRows:[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}]});await missingReadback.service.readOperationsRoster();
   const unverified=await missingReadback.service.applySafeChanges();assert.equal(unverified.verified,false);assert.equal(unverified.state.pendingWrite.status,'PENDING','A server receipt must not clear recovery when the intended live membership is absent.');
   console.log('GoClassroom live readback check passed: a missing intended row remains unverified and recovery-protected.');
+
+  const missingCredential=makeHarness({verifiedCredentialMemberships:0});await missingCredential.service.readOperationsRoster();
+  const credentialUnverified=await missingCredential.service.applySafeChanges();assert.equal(credentialUnverified.verified,false);assert.equal(credentialUnverified.state.pendingWrite.status,'PENDING','A live membership without verified PIN credential material must not clear recovery.');assert.equal(credentialUnverified.verificationNeeded,true);
+  console.log('GoClassroom credential readback check passed: membership-only success cannot clear an approved pending roster batch.');
 
   const terminal=makeHarness({terminalReject:true});await terminal.service.readOperationsRoster();
   await assert.rejects(()=>terminal.service.applySafeChanges(),/roster changed/i);
