@@ -41,7 +41,7 @@ const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
 assert.ok(!dueCollectorSource.includes("div,span,p"),'Assignment due-date fallback must not scan ordinary assignment body text.');
 assert.equal(typeof collectClassroomPeopleDom,'function');const domSource=String(collectClassroomPeopleDom);assert.ok(/mailto:/.test(domSource));assert.ok(/Students\|Classmates/.test(domSource));assert.ok(!/firstName|lastName|guess/i.test(domSource),'Roster discovery must not guess student email addresses.');
 
-const {validateBridge,teacherUrl,validateOperationsPayload,validateWriteRequest,validateWriteResult,decodeBridgeArg}=require('../engine/operations-roster-bridge');
+const {validateBridge,teacherUrl,validateOperationsPayload,validateWriteRequest,validateWriteResult,decodeBridgeArg,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES}=require('../engine/operations-roster-bridge');
 const REVISION_A='AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const REVISION_B='BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
 const bridge=validateBridge({url:'https://script.google.com/a/macros/example.org/s/DEPLOYMENT/exec',contract:'2026-09-22-roster-sync-v1',writeContract:'2026-09-22-roster-write-v1',studentEmailDomain:'school.org'});
@@ -61,6 +61,10 @@ assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ben@
 assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ben@school.org',studentName:'=Ben Student',classPeriod:'Period 3'}],updateName:[]},{studentEmailDomain:'school.org'}),/cannot be written safely/i,'Write requests must mirror the server formula-injection guard before persistence.');
 assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3'},{studentEmail:'ada@school.org',studentName:'Ada Different',classPeriod:'Period 4'}],updateName:[]},{studentEmailDomain:'school.org'}),/conflicting names/i,'Write requests must reject conflicting desired names for one student before persistence.');
 assert.throws(()=>validateWriteRequest({...writeRequest,add:[{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3'},{studentEmail:'BEN@school.org',studentName:'Ben Student',classPeriod:'Period 3'}],updateName:[]},{studentEmailDomain:'school.org'}),/duplicate additions/i,'Write requests must mirror the server duplicate-membership guard before persistence.');
+const oversizedAdd=Array.from({length:200},(_,index)=>({studentEmail:`bulk.student.${String(index).padStart(3,'0')}@school.org`,studentName:`Bulk Student ${String(index).padStart(3,'0')}`,classPeriod:`Period ${(index%6)+1}`}));
+assert.ok(estimatePendingRecoveryBytes(oversizedAdd,[])>ROSTER_RECOVERY_TARGET_BYTES,'The synthetic 200-row batch must exceed the conservative recovery envelope.');
+assert.throws(()=>validateWriteRequest({confirmation:'APPLY SAFE ROSTER CHANGES',requestId:'gcr-oversized-client-001',baseRevision:REVISION_A,add:oversizedAdd,updateName:[]},{studentEmailDomain:'school.org'}),/too large to preserve safely/i,'An unrecoverable oversized batch must be rejected before the teacher confirmation dialog.');
+
 const writeResult=validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,appliedAt:'2026-09-22T19:05:00Z',counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:1}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1});
 assert.equal(writeResult.counts.added,1);assert.equal(writeResult.counts.nameRowsUpdated,1);
 assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:0,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:0,createdPinCards:0}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1}),/every approved addition/i,'A partial or mismatched server result must not clear the pending request.');
@@ -73,7 +77,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const plain=new Map(),secure=new Map(),calls=[],logs=[];let applyAttempts=0,readCount=0,requestIds=[];
   const localData={readJson:(name,fallback)=>plain.has(name)?JSON.parse(JSON.stringify(plain.get(name))):fallback,writeJson:(name,value)=>{plain.set(name,JSON.parse(JSON.stringify(value)));return value},appLog:message=>logs.push(String(message))};
   const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
-  secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:'2026-09-22T18:00:00Z',snapshot:complete,lastDiff:{counts:{}},issues:[]});plain.set('roster-mappings.json',mappings);plain.set('roster-bridge.json',{...DEFAULT_OPERATIONS_BRIDGE,studentEmailDomain:'school.org'});
+  secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot:{...complete,discoveredAt:new Date().toISOString()},lastDiff:{counts:{}},issues:[]});plain.set('roster-mappings.json',mappings);plain.set('roster-bridge.json',{...DEFAULT_OPERATIONS_BRIDGE,studentEmailDomain:'school.org'});
   const currentBefore=[{studentEmail:'ada@school.org',studentName:'Ada Old Name',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
   const currentAfter=afterRows||[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
   const service=createRosterService({localData,secureData,ensureAutomationIdle:()=>{},compactError:e=>String(e),runExclusiveBrowser:async(_label,fn)=>fn(),runNodeScript:async(file,args)=>{
@@ -99,6 +103,13 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const appFrame={url:()=> 'https://abc-script.googleusercontent.com/userCodeAppPanel',evaluate:async()=>true};
   const fakePage={mainFrame:()=>mainFrame,frames:()=>[mainFrame,appFrame],waitForTimeout:async()=>{}};
   assert.equal(await resolveAppsScriptBridgeFrame(fakePage,{timeoutMs:1000,pollMs:1}),appFrame,'Roster bridge must resolve the trusted HtmlService application frame.');
+
+  const staleSource=makeHarness();
+  const staleSnapshot=staleSource.secure.get('roster-sync.secure.json');
+  staleSource.secure.set('roster-sync.secure.json',{...staleSnapshot,lastDiscoveryAt:new Date(Date.now()-11*60*1000).toISOString(),snapshot:{...staleSnapshot.snapshot,discoveredAt:new Date(Date.now()-11*60*1000).toISOString()}});
+  await assert.rejects(()=>staleSource.service.readOperationsRoster(),/too old to approve a roster write/i);
+  assert.equal(staleSource.calls.length,0,'A stale Classroom roster must be rejected before opening the Hall Pass bridge.');
+  console.log('GoClassroom roster freshness check passed: stale Classroom source evidence cannot reach comparison or approval.');
 
   const h=makeHarness();const state=await h.service.readOperationsRoster();
   assert.equal(state.operations.count,2);assert.equal(state.operations.writeReady,true);assert.equal(state.syncPlan.counts.add,1);assert.equal(state.syncPlan.counts.updateName,1);assert.equal(state.syncPlan.counts.deactivate,1);assert.equal(h.plain.has('operations-roster.secure.json'),false,'Student operations roster must never be written through plaintext localData.');
