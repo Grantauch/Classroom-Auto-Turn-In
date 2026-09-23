@@ -2,7 +2,7 @@ const fs=require('fs'),path=require('path'),os=require('os'),cp=require('child_p
 const {collectStrictTopicAssignmentsDom,collectDrivePlanRowsDom}=require('../engine/dom-helpers');
 const {markWeekInstructionsDom}=require('../engine/classroom-discovery');
 const {collectStudentEvidenceDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,collectStudentSubmissionRowsDom}=require('../engine/classroom-grading');
-function browserPath(){
+function browserPaths(){
   const guesses=process.platform==='win32'?[
     process.env.LOCALAPPDATA&&path.join(process.env.LOCALAPPDATA,'Google','Chrome','Application','chrome.exe'),
     process.env.PROGRAMFILES&&path.join(process.env.PROGRAMFILES,'Google','Chrome','Application','chrome.exe'),
@@ -11,18 +11,17 @@ function browserPath(){
     process.env.PROGRAMFILES&&path.join(process.env.PROGRAMFILES,'Microsoft','Edge','Application','msedge.exe'),
     process.env['PROGRAMFILES(X86)']&&path.join(process.env['PROGRAMFILES(X86)'],'Microsoft','Edge','Application','msedge.exe')
   ]:['/usr/bin/chromium','/usr/bin/google-chrome'];
-  const direct=guesses.filter(Boolean).find(fs.existsSync);if(direct)return direct;
+  const found=guesses.filter(Boolean).filter(fs.existsSync);
   if(process.platform==='win32'){
     for(const name of ['chrome.exe','msedge.exe']){
       const r=cp.spawnSync('where.exe',[name],{encoding:'utf8',timeout:5000});
-      const candidate=String(r.stdout||'').split(/\r?\n/).map(x=>x.trim()).find(x=>x&&fs.existsSync(x));
-      if(candidate)return candidate;
+      for(const candidate of String(r.stdout||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean))if(fs.existsSync(candidate))found.push(candidate);
     }
   }
-  return null;
+  return [...new Set(found.map(x=>path.resolve(x)))];
 }
-const browser=browserPath();
-if(!browser){
+const browsers=browserPaths();
+if(!browsers.length){
   if(process.platform==='win32'){console.error('DOM fixture checks FAILED: Chrome or Edge could not be located on this Windows PC.');process.exit(1)}
   console.log('DOM fixture checks skipped on this non-Windows audit host: no local Chromium-family browser found.');process.exit(0)
 }
@@ -31,10 +30,21 @@ function runFixture(name,body,script){
   const file=path.join(dir,`${name}.html`);
   const html=`<!doctype html><html><head><meta charset="utf-8"><style>body{font:16px sans-serif}.card,[role=row]{display:block;width:700px;min-height:48px;margin:12px;padding:8px;border:1px solid #aaa}span{display:inline-block}</style></head><body>${body}<script>${script}<\/script></body></html>`;
   fs.writeFileSync(file,html);
-  const r=cp.spawnSync(browser,['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--dump-dom',`file://${file}`],{encoding:'utf8',timeout:30000});
-  if(r.error){if(process.platform!=='win32'&&r.error.code==='ETIMEDOUT'){console.log('DOM fixture checks skipped on this non-Windows audit host: local Chromium headless mode timed out.');fs.rmSync(dir,{recursive:true,force:true});process.exit(0)}throw r.error}if(r.status!==0)throw new Error(`${name}: browser exited ${r.status}: ${r.stderr}`);
-  const m=String(r.stdout).match(/data-result="([^"]*)"/);if(!m)throw new Error(`${name}: no fixture result in DOM`);
-  return JSON.parse(decodeURIComponent(m[1].replace(/&amp;/g,'&')));
+  let lastTimeout=null;
+  for(let index=0;index<browsers.length;index++){
+    const browser=browsers[index],profile=path.join(dir,`profile-${name}-${index}`);
+    fs.mkdirSync(profile,{recursive:true});
+    const r=cp.spawnSync(browser,['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--disable-background-networking',`--user-data-dir=${profile}`,'--dump-dom',`file://${file}`],{encoding:'utf8',timeout:30000});
+    if(r.error){
+      if(r.error.code==='ETIMEDOUT'){lastTimeout=r.error;continue}
+      throw r.error;
+    }
+    if(r.status!==0)throw new Error(`${name}: browser exited ${r.status}: ${r.stderr}`);
+    const m=String(r.stdout).match(/data-result="([^"]*)"/);if(!m)throw new Error(`${name}: no fixture result in DOM`);
+    return JSON.parse(decodeURIComponent(m[1].replace(/&amp;/g,'&')));
+  }
+  if(process.platform!=='win32'&&lastTimeout){console.log('DOM fixture checks skipped on this non-Windows audit host: local Chromium headless mode timed out.');fs.rmSync(dir,{recursive:true,force:true});process.exit(0)}
+  throw lastTimeout||new Error(`${name}: no Chromium-family browser could execute the fixture`);
 }
 const assignmentSource=String.raw`Week\s+(\d+)\s*-\s*Lesson Plans`;
 const planSource=String.raw`^Week\s+0?(\d+)\s*-\s*Lesson Plans(?:\.(?:docx|pdf))?$`;
