@@ -170,9 +170,11 @@ function renderDetails(state, item) {
     return `<div class="att"><a href="${esc(docUrl(f))}">${esc(f.name)}</a></div>`;
   }).join('');
   const privateLink = state.privateCommentLink ? `<div><a href="https://example.org/meeting-notes">https://example.org/meeting-notes</a></div>` : '';
+  const detailDue = dueLabel(item, state, { detail: true });
+  const instructionText = state.detailInstructionText || "Attach this week's lesson plan and turn it in.";
   const body = `${classroomHeader(state, 'classwork')}<div hidden><div>Your work</div><div>Add or create</div></div><main role="main"><div class="cols">
-<div class="main-col"><h1>${esc(item.title)}</h1><div>Principal Office &#8226; Sep 1</div><div>100 points</div><div class="due">${esc(dueLabel(item, state, { detail: true }))}</div>
-<p>Attach this week's lesson plan and turn it in.</p>${materials}<div class="card"><h3>Class comments</h3><div role="textbox" contenteditable="true" aria-label="Add class comment"></div></div></div>
+<div class="main-col"><h1>${esc(item.title)}</h1><div>Principal Office &#8226; Sep 1</div><div>100 points</div><div class="due" aria-label="${esc(detailDue)}">${esc(detailDue)}</div>
+<div class="instructions">${esc(instructionText)}</div>${materials}<div class="card"><h3>Class comments</h3><div role="textbox" contenteditable="true" aria-label="Add class comment"></div></div></div>
 <aside class="side-col"><div class="card" id="yourwork">${yourWorkHtml(state, item)}</div>
 <div class="card"><h3>Private comments</h3>${privateLink}<div role="textbox" contenteditable="true" aria-label="Add private comment..." style="border:1px solid #ccc;min-height:36px"></div></div></aside></div></main>
 <div role="menu" id="addmenu" hidden aria-label="Add or create">

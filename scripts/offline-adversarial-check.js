@@ -15,7 +15,7 @@ for(const text of ['Due 13/21/2026','Due 9/31/2026','Due 2/29/2026']) assert.equ
 assert.equal(ymd(lib.parseClassroomDueDate('Due Jan 4, 8:00 AM',new Date(2026,11,20))),'2027-01-04');
 assert.equal(ymd(lib.parseClassroomDueDate('Due Feb 29, 8:00 AM',new Date(2024,1,1))),'2024-02-29');
 // No due-date inference from unrelated assignment text.
-{const noDue=lib.assignmentEligibility({cardText:'No due date',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now);
+{const noDue=lib.assignmentEligibility({dueText:'No due date',dueSource:'verified assignment detail page',cardText:'Meeting date 09/14/2026'},{},{submitOverdue:true},now);
 assert.equal(noDue.eligible,false);assert.equal(noDue.date,null);assert.equal(noDue.reason,'no due date in Classroom');}
 assert.equal(lib.assignmentEligibility({cardText:'Posted Sep 1',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now).unknown,true);
 {const detail=lib.assignmentEligibility({cardText:'Week 8 - Lesson Plans',dueText:'Due 9/15/2026',dueSource:'verified assignment detail page'},{},{submitOverdue:true},now);

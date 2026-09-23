@@ -12,35 +12,23 @@ function collectAssignmentDueEvidenceDom(){
   const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
   const exactDue=v=>/^(?:No due date|Due\s+(?:Today|Tomorrow|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue(?:s)?|Wed|Thu(?:rs)?|Fri|Sat|Jan(?:uary)?\s+\d{1,2}(?:,\s*\d{4})?|Feb(?:ruary)?\s+\d{1,2}(?:,\s*\d{4})?|Mar(?:ch)?\s+\d{1,2}(?:,\s*\d{4})?|Apr(?:il)?\s+\d{1,2}(?:,\s*\d{4})?|May\s+\d{1,2}(?:,\s*\d{4})?|Jun(?:e)?\s+\d{1,2}(?:,\s*\d{4})?|Jul(?:y)?\s+\d{1,2}(?:,\s*\d{4})?|Aug(?:ust)?\s+\d{1,2}(?:,\s*\d{4})?|Sep(?:t(?:ember)?)?\s+\d{1,2}(?:,\s*\d{4})?|Oct(?:ober)?\s+\d{1,2}(?:,\s*\d{4})?|Nov(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|Dec(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)(?:,?\s+\d{1,2}:\d{2}\s*(?:AM|PM))?)$/i.test(v);
+  const sameDueText=(a,b)=>clean(a).toLowerCase()===clean(b).toLowerCase();
   const out=[];
-  for(const el of document.querySelectorAll('[aria-label],[title],[data-tooltip],time')){
-    if(!visible(el))continue;
-    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-tooltip')];
-    for(const raw of labels){
-      const text=clean(raw);if(!text||text.length>120||!exactDue(text))continue;out.push(text);
-    }
-    if(el.tagName==='TIME'&&labels.some(raw=>/\bDue\b|\bNo due date\b/i.test(clean(raw)))){
-      const text=clean(el.innerText||el.textContent);if(text&&text.length<=120&&exactDue(text))out.push(text);
-    }
+  // Only accept a semantically labelled deadline field whose visible value
+  // agrees with that label. Do not scan generic div/span/body text: assignment
+  // instructions and comments may legitimately contain strings such as
+  // "Due Sep 22, 2026" and must never become deadline evidence.
+  for(const el of document.querySelectorAll('[aria-label],[title],[data-tooltip],[data-tooltip-text],time')){
+    if(!visible(el)||el.closest('a,button,[role="button"],[role="textbox"],[contenteditable="true"]'))continue;
+    const visibleText=clean(el.innerText||el.textContent);
+    const parentText=clean(el.parentElement&&(el.parentElement.innerText||el.parentElement.textContent));
+    const displayed=[visibleText,parentText].find(text=>text&&text.length<=120&&exactDue(text))||'';
+    if(!displayed)continue;
+    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-tooltip'),el.getAttribute('data-tooltip-text')];
+    const labelled=labels.map(clean).find(text=>text&&text.length<=120&&exactDue(text)&&sameDueText(text,displayed));
+    if(labelled)out.push(displayed);
   }
-  const main=document.querySelector('main,[role="main"]');
-  if(main){
-    const headings=[...main.querySelectorAll('h1,[role="heading"][aria-level="1"]')].filter(visible);
-    const title=headings[0]||null;
-    if(title){
-      const follows=node=>!!(title.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING);
-      const boundary=[...main.querySelectorAll('p,h2,h3')].find(el=>visible(el)&&follows(el))||null;
-      for(const el of main.querySelectorAll('div,span,time')){
-        if(!visible(el)||el.children.length||!follows(el))continue;
-        if(boundary&&(el===boundary||!!(boundary.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)))continue;
-        if(el.closest('a,button,[role="button"],[role="textbox"],[contenteditable="true"]'))continue;
-        const text=clean(el.innerText||el.textContent);
-        if(!text||text.length>120||!exactDue(text))continue;
-        out.push(text);
-      }
-    }
-  }
-  return [...new Set(out)].slice(0,40);
+  return [...new Set(out)].slice(0,12);
 }
 
 function localDateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}

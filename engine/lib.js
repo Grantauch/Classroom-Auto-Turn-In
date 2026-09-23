@@ -202,14 +202,13 @@ function lastScheduledCheckBeforeDue(due, today, cfg){
 function assignmentEligibility(assignment, plan, cfg, now=new Date()){
   const today=startOfDay(now);
   const overdue=cfg.submitOverdue!==false;
-  // Teacher Edition uses the authoritative due date shown by Classroom. If it
-  // cannot be read, the caller must block rather than infer "nothing is due."
-  // A dedicated dueText value (especially one read from the verified detail
-  // page) is more authoritative than the rest of a Classwork card. Check it
-  // first so unrelated card text cannot mask valid due-date evidence.
+  // Only a dedicated, positively identified Classroom due-date field may
+  // affect eligibility. Classwork card/body text is intentionally excluded:
+  // instructions and comments can contain date-looking strings that are not
+  // the assignment deadline. If dedicated evidence is absent, fail closed and
+  // let the caller verify the assignment detail page.
   const sources=[
-    {name:assignment?.dueSource||'dedicated due-date field',text:String(assignment?.dueText||'').trim()},
-    {name:'Classwork card',text:String(assignment?.cardText||'').trim()}
+    {name:assignment?.dueSource||'dedicated due-date field',text:String(assignment?.dueText||'').trim()}
   ].filter(x=>x.text);
   let due=null,used=null;
   for(const source of sources){const parsed=parseClassroomDueDate(source.text,now);if(parsed){due=parsed;used=source;break;}}

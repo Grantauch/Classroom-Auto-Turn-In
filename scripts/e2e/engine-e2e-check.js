@@ -368,6 +368,21 @@ scenario('due-date-unreadable-after-detail-fallback', async h => {
   assert.strictEqual(h.events('attach').length + h.events('submit-click').length, 0, 'unreadable due date mutated Classroom');
 });
 
+scenario('instruction-date-never-becomes-deadline', async h => {
+  editState(h.stateFile, s => {
+    s.listHidesDueDates = true;
+    s.detailHidesDueDates = true;
+    s.detailDueFallback = 'Due 8:00 AM';
+    s.detailInstructionText = 'Due Sep 22, 2026';
+  });
+  h.configure({ earliestWeek: 3, latestWeek: 3 });
+  await h.scan();
+  const dry = await h.safetyCheck();
+  assert(!dry.ok && dry.result.status === 'BLOCKED', `instructional date text must not resolve an unreadable official deadline${explain(h, dry)}`);
+  assert.strictEqual(publicError(dry.result.blockers?.[0]?.message, 'automation:run').code, 'AT-CLS-110', `wrong support code for instruction-date regression${explain(h, dry)}`);
+  assert.strictEqual(h.events('attach').length + h.events('submit-click').length, 0, 'instruction-date regression mutated Classroom');
+});
+
 scenario('due-on-a-day-without-a-check', async h => {
   const codes = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const today = codes[new Date().getDay()];

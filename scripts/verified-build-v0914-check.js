@@ -74,13 +74,13 @@ for (const [text, want] of [['Due Friday', '2026-09-18'], ['Due Fri, Sep 25', '2
 }
 const weekdays = { submitOverdue: false, schedule: { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'] } };
 const fri = new Date(2026, 8, 18, 6, 30);
-assert.strictEqual(lib.assignmentEligibility({ cardText: 'Due Sep 20' }, null, weekdays, fri).eligible, true, 'Sunday due date is not turned in at the Friday check');
-assert.strictEqual(lib.assignmentEligibility({ cardText: 'Due Sep 19' }, null, weekdays, fri).eligible, true, 'Saturday due date is not turned in at the Friday check');
-assert.strictEqual(lib.assignmentEligibility({ cardText: 'Due Sep 21' }, null, weekdays, fri).eligible, false, 'Monday due date must wait for the Monday check');
-assert.strictEqual(lib.assignmentEligibility({ cardText: 'Due Sep 20' }, null, weekdays, wed).eligible, false, 'a Sunday due date is not due on Wednesday');
-assert.strictEqual(lib.assignmentEligibility({ cardText: 'Due Sep 15' }, null, weekdays, wed).eligible, false, 'past due must wait for overdue catch-up');
-assert.strictEqual(lib.assignmentEligibility({ cardText: 'Due Sep 15' }, null, { ...weekdays, submitOverdue: true }, wed).eligible, true);
-const noDue = lib.assignmentEligibility({ cardText: 'Week 9 - Lesson Plans No due date' }, null, weekdays, wed);
+assert.strictEqual(lib.assignmentEligibility({ dueText: 'Due Sep 20', dueSource: 'verified assignment detail page' }, null, weekdays, fri).eligible, true, 'Sunday due date is not turned in at the Friday check');
+assert.strictEqual(lib.assignmentEligibility({ dueText: 'Due Sep 19', dueSource: 'verified assignment detail page' }, null, weekdays, fri).eligible, true, 'Saturday due date is not turned in at the Friday check');
+assert.strictEqual(lib.assignmentEligibility({ dueText: 'Due Sep 21', dueSource: 'verified assignment detail page' }, null, weekdays, fri).eligible, false, 'Monday due date must wait for the Monday check');
+assert.strictEqual(lib.assignmentEligibility({ dueText: 'Due Sep 20', dueSource: 'verified assignment detail page' }, null, weekdays, wed).eligible, false, 'a Sunday due date is not due on Wednesday');
+assert.strictEqual(lib.assignmentEligibility({ dueText: 'Due Sep 15', dueSource: 'verified assignment detail page' }, null, weekdays, wed).eligible, false, 'past due must wait for overdue catch-up');
+assert.strictEqual(lib.assignmentEligibility({ dueText: 'Due Sep 15', dueSource: 'verified assignment detail page' }, null, { ...weekdays, submitOverdue: true }, wed).eligible, true);
+const noDue = lib.assignmentEligibility({ dueText: 'No due date', dueSource: 'verified assignment detail page', cardText: 'Week 9 - Lesson Plans' }, null, weekdays, wed);
 assert.strictEqual(noDue.eligible, false); assert.strictEqual(noDue.unknown, false);
 assert.strictEqual(lib.assignmentEligibility({ cardText: 'Week 9 - Lesson Plans' }, null, weekdays, wed).unknown, true, 'a missing date must still block');
 const { classroomDisplayName } = require('../engine/classroom-picker');
