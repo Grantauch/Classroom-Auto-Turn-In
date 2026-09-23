@@ -11,15 +11,19 @@ const TOPIC_WAIT_MS=20000;
 function collectAssignmentDueEvidenceDom(){
   const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
-  const looksRelevant=v=>/\bNo due date\b|\bDue\s+(?:Today|Tomorrow|Yesterday|Sun(?:day)?|Mon(?:day)?|Tue(?:s|sday)?|Wed(?:nesday)?|Thu(?:r|rs|rsday)?|Fri(?:day)?|Sat(?:urday)?|Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{1,2}[/.\-]\d{1,2})\b/i.test(v);
+  const looksRelevant=v=>/\bNo due date\b|\bDue\s+(?:Today|Tomorrow|Yesterday|Sun(?:day)?|Mon(?:day)?|Tue(?:s|sday)?|Wed(?:nesday)?|Thu(?:r|rs|rsday)?|Fri(?:day)?|Sat(?:urday)?|Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{1,2}[/\.\-]\d{1,2})\b/i.test(v);
   const out=[];
-  for(const el of document.querySelectorAll('time,[datetime],[aria-label],[title],div,span,p')){
+  for(const el of document.querySelectorAll('[aria-label],[title],[data-tooltip],time')){
     if(!visible(el))continue;
-    for(const raw of [el.innerText,el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('datetime')]){
+    const labelled=[el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-tooltip')];
+    for(const raw of labelled){
       const text=clean(raw);if(!text||text.length>260||!looksRelevant(text))continue;out.push(text);
     }
+    if(el.tagName==='TIME'&&labelled.some(raw=>/\bDue\b|\bNo due date\b/i.test(clean(raw)))){
+      const text=clean(el.innerText||el.textContent);if(text&&text.length<=260&&looksRelevant(text))out.push(text);
+    }
   }
-  return [...new Set(out)].slice(0,80);
+  return [...new Set(out)].slice(0,40);
 }
 
 function localDateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
