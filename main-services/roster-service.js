@@ -29,6 +29,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   const {readJson,writeJson,appLog}=localData;
   if(!secureData)throw new Error('Roster service requires encrypted local storage.');
   const describeError=error=>typeof compactError==='function'?compactError(error):String(error?.message||error||'Unknown error');
+  const safeRosterLogCode=error=>{const code=String(error?.code||'').trim();return /^[A-Za-z0-9._:-]{1,80}$/.test(code)?` Error code ${code}.`:''};
   function recoverableSecureRead(name,fallback,label){
     try{return secureData.read(name,fallback)}
     catch(error){appLog(`${label} could not be read and will be treated as stale until it is refreshed. ${describeError(error)}`);return fallback}
@@ -117,7 +118,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       payload=lastPayload(out,'operations-roster-applied');
       if(!payload||payload.ok!==true||String(payload.requestId||'')!==request.requestId)throw new Error('GoClassroom could not verify the approved roster write response. Retry the same approved batch.');
     }catch(error){
-      appLog(`Approved roster batch ${request.requestId} did not return a verified completion. The encrypted pending request was retained for idempotent recovery. ${compactError(error)}`);
+      appLog(`Approved roster batch ${request.requestId} did not return a verified completion. The encrypted pending request was retained for idempotent recovery.${safeRosterLogCode(error)}`);
       throw error;
     }
     secureData.write('roster-write-last.secure.json',{schemaVersion:1,appliedAt:String(payload.appliedAt||new Date().toISOString()),result:payload});
@@ -125,7 +126,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     secureData.write('roster-write-pending.secure.json',emptyPendingWrite());
     appLog(`Approved roster batch ${request.requestId} completed. Removals were not requested. Verifying the live operations roster now.`);
     try{return {result:payload,state:await readOperationsRoster(),refreshNeeded:false}}
-    catch(error){appLog(`Approved roster batch ${request.requestId} completed, but the follow-up roster read needs attention: ${compactError(error)}`);return {result:payload,state:publicState(),refreshNeeded:true}}
+    catch(error){appLog(`Approved roster batch ${request.requestId} completed, but the follow-up roster read needs attention.${safeRosterLogCode(error)}`);return {result:payload,state:publicState(),refreshNeeded:true}}
   }
   return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
 }
