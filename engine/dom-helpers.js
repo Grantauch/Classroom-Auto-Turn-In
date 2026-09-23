@@ -26,9 +26,23 @@ function collectStrictTopicAssignmentsDom(root,{source,flags}){
       const href=anchor?.href||'';
       const cardText=clean(card?.innerText||card?.textContent||matched.text);
       const exactDue=v=>/^(?:No due date|Due\s+(?:Today|Tomorrow|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue(?:s)?|Wed|Thu(?:rs)?|Fri|Sat|Jan(?:uary)?\s+\d{1,2}(?:,\s*\d{4})?|Feb(?:ruary)?\s+\d{1,2}(?:,\s*\d{4})?|Mar(?:ch)?\s+\d{1,2}(?:,\s*\d{4})?|Apr(?:il)?\s+\d{1,2}(?:,\s*\d{4})?|May\s+\d{1,2}(?:,\s*\d{4})?|Jun(?:e)?\s+\d{1,2}(?:,\s*\d{4})?|Jul(?:y)?\s+\d{1,2}(?:,\s*\d{4})?|Aug(?:ust)?\s+\d{1,2}(?:,\s*\d{4})?|Sep(?:t(?:ember)?)?\s+\d{1,2}(?:,\s*\d{4})?|Oct(?:ober)?\s+\d{1,2}(?:,\s*\d{4})?|Nov(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|Dec(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)(?:,?\s+\d{1,2}:\d{2}\s*(?:AM|PM))?)$/i.test(v);
+      const dueExcluded=node=>{
+        for(let p=node,d=0;p&&p!==card&&d<8;p=p.parentElement,d++){
+          const semantics=clean([
+            p.getAttribute&&p.getAttribute('aria-label'),
+            p.getAttribute&&p.getAttribute('title'),
+            p.getAttribute&&p.getAttribute('data-tooltip'),
+            p.getAttribute&&p.getAttribute('data-tooltip-text'),
+            p.getAttribute&&p.getAttribute('role')
+          ].filter(Boolean).join(' '));
+          if(/\b(?:instructions?|description|class comments?|private comments?|comments?|rubric)\b/i.test(semantics))return true;
+          if(p.matches&&p.matches('p,[contenteditable="true"],[role="textbox"]'))return true;
+        }
+        return false;
+      };
       const dueValues=[];
       for(const node of (card?.querySelectorAll?.('[aria-label],[title],[data-tooltip],[data-due-date],[data-due],time')||[])){
-        if(!visible(node))continue;
+        if(!visible(node)||dueExcluded(node))continue;
         const attrs=[node.getAttribute('aria-label'),node.getAttribute('title'),node.getAttribute('data-tooltip'),node.getAttribute('data-due-date'),node.getAttribute('data-due')];
         for(const raw of attrs){const value=clean(raw);if(value&&value.length<=120&&exactDue(value))dueValues.push(value)}
         if(node.tagName==='TIME'&&attrs.some(raw=>/\bDue\b|\bNo due date\b/i.test(clean(raw)))){const value=clean(node.innerText||node.textContent);if(value&&value.length<=120&&exactDue(value))dueValues.push(value)}
