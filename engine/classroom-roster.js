@@ -12,6 +12,17 @@ function periodNumber(value){const match=clean(value,120).match(/^Period\s+([1-6
 function isGenericPeriod(value){return /^Period\s+[1-6]$/i.test(clean(value,120))}
 function membershipKey(courseId,email){const c=validCourseId(courseId),e=validEmail(email);return c&&e?`${c}::${e}`:''}
 
+const ROSTER_BOTTOM_STABLE_MS=2500;
+function advanceRosterBottomStability(state={},sample={}){
+  const atMs=Number(sample.atMs);
+  if(sample.scrollOk!==true||sample.atEnd!==true||!Number.isFinite(atMs))return {signature:'',sinceMs:null,complete:false};
+  const signature=`${Number(sample.discoveredStudentRows)||0}|${Number(sample.verifiedStudents)||0}|${Number(sample.scrollMax)||0}`;
+  const priorSignature=String(state.signature||'');
+  const priorSince=Number(state.sinceMs);
+  if(signature!==priorSignature||!Number.isFinite(priorSince)||atMs<priorSince)return {signature,sinceMs:atMs,complete:false};
+  return {signature,sinceMs:priorSince,complete:atMs-priorSince>=ROSTER_BOTTOM_STABLE_MS};
+}
+
 function normalizeStudent(value={}){
   const email=validEmail(value.email);
   const name=normalizeName(value.name);
@@ -204,7 +215,7 @@ function collectClassroomPeopleDom(expectedCourseId){
 }
 
 module.exports={
-  ROSTER_SCHEMA_VERSION,MAX_CLASSROOMS,MAX_STUDENTS_PER_CLASS,clean,normalizeEmail,validEmail,validCourseId,validStudentId,normalizeStudent,periodNumber,isGenericPeriod,
+  ROSTER_SCHEMA_VERSION,MAX_CLASSROOMS,MAX_STUDENTS_PER_CLASS,ROSTER_BOTTOM_STABLE_MS,clean,normalizeEmail,validEmail,validCourseId,validStudentId,normalizeStudent,periodNumber,isGenericPeriod,advanceRosterBottomStability,
   normalizeClassroom,normalizeRosterSnapshot,membershipKey,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,
   buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync,collectClassroomPeopleDom
 };
