@@ -13,7 +13,7 @@ function createRosterIntegration({safeStorage,localData,ensureAutomationIdle,com
     discover:()=>getService().discover(),
     readOperationsRoster:()=>getService().readOperationsRoster(),
     validateSafeChanges:()=>getService().validateSafeChanges(),
-    applySafeChanges:reviewedRequest=>getService().applySafeChanges(reviewedRequest||null),
+    applySafeChanges:(reviewedRequest,recoveryDecision)=>getService().applySafeChanges(reviewedRequest||null,recoveryDecision||null),
     saveMappings:value=>getService().saveMappings(value||{})
   };
 }

@@ -41,7 +41,7 @@ const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
 assert.ok(!dueCollectorSource.includes("div,span,p"),'Assignment due-date fallback must not scan ordinary assignment body text.');
 assert.equal(typeof collectClassroomPeopleDom,'function');const domSource=String(collectClassroomPeopleDom);assert.ok(/mailto:/.test(domSource));assert.ok(/Students\|Classmates/.test(domSource));assert.ok(!/firstName|lastName|guess/i.test(domSource),'Roster discovery must not guess student email addresses.');
 
-const {validateBridge,teacherUrl,validateOperationsPayload,validateWriteRequest,validateWriteResult,decodeBridgeArg,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES}=require('../engine/operations-roster-bridge');
+const {validateBridge,teacherUrl,validateOperationsPayload,validateWriteRequest,validateWriteResult,validateRecoveryDecision,validateRecoveryReview,decodeBridgeArg,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES,ROSTER_RECOVERY_CONFIRMATION}=require('../engine/operations-roster-bridge');
 const REVISION_A='AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 const REVISION_B='BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB';
 const bridge=validateBridge({url:'https://script.google.com/a/macros/example.org/s/DEPLOYMENT/exec',contract:'2026-09-22-roster-sync-v1',writeContract:'2026-09-22-roster-write-v1',studentEmailDomain:'school.org'});
@@ -71,13 +71,18 @@ assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,
 assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:0,verifiedCredentialMemberships:0}},{requestId:writeRequest.requestId,baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:1,updateNameCount:1}),/usable PIN credentials/i,'A server receipt with the membership present but no verified credential must remain unverified.');
 const nameOnlyResult=validateWriteResult({ok:true,requestId:'gcr-name-only-credential-check',writeContract:bridge.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:0,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:0,createdPinCards:0,verifiedCredentialMemberships:0}},{requestId:'gcr-name-only-credential-check',baseRevision:REVISION_A,writeContract:bridge.writeContract,addCount:0,updateNameCount:1});
 assert.equal(nameOnlyResult.counts.verifiedCredentialMemberships,0,'A name-only batch must not require PIN provisioning.');
+const recoveryToken='RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR';
+assert.deepEqual(validateRecoveryDecision({confirmation:ROSTER_RECOVERY_CONFIRMATION,token:recoveryToken}),{confirmation:ROSTER_RECOVERY_CONFIRMATION,token:recoveryToken});
+assert.throws(()=>validateRecoveryDecision({confirmation:ROSTER_RECOVERY_CONFIRMATION,token:'bad'}),/review token is invalid/i,'A malformed recovery token must fail before browser execution.');
+const recoveryReview=validateRecoveryReview({ok:false,status:'RECOVERY_REVIEW_REQUIRED',requestId:writeRequest.requestId,writeContract:bridge.writeContract,recoveryToken,reviewCounts:{additions:1,reactivations:0,nameUpdates:0}},{requestId:writeRequest.requestId,writeContract:bridge.writeContract});
+assert.equal(recoveryReview.reviewCounts.additions,1);assert.throws(()=>validateRecoveryReview({...recoveryReview,requestId:'wrong-request'},{requestId:writeRequest.requestId,writeContract:bridge.writeContract}),/unexpected response/i,'Recovery review must stay bound to the exact approved request.');
 
 console.log('GoClassroom roster contract checks passed: verified identities, unique mappings, revision-bound safe writes, and no automatic removals.');
 
-function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false,verifiedCredentialMemberships=1}={}){
+function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false,verifiedCredentialMemberships=1,recoveryReviewOnce=false}={}){
   const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
   const {encode}=require('../engine/protocol');
-  const plain=new Map(),secure=new Map(),calls=[],logs=[];let applyAttempts=0,readCount=0,requestIds=[];
+  const plain=new Map(),secure=new Map(),calls=[],logs=[];let applyAttempts=0,readCount=0,requestIds=[],recoveries=[];
   const localData={readJson:(name,fallback)=>plain.has(name)?JSON.parse(JSON.stringify(plain.get(name))):fallback,writeJson:(name,value)=>{plain.set(name,JSON.parse(JSON.stringify(value)));return value},appLog:message=>logs.push(String(message))};
   const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
   secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot:{...complete,discoveredAt:new Date().toISOString()},lastDiff:{counts:{}},issues:[]});plain.set('roster-mappings.json',mappings);plain.set('roster-bridge.json',{...DEFAULT_OPERATIONS_BRIDGE,studentEmailDomain:'school.org'});
@@ -91,6 +96,8 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
     }
     if(file==='apply-operations-roster.js'){
       applyAttempts++;const packed=decodeBridgeArg(args[0]),req=validateWriteRequest(packed.request,{studentEmailDomain:packed.bridge.studentEmailDomain});requestIds.push(req.requestId);
+      recoveries.push(packed.recovery||null);
+      if(recoveryReviewOnce&&applyAttempts===1)return encode('operations-roster-recovery-review',{ok:false,schemaVersion:1,status:'RECOVERY_REVIEW_REQUIRED',requestId:req.requestId,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,recoveryToken,reviewCounts:{additions:1,reactivations:0,nameUpdates:0},message:'The earlier roster attempt needs explicit teacher review.'});
       assert.equal(packed.bridge.writeContract,DEFAULT_OPERATIONS_BRIDGE.writeContract);assert.equal(req.baseRevision,REVISION_A);assert.equal(req.add.length,1);assert.equal(req.updateName.length,1);assert.equal(req.deactivate,undefined);
       if(terminalReject){const error=new Error('The roster changed before anything was applied. Compare rosters again.');error.code='ROSTER_REJECTED_NO_EFFECTS';throw error;}
       if(failFirstApply&&applyAttempts===1)throw new Error(applyErrorMessage);
@@ -98,7 +105,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
     }
     throw new Error(`Unexpected child ${file}`);
   }});
-  return {service,plain,secure,calls,logs,get applyAttempts(){return applyAttempts},get requestIds(){return requestIds}};
+  return {service,plain,secure,calls,logs,get applyAttempts(){return applyAttempts},get requestIds(){return requestIds},get recoveries(){return recoveries}};
 }
 
 (async()=>{
@@ -124,6 +131,11 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   let failed=false;try{await recovery.service.applySafeChanges()}catch{failed=true}assert.equal(failed,true);const pending=recovery.service.publicState().pendingWrite;assert.equal(pending.status,'PENDING');assert.equal(pending.count,2);
   const recovered=await recovery.service.applySafeChanges();assert.equal(recovered.state.pendingWrite.status,'NONE');assert.equal(recovery.requestIds.length,2);assert.equal(recovery.requestIds[0],recovery.requestIds[1],'Uncertain failures must retry the exact same idempotent request ID.');
   console.log('GoClassroom roster recovery checks passed: uncertain writes stay encrypted and retry the same server request ID.');
+
+  const prewriteReview=makeHarness({recoveryReviewOnce:true});await prewriteReview.service.readOperationsRoster();
+  const reviewOutcome=await prewriteReview.service.applySafeChanges();assert.equal(reviewOutcome.recoveryReview.status,'RECOVERY_REVIEW_REQUIRED');assert.equal(reviewOutcome.state.pendingWrite.status,'PENDING','An ambiguous pre-write STARTED state must retain the exact pending request.');assert.equal(prewriteReview.recoveries[0],null);
+  const reviewedRecovery=await prewriteReview.service.applySafeChanges(null,{confirmation:ROSTER_RECOVERY_CONFIRMATION,token:recoveryToken});assert.equal(reviewedRecovery.verified,true);assert.equal(reviewedRecovery.state.pendingWrite.status,'NONE');assert.deepEqual(prewriteReview.recoveries[1],{confirmation:ROSTER_RECOVERY_CONFIRMATION,token:recoveryToken});
+  console.log('GoClassroom pre-write recovery review check passed: automatic retry stops for review, and only the explicit reviewed token can resume the exact batch.');
 
   const ipcErrorSource=fs.readFileSync(path.join(__dirname,'../main-services/ipc-error-reporter.js'),'utf8');assert.ok(ipcErrorSource.includes('Sensitive roster error detail redacted at IPC boundary.'),'The final IPC logger must redact roster error details before writing plaintext diagnostics.');
   const privacy=makeHarness({failFirstApply:true,applyErrorMessage:'server rejected ada@school.org during validation'});await privacy.service.readOperationsRoster();
@@ -152,6 +164,49 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const reviewedPayload={confirmation:'APPLY SAFE ROSTER CHANGES',requestId:'gcr-reviewed-immutable',baseRevision:REVISION_A,add:[{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard'}],updateName:[]};let submittedPayload=null;
   const boundHandler=createRosterApplyHandler({dialog:{showMessageBox:async()=>({response:1})},getRosterIntegration:()=>({validateSafeChanges:()=>reviewedPayload,state:()=>({pendingWrite:{status:'NONE'}}),applySafeChanges:async payload=>{submittedPayload=payload;return {verified:true,state:{}}}})});
   await boundHandler();assert.deepEqual(submittedPayload,reviewedPayload,'Confirmation must submit the exact immutable request the teacher reviewed.');
+
+  let recoveryDialog=0,recoveryApplyCalls=[];
+  const recoveryHandler=createRosterApplyHandler({
+    dialog:{showMessageBox:async()=>({response:(++recoveryDialog<=2)?1:0})},
+    getRosterIntegration:()=>({
+      validateSafeChanges:()=>reviewedPayload,
+      state:()=>({pendingWrite:{status:'PENDING'}}),
+      applySafeChanges:async(payload,recovery)=>{
+        recoveryApplyCalls.push({payload,recovery});
+        if(recoveryApplyCalls.length===1){
+          return {verified:false,state:{pendingWrite:{status:'PENDING'}},recoveryReview:{
+            status:'RECOVERY_REVIEW_REQUIRED',requestId:reviewedPayload.requestId,writeContract:bridge.writeContract,
+            recoveryToken,reviewCounts:{additions:1,reactivations:0,nameUpdates:0}
+          }};
+        }
+        return {verified:true,state:{pendingWrite:{status:'NONE'}}};
+      }
+    })
+  });
+  const recoveryHandled=await recoveryHandler();
+  assert.equal(recoveryHandled.verified,true);
+  assert.equal(recoveryDialog,2,'Ambiguous STARTED recovery must require a second cancel-default teacher review.');
+  assert.equal(recoveryApplyCalls.length,2);
+  assert.deepEqual(recoveryApplyCalls[1].recovery,{confirmation:ROSTER_RECOVERY_CONFIRMATION,token:recoveryToken});
+
+  let cancelDialog=0,cancelApplyCalls=0;
+  const cancelRecoveryHandler=createRosterApplyHandler({
+    dialog:{showMessageBox:async()=>({response:(++cancelDialog===1)?1:0})},
+    getRosterIntegration:()=>({
+      validateSafeChanges:()=>reviewedPayload,
+      state:()=>({pendingWrite:{status:'PENDING'}}),
+      applySafeChanges:async()=>{
+        cancelApplyCalls++;
+        return {verified:false,state:{pendingWrite:{status:'PENDING'}},recoveryReview:{
+          status:'RECOVERY_REVIEW_REQUIRED',requestId:reviewedPayload.requestId,writeContract:bridge.writeContract,
+          recoveryToken,reviewCounts:{additions:1,reactivations:0,nameUpdates:0}
+        }};
+      }
+    })
+  });
+  const recoveryCancelled=await cancelRecoveryHandler();
+  assert.equal(recoveryCancelled.cancelled,true);
+  assert.equal(cancelApplyCalls,1,'Canceling the explicit recovery review must not issue another write attempt.');
 
   const approvalRace=makeHarness();await approvalRace.service.readOperationsRoster();const reviewed=approvalRace.service.validateSafeChanges();
   approvalRace.plain.set('roster-mappings.json',normalizeMappings({classMappings:{COURSE1:{classPeriod:'Period 4'}}}));

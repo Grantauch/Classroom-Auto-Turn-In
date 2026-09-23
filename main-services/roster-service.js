@@ -1,7 +1,7 @@
 const crypto=require('crypto');
 const {lastPayload}=require('../engine/protocol');
 const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync}=require('../engine/classroom-roster');
-const {validateWriteRequest}=require('../engine/operations-roster-bridge');
+const {validateWriteRequest,validateRecoveryDecision}=require('../engine/operations-roster-bridge');
 
 const DEFAULT_OPERATIONS_BRIDGE={
   schemaVersion:1,
@@ -145,14 +145,20 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     const credentialsOk=credentialExpected===0||credentialVerified===credentialExpected;
     return {ok:missing.length===0&&credentialsOk,missingCount:missing.length,credentialExpected,credentialVerified};
   }
-  async function applySafeChanges(reviewedRequest=null){
+  async function applySafeChanges(reviewedRequest=null,recoveryDecision=null){
     ensureAutomationIdle();
     if(typeof runNodeScript!=='function')throw new Error('The Hall Pass / Check-In roster write bridge is not available in this build.');
-    const bridge=loadBridgeSettings(),request=createWriteRequest(reviewedRequest),arg=encodeBridgeArg({bridge,request});
+    const bridge=loadBridgeSettings(),request=createWriteRequest(reviewedRequest),recovery=validateRecoveryDecision(recoveryDecision),arg=encodeBridgeArg({bridge,request,recovery});
     const execute=()=>runNodeScript('apply-operations-roster.js',[arg],false,{timeoutMs:5*60*1000});
     let payload;
     try{
       const out=typeof runExclusiveBrowser==='function'?await runExclusiveBrowser('Approved Hall Pass roster sync',execute):await execute();
+      const recoveryReview=lastPayload(out,'operations-roster-recovery-review');
+      if(recoveryReview){
+        if(String(recoveryReview.requestId||'')!==request.requestId||String(recoveryReview.writeContract||'')!==bridge.writeContract)throw new Error('GoClassroom could not verify the roster recovery review response. The pending batch was not changed.');
+        appLog(`Approved roster batch ${request.requestId} reached an uncertain pre-write boundary. The encrypted pending request was retained for explicit teacher review.`);
+        return {result:null,recoveryReview,state:publicState(),refreshNeeded:false,verified:false,verificationNeeded:true};
+      }
       payload=lastPayload(out,'operations-roster-applied');
       if(!payload||payload.ok!==true||String(payload.requestId||'')!==request.requestId)throw new Error('GoClassroom could not verify the approved roster write response. Retry the same approved batch.');
     }catch(error){

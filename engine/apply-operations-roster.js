@@ -2,11 +2,11 @@ const {launchTeacherContext}=require('./browser');
 const {loadConfig,log}=require('./lib');
 const {emit,emitError}=require('./protocol');
 const {resolveAppsScriptBridgeFrame}=require('./apps-script-frame');
-const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWriteResult}=require('./operations-roster-bridge');
+const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWriteResult,validateRecoveryDecision,validateRecoveryReview}=require('./operations-roster-bridge');
 
 (async()=>{
   const payload=decodeBridgeArg(process.argv[2]);
-  const bridge=validateBridge(payload?.bridge||{}),request=validateWriteRequest(payload?.request||{},{studentEmailDomain:bridge.studentEmailDomain});
+  const bridge=validateBridge(payload?.bridge||{}),request=validateWriteRequest(payload?.request||{},{studentEmailDomain:bridge.studentEmailDomain}),recovery=validateRecoveryDecision(payload?.recovery);
   if(!bridge.writeContract)throw new Error('The Hall Pass / Check-In roster write contract is missing. Compare rosters again.');
   const cfg=loadConfig(),context=await launchTeacherContext(cfg,{headless:false});
   try{
@@ -15,14 +15,18 @@ const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWr
     await page.goto(teacherUrl(bridge.url),{waitUntil:'domcontentloaded',timeout:60000});
     if(/accounts\.google\.com/i.test(page.url()))throw new Error('Sign in to the school Google account in GoClassroom before applying roster changes.');
     const bridgeFrame=await resolveAppsScriptBridgeFrame(page,{timeoutMs:35000});
-    const raw=await bridgeFrame.evaluate(({request,writeContract})=>new Promise((resolve,reject)=>{
+    const raw=await bridgeFrame.evaluate(({request,writeContract,recovery})=>new Promise((resolve,reject)=>{
       try{
         google.script.run
           .withSuccessHandler(value=>resolve(value))
           .withFailureHandler(error=>reject(new Error(String(error&&error.message||error||'Roster write failed.'))))
-          .applyRosterSyncChanges(request,writeContract);
+          .applyRosterSyncChanges(request,writeContract,recovery);
       }catch(error){reject(error)}
-    }),{request,writeContract:bridge.writeContract});
+    }),{request,writeContract:bridge.writeContract,recovery});
+    if(raw&&raw.ok===false&&String(raw.status||'')==='RECOVERY_REVIEW_REQUIRED'){
+      emit('operations-roster-recovery-review',validateRecoveryReview(raw,{requestId:request.requestId,writeContract:bridge.writeContract}));
+      return;
+    }
     if(raw&&raw.ok===false&&String(raw.status||'')==='REJECTED_NO_ROSTER_EFFECTS'){
       const error=new Error(String(raw.message||'The roster changed before anything was applied. Compare rosters again.'));
       error.code='ROSTER_REJECTED_NO_EFFECTS';error.retryable=false;throw error;

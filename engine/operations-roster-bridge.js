@@ -37,6 +37,7 @@ function normalizeNameRows(rows=[]){
   return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:cleanWriteText(row?.studentEmail,'student email',320).toLowerCase(),studentName:cleanWriteText(row?.studentName,'student name',120),beforeName:cleanWriteText(row?.beforeName,'previous student name',120),classPeriod:cleanWriteText(row?.classPeriod,'class period',120)}));
 }
 const ROSTER_RECOVERY_TARGET_BYTES=8*1024;
+const ROSTER_RECOVERY_CONFIRMATION='REAPPLY REVIEWED PREWRITE CHANGES';
 function estimatePendingRecoveryBytes(add,updateName){
   const keyOf=row=>`${row.studentEmail}::${row.classPeriod}`;
   const plan={
@@ -71,6 +72,23 @@ function validateWriteRequest(request={},expected={}){
   if(estimatePendingRecoveryBytes(add,updateName)>ROSTER_RECOVERY_TARGET_BYTES)throw new Error('This roster batch is too large to preserve safely for crash recovery. Sync a smaller batch before continuing.');
   return {confirmation:'APPLY SAFE ROSTER CHANGES',requestId,baseRevision,add,updateName};
 }
+function validateRecoveryDecision(value){
+  if(value===undefined||value===null)return null;
+  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('The roster recovery decision is invalid. Review the pending batch again.');
+  if(String(value.confirmation||'')!==ROSTER_RECOVERY_CONFIRMATION)throw new Error('The roster recovery decision is missing explicit teacher confirmation. Nothing uncertain was written.');
+  const token=String(value.token||'').trim();
+  if(!validRevision(token))throw new Error('The roster recovery review token is invalid. Review the pending batch again.');
+  return {confirmation:ROSTER_RECOVERY_CONFIRMATION,token};
+}
+function validateRecoveryReview(result,expected={}){
+  if(!result||result.ok!==false||String(result.status||'')!=='RECOVERY_REVIEW_REQUIRED'||String(result.requestId||'')!==String(expected.requestId||'')||String(result.writeContract||'')!==String(expected.writeContract||''))throw new Error('The Hall Pass / Check-In roster recovery review returned an unexpected response. The pending batch was not changed.');
+  const recoveryToken=String(result.recoveryToken||'').trim();
+  if(!validRevision(recoveryToken))throw new Error('The Hall Pass / Check-In roster recovery review did not provide a safe review token. The pending batch was not changed.');
+  const raw=result.reviewCounts&&typeof result.reviewCounts==='object'?result.reviewCounts:{};
+  const reviewCounts={additions:Number(raw.additions||0),reactivations:Number(raw.reactivations||0),nameUpdates:Number(raw.nameUpdates||0)};
+  if(Object.values(reviewCounts).some(value=>!Number.isInteger(value)||value<0)||Object.values(reviewCounts).reduce((a,b)=>a+b,0)<1)throw new Error('The Hall Pass / Check-In roster recovery review returned invalid change counts. The pending batch was not changed.');
+  return {ok:false,schemaVersion:1,status:'RECOVERY_REVIEW_REQUIRED',requestId:String(result.requestId),writeContract:String(result.writeContract),recoveryToken,reviewCounts,message:clean(result.message||'The earlier roster attempt needs explicit teacher review.',500)};
+}
 function validateWriteResult(result,expected={}){
   if(!result||result.ok!==true||String(result.requestId||'')!==String(expected.requestId||'')||String(result.writeContract||'')!==String(expected.writeContract||''))throw new Error('The Hall Pass / Check-In roster write returned an unexpected response. Reopen GoClassroom and retry the same approved batch.');
   if(!validRevision(result.revision)||String(result.previousRevision||'')!==String(expected.baseRevision||''))throw new Error('The Hall Pass / Check-In roster write did not verify its before/after revision. Reopen GoClassroom and retry the same approved batch.');
@@ -82,4 +100,4 @@ function validateWriteResult(result,expected={}){
   if(expected.updateNameCount!==undefined&&(counts.requestedNameUpdates!==Number(expected.updateNameCount)||counts.nameRowsUpdated!==Number(expected.updateNameCount)))throw new Error('The Hall Pass / Check-In roster write did not verify every approved name update. Reopen GoClassroom and retry the same approved batch.');
   return {ok:true,schemaVersion:1,requestId:String(result.requestId),appliedAt:String(result.appliedAt||''),writeContract:String(result.writeContract),previousRevision:String(result.previousRevision),revision:String(result.revision),counts};
 }
-module.exports={decodeBridgeArg,validateBridge,teacherUrl,validRevision,validateOperationsPayload,validateWriteRequest,validateWriteResult,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES};
+module.exports={decodeBridgeArg,validateBridge,teacherUrl,validRevision,validateOperationsPayload,validateWriteRequest,validateWriteResult,validateRecoveryDecision,validateRecoveryReview,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES,ROSTER_RECOVERY_CONFIRMATION};
