@@ -20,11 +20,14 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 function dayStart(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 
 function dueLabel(item, state, { detail = false } = {}) {
+  if (!detail && state.listHidesDueDates) return state.listDueFallback || '';
+  if (detail && state.detailHidesDueDates) return state.detailDueFallback || '';
   if (item.dueOffsetDays === null || item.dueOffsetDays === undefined) return 'No due date';
   if (state.listShowsStatusInsteadOfDue && !detail && ['turned_in', 'done_late'].includes(item.status)) return item.status === 'done_late' ? 'Done late' : 'Turned in';
   const today = dayStart(new Date());
   const due = new Date(today); due.setDate(due.getDate() + Number(item.dueOffsetDays));
   const time = state.dueWithTime || detail ? ', 11:59 PM' : '';
+  if (detail && state.numericDetailDueDates) return `Due ${due.getMonth() + 1}/${due.getDate()}/${due.getFullYear()}${time}`;
   const word = { 0: 'Today', 1: 'Tomorrow', '-1': 'Yesterday' }[String(item.dueOffsetDays)];
   if (state.weekdayLabels && item.dueOffsetDays >= 2 && item.dueOffsetDays <= 6) return `Due ${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][due.getDay()]}${time}`;
   if (word && !state.dueAlwaysMonthDay) return `Due ${state.lowercaseRelative ? word.toLowerCase() : word}${time}`;
@@ -257,7 +260,11 @@ async function handleRoute(route, stateFile) {
   if (url.hostname === 'accounts.google.com') return html(renderSignIn());
   const signedIn = state.signedIn !== false;
   if (!signedIn && ['classroom.google.com', 'drive.google.com', 'docs.google.com'].includes(url.hostname)) {
-    return route.fulfill({ status: 302, headers: { location: `https://accounts.google.com/v3/signin/identifier?continue=${encodeURIComponent(url.href)}` } });
+    const destination=`https://accounts.google.com/v3/signin/identifier?continue=${encodeURIComponent(url.href)}`;
+    // A scripted navigation keeps the offline fixture portable across Chrome
+    // channels whose route.fulfill implementation does not follow synthetic
+    // 302 responses. The resulting page URL is still accounts.google.com.
+    return html(page('Redirecting to sign in', '<main>Redirecting to Google sign-in…</main>', `location.replace(${JSON.stringify(destination)});`));
   }
 
   if (url.hostname === 'classroom.google.com') {

@@ -10,6 +10,7 @@ const read = f => fs.readFileSync(path.join(root, f), 'utf8');
 process.env.CATI_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cati-v0914-'));
 
 const submit = read('engine/submit-weekly.js');
+const dueResolution = read('engine/due-date-resolution.js');
 const actions = read('engine/classroom-actions.js');
 const discovery = read('engine/classroom-discovery.js');
 const browser = read('engine/browser.js');
@@ -24,7 +25,7 @@ const pkg = JSON.parse(read('package.json'));
 // Safety Check probes: upcoming weeks first, several tries, never the first past week only.
 assert(/SAFETY_PROBE_LIMIT=\d+/.test(submit) && submit.includes('const upcoming=') && submit.includes('const earlier='), 'Safety Check probe ordering regressed');
 assert(!submit.includes('const probe=ineligible.find('), 'Safety Check reverted to a single oldest-week probe');
-assert(submit.includes('function listedAsCompleted(') && submit.includes('async function openClassworkPage('), 'completed-card handling or Classwork fallback is missing');
+assert(dueResolution.includes('function listedAsCompleted(') && submit.includes('async function openClassworkPage('), 'completed-card handling or Classwork fallback is missing');
 assert(submit.includes("confirmedBy:'Classroom completed state while attaching'"), 'attach-phase completion by another computer is not recorded');
 
 assert(submit.includes("savePageEvidence(page,'ERROR-run')") && fs.existsSync(path.join(root, 'engine/page-evidence.js')), 'stopped runs no longer save troubleshooting evidence');
@@ -68,7 +69,7 @@ assert(picker.includes('NOT_A_COURSE_NAME') && /Stream\|Classwork\|People/.test(
 const lib = require('../engine/lib');
 const ymd = d => d && `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const wed = new Date(2026, 8, 16, 7, 0); // Wednesday
-for (const [text, want] of [['Due Friday', '2026-09-18'], ['Due Fri, Sep 25', '2026-09-25'], ['Due today at 11:59 PM', '2026-09-16'], ['Due tomorrow', '2026-09-17'], ['Due Wednesday', '2026-09-23'], ['Due Sat 9/26', null], ['Turned in', null]]) {
+for (const [text, want] of [['Due Friday', '2026-09-18'], ['Due Fri, Sep 25', '2026-09-25'], ['Due today at 11:59 PM', '2026-09-16'], ['Due tomorrow', '2026-09-17'], ['Due Wednesday', '2026-09-23'], ['Due Sat 9/26', '2026-09-26'], ['Turned in', null]]) {
   assert.strictEqual(ymd(lib.parseClassroomDueDate(text, wed)), want, text);
 }
 const weekdays = { submitOverdue: false, schedule: { days: ['MON', 'TUE', 'WED', 'THU', 'FRI'] } };

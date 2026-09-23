@@ -10,6 +10,7 @@
 <body>
 <svg class="svg-sprite" aria-hidden="true">
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.7 12 3l9 7.7v9.1a1.2 1.2 0 0 1-1.2 1.2h-5.3v-6.2h-5V21H4.2A1.2 1.2 0 0 1 3 19.8z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3.5 19c.4-4 2.2-6 5.5-6s5.1 2 5.5 6M14 14c3.3-.5 5.4 1.1 6 4"/></symbol>
   <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2.8h8l4 4V21H6z"/><path d="M14 2.8v4h4M9 12h6M9 15.5h6"/></symbol>
   <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
   <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.2 13.5a7.6 7.6 0 0 0 0-3l2-1.4-2-3.4-2.3 1a8 8 0 0 0-2.6-1.5L14 2.7h-4l-.3 2.5a8 8 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.4a7.6 7.6 0 0 0 0 3l-2 1.4 2 3.4 2.3-1a8 8 0 0 0 2.6 1.5l.3 2.5h4l.3-2.5a8 8 0 0 0 2.6-1.5l2.3 1 2-3.4z"/></symbol>
@@ -38,11 +39,12 @@
       <button class="nav" data-page="plans" data-tip="Lesson plans"><svg><use href="#i-doc"/></svg><span class="nav-label">Lesson plans</span></button>
       <button class="nav" data-page="automation" data-tip="Automatic turn-in"><svg><use href="#i-clock"/></svg><span class="nav-label">Automatic turn-in</span></button>
       <button class="nav" data-page="setup" data-tip="Setup"><svg><use href="#i-gear"/></svg><span class="nav-label">Setup</span></button>
+      <button class="nav" data-page="rosters" data-tip="Classroom rosters"><svg><use href="#i-users"/></svg><span class="nav-label">Rosters</span></button>
       <button id="aiNav" class="nav hidden" data-page="ai" data-tip="AI recovery"><svg><use href="#i-spark"/></svg><span class="nav-label">AI recovery</span></button>
       <button class="nav" data-page="grading" data-tip="Draft grading"><svg><use href="#i-check"/></svg><span class="nav-label">Draft grading</span></button>
       <button class="nav" data-page="logs" data-tip="Help & support"><svg><use href="#i-help"/></svg><span class="nav-label">Help & support</span></button>
     </nav>
-        <div class="sidebar-foot"><b>GoClassroom Preview · v0.9.22</b><span>Teacher-controlled automation and draft grading</span></div>
+        <div class="sidebar-foot"><b>GoClassroom Preview · v0.9.27</b><span>Teacher-controlled automation and draft grading</span></div>
   </aside>
 
   <main>
@@ -181,6 +183,31 @@
       </details>
     </section>
 
+    <section id="rosters" class="page" aria-labelledby="rostersTitle">
+      <div class="page-head"><div><span class="page-kicker">GOCLASSROOM CORE</span><h1 id="rostersTitle">Classroom rosters</h1><p>Read the classes you teach and prepare a safe roster preview for Hall Pass, Check-In, and future GoClassroom modules.</p></div><button id="findClassroomRosters" class="btn primary"><svg><use href="#i-refresh"/></svg><span>Find my rosters</span></button></div>
+      <div class="notice roster-safety"><b>Safe roster sync.</b> After a fresh live comparison, GoClassroom can apply only verified additions and name corrections with your confirmation. It never removes students automatically, emails PINs, or changes pass/attendance history.</div>
+      <div class="metrics roster-metrics">
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-home"/></svg></div><div><span>Teaching classes</span><strong id="rosterClassCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-users"/></svg></div><div><span>Verified identities</span><strong id="rosterVerifiedCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-warning"/></svg></div><div><span>Need identity review</span><strong id="rosterReviewCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-refresh"/></svg></div><div><span>Last roster read</span><strong id="rosterLastDiscovery">Never</strong></div></div>
+      </div>
+      <div class="panel roster-preview-panel">
+        <div class="panel-title"><div><span class="section-kicker">SAFE SYNC PREVIEW</span><h2>Map each Classroom to its school period</h2><p class="muted">The period mapping is stored only on this computer. Student email addresses are accepted only when Classroom actually exposes them; GoClassroom never guesses an address from a name.</p></div><span id="rosterDiscoveryBadge" class="status-badge neutral">Not scanned</span></div>
+        <div id="rosterDiff" class="notice compact">Run roster discovery to create the first snapshot.</div>
+        <div id="rosterClassList" class="roster-class-list"><div class="empty-state">No Classroom roster snapshot has been saved yet.</div></div>
+        <div class="form-actions"><button id="saveRosterMappings" class="btn secondary" type="button"><svg><use href="#i-check"/></svg><span>Save period mapping</span></button></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><div><span class="section-kicker">WHAT WOULD SYNC</span><h2>Operations roster preview</h2><p class="muted">This translates Classroom identities into the current Hall Pass / Check-In roster shape without writing it anywhere.</p></div></div>
+        <div id="rosterOperationsPreview" class="roster-operation-summary"><div class="empty-state">Choose period mappings to see how many memberships are ready.</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><div><span class="section-kicker">LIVE COMPARISON</span><h2>Compare with Hall Pass / Check-In</h2><p class="muted">GoClassroom reads the active operations roster, calculates changes locally, and can apply only additions and name corrections after a separate native confirmation.</p></div><div class="actions"><button id="compareOperationsRoster" class="btn secondary" type="button"><svg><use href="#i-refresh"/></svg><span>Compare rosters</span></button><button id="applyOperationsRoster" class="btn primary" type="button" disabled><svg><use href="#i-check"/></svg><span>Apply safe changes</span></button></div></div>
+        <div id="rosterLiveComparison" class="roster-operation-summary"><div class="empty-state">Save your period mappings, then compare against the current operations roster.</div></div>
+      </div>
+    </section>
+
     <section id="ai" class="page" aria-labelledby="aiTitle">
       <div class="page-head"><div><span class="page-kicker">OPTIONAL</span><h1 id="aiTitle">AI missing-plan recovery</h1><p>If a due plan is missing, AI can draft a local Word file and wait for your approval.</p></div><button id="openAiFolder" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open drafts folder</span></button></div>
       <div class="mode-card"><div class="mode-icon"><svg><use href="#i-spark"/></svg></div><div class="grow"><span class="eyebrow dark">AI DRAFTING</span><h2 id="aiModeTitle">OFF</h2><p id="aiModeDesc">Missing plans will stop safely and notify you.</p></div><label class="switch" data-tip="AI recovery is optional. Normal Auto Turn-In works without it."><input id="aiEnabled" type="checkbox" aria-label="AI missing-plan recovery"><span aria-hidden="true"></span></label></div>
@@ -270,7 +297,7 @@
         <div class="panel support-card"><div class="support-icon good"><svg><use href="#i-shield"/></svg></div><span class="section-kicker">QUICK SUPPORT</span><h2>Copy a support summary</h2><p>Copies the useful status information you can send to someone helping you.</p><button id="copyDiagnostics" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Copy support summary</span></button></div>
       </div>
       <details class="panel"><summary><div><span class="section-kicker">SUPPORT FILES</span><h2>Files for school technology support</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p class="muted">You normally do not need these. If someone is helping troubleshoot the app, they may ask you to open this folder.</p><div class="actions toolbar"><button id="refreshLogs" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh support status</span></button><button id="openLogs" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open support folder</span></button><button id="cleanupLogs" class="btn secondary"><span>Remove old support files</span></button></div><div id="logBox" class="notice compact">Support files are stored on this computer and are not shown inside the app.</div></details>
-      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>GoClassroom <small>preview name</small></h2><p>Teacher Edition v0.9.22 · Built on the Classroom Auto Turn-In compatibility identity so existing setup and schedules remain intact.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
+      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>GoClassroom <small>preview name</small></h2><p>Teacher Edition v0.9.27 · Built on the Classroom Auto Turn-In compatibility identity so existing setup and schedules remain intact.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
     </section>
   </main>
 </div>

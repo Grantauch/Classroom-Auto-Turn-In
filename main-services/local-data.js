@@ -22,6 +22,11 @@ function createLocalData(getUserDataDir){
       const value=readJsonWithBackup(file,{fallback,label:name,logger:appLog});issues.delete(name);return value;
     }catch(e){issues.set(name,`${name} and its backup could not be read safely.`);appLog(`${name} could not be read. Safe defaults will be used until setup is repaired.`);return fallback}
   }
+  function readJsonStrict(name,fallback){
+    const value=readJsonWithBackup(jsonPath(name),{fallback,label:name,logger:appLog,throwOnCorrupt:true});
+    issues.delete(name);
+    return value;
+  }
   function writeJson(name,value){atomicWriteJson(jsonPath(name),value,{backup:true});issues.delete(name);return value}
   function loadConfig(){
     const raw=readJson('config.json',{});
@@ -53,6 +58,6 @@ function createLocalData(getUserDataDir){
     }
     const state=normalizeState({});state.dataCorrupt=true;state.currentBlockers=[...(state.currentBlockers||[]),{type:'DATA_CORRUPT',message:'Saved submission history could not be read safely. Automatic turn-in is blocked until the local data is repaired.'}];return state;
   }
-  return {dataDir,ensureData,jsonPath,readJson,writeJson,defaultConfig,loadConfig,saveConfig,normalizePlan,loadPlans,savePlans,loadState,appLog,issues};
+  return {dataDir,ensureData,jsonPath,readJson,readJsonStrict,writeJson,defaultConfig,loadConfig,saveConfig,normalizePlan,loadPlans,savePlans,loadState,appLog,issues};
 }
 module.exports={createLocalData};

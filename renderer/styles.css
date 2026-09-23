@@ -57,7 +57,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 /* v0.9.20 Classroom draft grading bridge hardening */
 .grading-classroom-grid{margin-top:14px}.grading-classroom-results{margin-top:16px;display:grid;gap:12px}.grading-classroom-summary{display:grid;gap:3px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:12px}.grading-classroom-summary b{font-size:14px}.grading-classroom-summary span,.grading-classroom-summary small{color:var(--muted)}.classroom-grade-list{display:grid;gap:8px}.classroom-grade-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff}.classroom-grade-name{display:flex;gap:8px;align-items:center;min-width:0}.classroom-grade-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.classroom-grade-score{font-weight:800;font-size:16px;white-space:nowrap}.classroom-grade-row p{grid-column:1/-1;margin:0;color:#445169;font-size:12.5px}.classroom-grade-row small{grid-column:1/-1;color:var(--muted)}
 
-/* v0.9.22 GoClassroom teacher-first visual system */
+/* v0.9.26 GoClassroom teacher-first visual system */
 :root{
   --ink:#0e2a56;--muted:#587094;--subtle:#7890ad;--line:#d7e6f5;--line-strong:#bfd4e8;
   --surface:#fff;--surface-2:#f7fbff;--surface-3:#f2f8fe;--nav:#061b3a;--nav-hover:#0b2b63;
@@ -84,3 +84,8 @@ main{background:transparent}
 select{cursor:pointer}
 @media(max-width:1080px){.space-banner{height:100px}.space-banner:after{width:95px;height:88px}.brand-logo{width:166px}}
 @media(max-width:860px){.brand-logo{width:42px;height:42px;object-fit:cover;object-position:left}.space-banner img{width:300px}.review-folder-row{align-items:flex-start;flex-direction:column}.review-folder-row .actions{width:100%}.review-folder-row .actions .btn{flex:1}}
+
+/* v0.9.26 roster sync foundation */
+.roster-safety{border-color:#b9dff8;background:#f0f9ff}.roster-preview-panel{border-top:4px solid #1597ff}.roster-class-list{display:grid;gap:10px;margin:14px 0}.roster-class-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,280px);gap:18px;align-items:center;border:1px solid var(--line);border-radius:12px;background:#fff;padding:13px 14px}.roster-class-copy{min-width:0}.roster-class-copy strong,.roster-class-copy span{display:block}.roster-class-copy strong{font-size:14px;color:#0b2b63}.roster-class-copy span{margin-top:4px;color:var(--muted);font-size:12px}.roster-map-field{margin:0}.roster-map-field select{margin-top:4px}.roster-operation-summary{display:grid;gap:12px}.roster-operation-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}.roster-operation-counts>div{border:1px solid var(--line);border-radius:11px;background:var(--surface-2);padding:12px}.roster-operation-counts span,.roster-operation-counts strong{display:block}.roster-operation-counts span{color:var(--muted);font-size:11px}.roster-operation-counts strong{font-size:22px;margin-top:2px;color:#0b2b63}@media(max-width:960px){.roster-class-card{grid-template-columns:1fr}.roster-operation-counts{grid-template-columns:1fr}}
+
+.roster-change-list{display:grid;gap:8px}.roster-change-row{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px 11px}.roster-change-row strong,.roster-change-row span{display:block}.roster-change-row strong{font-size:13px;color:#0b2b63}.roster-change-row div>span{margin-top:2px;color:var(--muted);font-size:11px}

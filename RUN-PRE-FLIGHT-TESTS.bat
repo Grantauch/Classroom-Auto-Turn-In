@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-title GoClassroom Preview - v0.9.22 Pre-Flight Tests
+title GoClassroom Preview - v0.9.26 Pre-Flight Tests
 
 echo ============================================================
-echo   GoClassroom Preview v0.9.22 - Pre-Flight Tests
+echo   GoClassroom Preview v0.9.26 - Pre-Flight Tests
 
 echo ============================================================
 echo.

@@ -1,14 +1,14 @@
-# Installing v0.9.22 on the school PC
+# Installing v0.9.26 on the school PC
 
-> Do not use this source folder as the school-PC release. Use these instructions only after the Windows distribution gate has produced and verified a v0.9.22 Setup EXE.
+> Do not use this source folder as the school-PC release. Use these instructions only after the Windows distribution gate has produced and verified a v0.9.26 Setup EXE.
 
 ## Before installing
 
-1. Obtain `Classroom-Auto-Turn-In-Setup-0.9.22-x64.exe` and the release SHA-256 list from the same verified build.
+1. Obtain `Classroom-Auto-Turn-In-Setup-0.9.26-x64.exe` and the release SHA-256 list from the same verified build.
 2. In PowerShell, verify the hash:
 
 ```powershell
-Get-FileHash .\Classroom-Auto-Turn-In-Setup-0.9.22-x64.exe
+Get-FileHash .\Classroom-Auto-Turn-In-Setup-0.9.26-x64.exe
 ```
 
 3. Compare it with the published build hash before running the installer.
@@ -16,6 +16,8 @@ Get-FileHash .\Classroom-Auto-Turn-In-Setup-0.9.22-x64.exe
 ## Install
 
 Run the installer for the current Windows user. Existing CATI teacher data is preserved by the installer/uninstaller rules unless the release instructions explicitly say otherwise.
+
+After the upgrade, keep automatic turn-in off until a Safety Check succeeds against the live district Classroom. The first validation should confirm that the former `AT-CLS-110` assignment is now read from the verified assignment page.
 
 ## Local grading prerequisites
 

@@ -1,4 +1,8 @@
-# GoClassroom v0.9.22 — Product Specification
+# GoClassroom v0.9.26 — Product Specification
+
+## Live roster comparison preview
+
+v0.9.26 extends the v0.9.25 live roster comparison with a teacher-authorized, revision-bound write bridge. GoClassroom still discovers teaching Classrooms through the authenticated local browser profile, accepts only evidence-backed email identities, requires explicit Classroom-to-period mappings, encrypts roster data locally, and calculates a deterministic sync plan. After a fresh comparison and native confirmation, only additions and name corrections may be applied; removals remain review-only and are never included in the write request.
 
 ## Product goal
 
@@ -6,7 +10,7 @@ Help a teacher reliably manage recurring lesson-plan submission and optional AI-
 
 ## Preserved Auto Turn-In behavior
 
-v0.9.22 preserves the existing verified recurring lesson-plan workflow, schedule/retry behavior, Google sign-in model, duplicate prevention, multi-PC controls, approval-required AI lesson-plan recovery, fail-closed submission rules, and the v0.9.20 Classroom Draft Grading Bridge hardening.
+v0.9.26 preserves the v0.9.23 due-date reliability work and the existing recurring lesson-plan workflow, schedule/retry behavior, Google sign-in model, duplicate prevention, multi-PC controls, approval-required AI lesson-plan recovery, fail-closed submission rules, and the v0.9.22 multi-Classroom grading work. It adds a verified assignment-detail due-date fallback for collapsed Classwork cards and supports common numeric Classroom date formats.
 
 ## Local grading
 
@@ -96,4 +100,4 @@ When the teacher explicitly enables private review copies, the selected external
 
 ## Release acceptance
 
-Before broad school-PC release, v0.9.22 requires the Windows distribution gate, packaged browser/e2e checks, a controlled six-class picker/switching validation, controlled live Classroom extraction/write validation, private-review-folder policy review, and teacher benchmark testing. Automated/source checks alone are not sufficient for 1.0 promotion.
+Before broad school-PC release, v0.9.26 requires the Windows distribution gate, packaged browser/e2e checks, a controlled live due-date validation, a controlled six-class picker/switching validation, controlled live Classroom extraction/write validation, private-review-folder policy review, controlled live roster comparison + approved add/name-update validation, encrypted pending-write recovery validation, and teacher benchmark testing. Automated/source checks alone are not sufficient for 1.0 promotion.

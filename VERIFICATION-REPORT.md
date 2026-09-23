@@ -1,4 +1,28 @@
-# v0.9.22 GoClassroom Multi-Class Grading Preview Verification Report
+# GoClassroom v0.9.26 Approved Roster Sync Verification Report
+
+## v0.9.26 source status — September 22, 2026
+
+v0.9.26 extends the v0.9.25 live roster comparison with a teacher-confirmed Version 29 write path. The desktop validates both read and write contracts plus the live roster revision, constructs only additions and name corrections, stores an exact pending request through OS-backed encryption, retries the same request ID after uncertain failures, verifies the returned request/revisions, and re-reads the live roster. Removal candidates remain review-only and are never constructed as write actions.
+
+The core project check, roster bridge/service checks, architecture guard, UI integrity, teacher error-language checks, release-candidate freeze, Windows build-configuration regression, adversarial/fuzz suites, AI recovery, grading, multi-Classroom grading bridge, grading confirmation/locking/no-rubric checks, field stabilization, silent retry, migration, multi-PC, recovery audit, submission scope, distribution isolation, verified-build, and builder-bootstrap checks passed in this Linux container. The PowerShell scheduler check skipped because PowerShell is not installed here.
+
+The source/dependency lockfile gate passed. This source archive intentionally omits `node_modules`. An `npm ci --no-audit --no-fund` attempt in this Linux container could not finish because the sandbox could not resolve npm/GitHub package hosts (`EAI_AGAIN`), so the dependency-backed electron-builder schema/package run was not counted as passing here. A Windows release build must restore the pinned dependencies with `npm ci`, rerun `npm run check:deep` with PowerShell available, build the installer, and complete packaged-app validation before v0.9.26 may replace an installed copy.
+
+The Hall Pass source counterpart is tracked separately in the protected `the-desk` release lane: the new Apps Script RPC returns only active membership identity fields and rejects non-teachers and stale roster-sync contracts. It does not expose PINs, pass/check-in history, access overrides, or workbook row numbers, and its source/runtime coverage passed the repository full-release CI before deployment.
+
+---
+
+## Historical v0.9.23 / v0.9.22 verification evidence
+
+# v0.9.23 GoClassroom Due-Date Reliability Verification Report
+
+## v0.9.23 status — September 21, 2026
+
+The v0.9.23 source directly reproduces and repairs the installed v0.9.22 `AT-CLS-110` failure shape: the collapsed Classwork card contains no due date, the verified assignment detail page supplies the date, and Classroom displays that date numerically. Direct parser, eligibility, adversarial, fuzz, source, safety, release, and offline browser-simulation checks pass. The full engine browser run passed 21 scenarios on the first v0.9.23 run; the two fixture failures found there were corrected and both passed on focused rerun. One correction restored `AT-CLS-110` classification instead of generic `AT-RUN-101`; the other made the offline signed-out redirect portable to the Linux headless runner.
+
+The v0.9.23 Windows installer, packaged-app self-test, Defender scan, and live district-Classroom Safety Check remain required before automatic turn-in is re-enabled on the teacher PC. The Windows results below are retained as historical v0.9.22 upgrade evidence and must not be represented as v0.9.23 installer verification.
+
+## Historical v0.9.22 Windows evidence
 
 ## Readiness statement
 
