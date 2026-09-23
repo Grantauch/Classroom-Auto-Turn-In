@@ -1,10 +1,12 @@
-# GoClassroom v0.9.22 Teacher Field Checklist
+# GoClassroom v0.9.26 Teacher Field Checklist
 
-> Use only after the v0.9.22 Windows installer has passed the Windows distribution gate. Use controlled test Classrooms/assignments and test accounts before trying draft writeback with real student grades.
+> Use only after the v0.9.26 Windows installer has passed the Windows distribution gate. Use controlled test Classrooms/assignments and test accounts before trying draft writeback with real student grades.
 
 ## Install and normal Auto Turn-In
 
-- [ ] Install the finished v0.9.22 Setup EXE on the intended teacher PC.
+- [ ] Install the finished v0.9.26 Setup EXE on the intended teacher PC.
+- [ ] Keep automatic turn-in off and run Safety Check against the assignment that previously produced `AT-CLS-110`.
+- [ ] Confirm the support log records `verified assignment detail page` as the due-date source.
 - [ ] Confirm the existing Classroom, Drive folder, schedule, Safety Check, and normal Auto Turn-In behavior still work.
 - [ ] Confirm optional external-provider AI lesson-plan recovery remains separate from local student grading.
 
@@ -70,3 +72,19 @@
 ## Teacher benchmark
 
 Before routine use, compare local draft grades with a set of assignments already graded by the teacher. Record disagreements and adjust rubrics/prompts only after reviewing the cause. `SAFE_DRAFT` is a mechanical safety state, not a guarantee of grading correctness.
+
+## Hall Pass / Check-In roster sync validation
+
+- [ ] Open **Rosters** and discover Classroom rosters using the signed-in teacher profile.
+- [ ] Verify every intended Classroom has the correct Period 1–6 mapping.
+- [ ] Compare with the live Hall Pass / Check-In roster.
+- [ ] Manually verify a sample of students in **ADD**, **UPDATE NAME**, and **REVIEW REMOVE** groups.
+- [ ] Confirm **REVIEW REMOVE** records are not selected for automatic changes.
+- [ ] Start **Apply safe changes** and confirm the native dialog defaults to Cancel.
+- [ ] Cancel once; confirm the operations roster is unchanged.
+- [ ] Re-run/confirm one controlled addition or name correction.
+- [ ] Confirm the applied record appears exactly once in the live roster.
+- [ ] Confirm no roster-sync action emails a student PIN automatically.
+- [ ] Confirm a changed/stale operations roster forces a new comparison instead of applying the old plan.
+- [ ] If testing recovery, interrupt after approval and verify the app offers **Retry approved batch** using the same pending request.
+

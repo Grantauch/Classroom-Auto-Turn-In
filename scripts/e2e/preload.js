@@ -9,13 +9,7 @@ if (stateFile) {
   const pwPath = require.resolve('playwright-core', { paths: [engineDir] });
   const { chromium } = require(pwPath);
   const { installMockRoutes, readState } = require('./mock-google');
-  const original = chromium.launchPersistentContext.bind(chromium);
-  chromium.launchPersistentContext = async (userDataDir, options = {}) => {
-    const extra = {};
-    if (process.env.CATI_E2E_EXECUTABLE) extra.executablePath = process.env.CATI_E2E_EXECUTABLE;
-    const args = [...(options.args || [])];
-    if (process.platform === 'linux') args.push('--no-sandbox', '--disable-dev-shm-usage');
-    const context = await original(userDataDir, { ...options, ...extra, args });
+  async function prepareContext(context, options = {}) {
     try {
       require('fs').appendFileSync(`${stateFile}.launches.log`, `${JSON.stringify({ pid: process.pid, script: path.basename(process.argv[1] || ''), headless: options.headless === true, channel: options.channel || null })}\n`);
     } catch { /* diagnostics only */ }
@@ -40,5 +34,21 @@ if (stateFile) {
       context.on('close', () => clearInterval(timer));
     }
     return context;
+  }
+  const original = chromium.launchPersistentContext.bind(chromium);
+  chromium.launchPersistentContext = async (userDataDir, options = {}) => {
+    const extra = {};
+    if (process.env.CATI_E2E_EXECUTABLE) extra.executablePath = process.env.CATI_E2E_EXECUTABLE;
+    const args = [...(options.args || [])];
+    if (process.platform === 'linux') args.push('--no-sandbox', '--disable-dev-shm-usage');
+    const context = await original(userDataDir, { ...options, ...extra, args });
+    return prepareContext(context, options);
+  };
+  const originalLaunch = chromium.launch.bind(chromium);
+  chromium.launch = async (options = {}) => {
+    const browser = await originalLaunch(options);
+    const originalNewContext = browser.newContext.bind(browser);
+    browser.newContext = async (contextOptions = {}) => prepareContext(await originalNewContext(contextOptions), options);
+    return browser;
   };
 }

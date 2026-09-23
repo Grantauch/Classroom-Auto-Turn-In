@@ -84,6 +84,7 @@ function makeHarness(name, state) {
     ELECTRON_RUN_AS_NODE: '1',
     CATI_BACKGROUND_MODE: headless ? '1' : '0',
     CATI_E2E_MOCK_STATE: stateFile,
+    CATI_E2E_BUNDLED_BROWSER: process.platform === 'win32' ? '0' : '1',
     CATI_E2E_ENGINE_DIR: engineDir,
     NODE_OPTIONS: `--require ${JSON.stringify(path.join(__dirname, 'preload.js'))}`
   });
@@ -341,6 +342,30 @@ scenario('due-date-formats-and-status-labels', async h => {
   h.setLive();
   const live = await h.live();
   assert(live.ok && live.result.status === 'SUCCESS' && live.result.submitted === 1, `due-date variants should not block${explain(h, live)}`);
+});
+
+scenario('collapsed-card-detail-date-fallback', async h => {
+  editState(h.stateFile, s => { s.listHidesDueDates = true; s.numericDetailDueDates = true; });
+  h.configure({ earliestWeek: 3, latestWeek: 3 });
+  await h.scan();
+  const dry = await h.safetyCheck();
+  expectCertified(h, dry, 3);
+  assert(/verified assignment detail page/.test(h.log()), `detail due-date source was not recorded${explain(h, dry)}`);
+  h.setLive();
+  const live = await h.live();
+  assert(live.ok && live.result.status === 'SUCCESS' && live.result.submitted === 1, `numeric detail-page due date should allow Week 3${explain(h, live)}`);
+  assert.deepStrictEqual(h.events('turn-in').map(e => e.assignmentId), ['600003']);
+});
+
+scenario('due-date-unreadable-after-detail-fallback', async h => {
+  editState(h.stateFile, s => { s.listHidesDueDates = true; s.detailHidesDueDates = true; });
+  h.configure({ earliestWeek: 3, latestWeek: 3 });
+  await h.scan();
+  const dry = await h.safetyCheck();
+  assert(!dry.ok && dry.result.status === 'BLOCKED', `unreadable card and detail due date must stop safely${explain(h, dry)}`);
+  assert.strictEqual(publicError(dry.result.blockers?.[0]?.message, 'automation:run').code, 'AT-CLS-110', `wrong support code${explain(h, dry)}`);
+  assert(/Week 3/.test(dry.result.blockers?.[0]?.message||''), `due-date blocker lost the week number${explain(h, dry)}`);
+  assert.strictEqual(h.events('attach').length + h.events('submit-click').length, 0, 'unreadable due date mutated Classroom');
 });
 
 scenario('due-on-a-day-without-a-check', async h => {

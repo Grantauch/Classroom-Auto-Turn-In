@@ -1,58 +1,51 @@
-# v0.9.22 GoClassroom Multi-Class Grading Preview Release Candidate Status
+# v0.9.26 GoClassroom Approved Roster Sync Preview Release Candidate Status
 
 ## Current status
 
-v0.9.22 preserves the verified lesson-plan Auto Turn-In baseline and v0.9.20 grading hardening. It separates the lesson-plan destination Classroom from a teacher-managed list of grading Classrooms, adds teacher-controlled private grading review packets, and introduces the supplied GoClassroom visual system while retaining the existing Windows compatibility identity.
+v0.9.26 preserves the v0.9.25 live roster comparison foundation and adds the first deliberately limited write path from GoClassroom into the Hall Pass / Check-In Version 29 roster bridge.
 
-### Implemented in source
+This is a **source preview / release candidate**, not a field-validated production installer. No real roster change should be applied until the Windows package gate and a controlled teacher test have passed.
 
-- Up to 20 saved grading Classrooms independent of the single lesson-plan Classroom in Setup.
-- Dedicated grading-Classroom picker, switcher, deduplication, and local-only removal.
-- Assignment discovery scoped to the selected saved grading Classroom.
-- Bounded grading batches: 1–60 students per run, default 5.
-- Strict extraction of direct response fields.
-- Text export for supported Google Docs attachments.
-- Unsupported/incomplete evidence fails closed to `TEACHER_REVIEW`.
-- Existing draft/final grades are protected from overwrite.
-- Local Ollama grading remains loopback-only and schema-constrained.
-- CATI independently verifies rubric arithmetic, unique criteria, teacher-rubric labels, exact evidence excerpts, positive score bounds, and malformed model output.
-- One explicit rubric total and one explicit Classroom assignment total must match before a result may remain `SAFE_DRAFT`.
-- Preview mode changes no Classroom grade.
-- Classroom draft writing requires a separately saved opt-in plus a native, Cancel-by-default per-run confirmation.
-- Confirmation produces an assignment-bound, five-minute, one-use authorization; renderer state alone cannot enable writing.
-- Concurrent batches and duplicate student identities are rejected.
-- The writer fills only the total-grade field after verifying its denominator, presses Enter, reloads, and verifies the same nonblank numeric value and denominator.
-- The writer contains no click path for Return; work remains hidden from students.
-- Student work and grading results are not persisted by default; a teacher may explicitly enable a private review packet in a chosen folder after accepting a student-data warning.
-- Review packets contain only evidence used, normalized validated results, and audit metadata; GoClassroom does not change Drive permissions.
-- Student names and attachment titles are not intentionally included in the Ollama packet.
-- Direct instruction-like prompt-injection text is held for teacher review before being sent to Ollama.
-- Current teacher-side `/g/tg/...#u=...` student navigation, fragment parsing, hash-only reload handling, and legacy URL compatibility have DOM/source regression coverage.
+## Implemented in source
 
-### Verified on the Windows release-builder PC
+- Google Classroom roster discovery reuses the teacher's existing authenticated local browser profile.
+- Only student identities whose email address is actually exposed by Classroom are accepted; GoClassroom never guesses addresses.
+- Each teaching Classroom must be explicitly mapped to one school period before it can participate in an operations sync.
+- Classroom roster snapshots and live Hall Pass / Check-In snapshots are stored only through Electron `safeStorage` encrypted local storage.
+- Every new Classroom discovery or period-mapping change invalidates the prior live comparison and requires a fresh Version 29 roster revision.
+- The live bridge response must include the expected read contract, write contract, and a valid roster revision before the Apply button can become eligible.
+- The write path can send **only additions and name corrections**. It does not construct removal/deactivation/delete requests.
+- A native Electron warning dialog is Cancel-by-default and must be accepted before a safe roster batch is sent.
+- The server is still authoritative: it rejects stale revisions, caps approved batches, rejects removals, audits accepted changes, and creates missing PIN material without emailing it.
+- Before an approved write starts, GoClassroom stores the exact request encrypted, including its request ID and base revision.
+- If the browser disconnects or the result is uncertain, the exact pending request is retained and the UI requires recovery before scanning, remapping, or comparing again.
+- Retrying uses the same request ID so the Version 29 server can replay/recover the idempotent batch instead of creating duplicate memberships.
+- A successful response must verify the same request ID, write contract, previous revision, and a new revision.
+- After success, GoClassroom clears the pending request and re-reads the live operations roster. If that follow-up read fails, the completed write remains recorded and the UI requires a fresh comparison.
+- Removal candidates remain visible as **review-only** even when Classroom evidence is complete. v0.9.26 never removes a student automatically.
 
-- Clean lockfile dependency installation and zero production dependency vulnerabilities reported by npm audit.
-- Complete deep source regression suite, including JavaScript syntax, architecture, migration, recovery, distribution isolation, scheduler, local-grading, Classroom bridge, and native-confirmation checks.
-- Classroom bridge regression test covering six independent grading classes, lesson-plan separation, unsaved-course rejection, class removal isolation, bounded extraction, private review export, preview-only mode, persistent opt-in, one-time authorization, duplicate protection, SAFE_DRAFT-only writeback, existing-grade protection, and absence of a Return click.
-- Native main-process confirmation regression test covering Cancel-default behavior and preview bypass.
-- Chromium DOM fixtures covering point-total ambiguity, grade-field/denominator identification, and student-attachment scoping.
-- Real Google Chrome background smoke test covering cross-tab Classroom and Drive picker fixtures.
-- All 21 offline Classroom/Drive engine end-to-end scenarios.
-- The v0.9.22 unsigned per-user NSIS installer, isolated packaged self-test, Defender scan, and backed-up in-place upgrade passed on the Windows release-builder PC. The clean disposable lifecycle remains a historical hosted-runner baseline and still needs a fresh v0.9.22 hosted run if a separate clean-run artifact is required.
-- Packaged application self-test with isolated user data and packaged Chrome launch.
-- The v0.9.22 in-place upgrade was verified locally with additive backup and byte-identical scheduled-task XML; the app/product/task identity remains stable for migration safety.
-- Clean checkout/build/current-user install/uninstall/data-preserving reinstall on a disposable GitHub-hosted Windows runner, including packaged-browser self-tests before and after reinstall.
-- Microsoft Defender targeted scan of the finished installer found no threats.
+## Automated evidence completed in this source workspace
 
-### Still requires Windows/live validation
+- JavaScript syntax checks for the new roster bridge, service, IPC/preload, main process, and renderer code.
+- Encrypted roster-storage regression checks.
+- Roster identity/mapping/completeness checks.
+- Version 29 read-contract checks for `writeContract` and roster `revision`.
+- Approved-write request validation proving no removal request is constructed.
+- Approved-write response validation proving request ID and before/after revisions are checked.
+- Service simulation proving additions and name corrections are the only sent writes and removal candidates remain review-only.
+- Simulated uncertain browser failure proving the encrypted pending request survives and the retry uses the identical request ID.
+- Core `scripts/check.js` source gate passes for v0.9.26.
 
-- Manual confirmation of visible shortcuts, SmartScreen prompts, and district-managed Windows behavior on the intended school PC. The automated clean lifecycle passed, and the teacher PC's existing installation was upgraded in place without disturbing its scheduled task.
-- Live Google Classroom assignment discovery against the teacher's district UI.
-- Live add/switch/remove validation across the teacher's actual five or six grading Classrooms while proving lesson-plan Setup remains unchanged.
-- Live direct-answer extraction and Google Docs extraction against representative student submissions.
-- Live draft-grade entry/verification on a controlled test assignment before use with real grades.
-- Teacher-scored benchmark comparing model draft scores with the teacher's prior grading.
-- District/privacy-policy review for local processing of student work.
-- District/privacy-policy and retention review for the optional private grading review folder, especially if it syncs to Google Drive.
+## Still required before replacing an installed copy
 
-This release candidate is not yet a field-validated 1.0 grading release. “Installer verified” and “live Classroom draft writeback validated” remain separate claims.
+- Restore pinned dependencies with `npm ci` and run the full deep/release-ready suite.
+- Run DOM, browser, and offline E2E gates.
+- Build the v0.9.26 unsigned per-user NSIS installer on the Windows release environment.
+- Run packaged self-test and Defender scan.
+- Verify an in-place upgrade from the currently installed GoClassroom preserves teacher data, browser profile, and scheduled-task definitions.
+- Perform a controlled live test using a synthetic/test membership first: compare, add, name-correct, simulate/recover a retry if practical, and verify no removal occurs.
+- Confirm the live Hall Pass / Check-In audit rows and PIN behavior match the Version 29 contract.
+
+## Release boundary
+
+The source is ready for continued engineering and controlled packaging. It is **not yet certified for automatic production roster maintenance** and it should not be described as commercially complete until the Windows and live-classroom gates above are closed.

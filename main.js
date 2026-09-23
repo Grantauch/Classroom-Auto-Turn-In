@@ -6,11 +6,14 @@ const {createLocalData}=require('./main-services/local-data');
 const {createEngineRunner}=require('./main-services/engine-runner');
 const {createAiService}=require('./main-services/ai-service');
 const {createGradingService}=require('./main-services/grading-service');
+const {createRosterIntegration}=require('./main-services/roster-integration');
+const {createRosterApplyHandler}=require('./main-services/roster-confirmation');
 const {createGradingRequestHandler}=require('./main-services/grading-confirmation');
 const {createSchedulerService}=require('./main-services/scheduler-service');
 const {createMachineService}=require('./main-services/machine-service');
 const {buildSetupExport,parseSetupImport}=require('./main-services/setup-transfer');
 const {runPackagedSelfTest}=require('./main-services/packaged-self-test');
+const {parseCsv,toCsv}=require('./main-services/plan-csv');
 const {lastPayload}=require('./engine/protocol');
 const {schedulePoints,retryOffsets,triggerStartTime} = require('./engine/scheduler');
 const {nextRetryPlan,isRetryChainFresh} = require('./engine/retry-policy');
@@ -145,6 +148,8 @@ async function selectGradingReviewFolder(){ensureAutomationIdle();const result=a
 async function openGradingReviewFolder(){const settings=getGradingService().loadSettings();if(!settings.reviewFolderPath)throw new Error('Choose a grading review folder first.');const result=await shell.openPath(settings.reviewFolderPath);if(result)throw new Error(result);return true}
 const processClassroomGrading=createGradingRequestHandler({dialog,getGradingService});
 
+const rosterIntegration=createRosterIntegration({safeStorage,localData,ensureAutomationIdle,compactError,runNodeScript,runExclusiveBrowser:withExclusiveBrowserOperation});
+const applyApprovedRosterChanges=createRosterApplyHandler({dialog,getRosterIntegration:()=>rosterIntegration});
 function getRunLockInfo(){try{return JSON.parse(fs.readFileSync(path.join(dataDir(),'automation.lock'),'utf8'))}catch{return null}}
 function acquireMainAutomationLock(label='setup action'){
   ensureData();const file=path.join(dataDir(),'automation.lock');const token=`main-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;const payload={pid:process.pid,startedAt:new Date().toISOString(),token,label};
@@ -334,15 +339,6 @@ async function runBackgroundAutomation(){
     return Number(err.exitCode)||1;
   }
 }
-function parseCsv(text){
-  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim()); if(!lines.length)return [];
-  const split=(line)=>{ const out=[]; let s='',q=false; for(let i=0;i<line.length;i++){const c=line[i]; if(c==='"'){if(q&&line[i+1]==='"'){s+='"';i++;}else q=!q;}else if(c===','&&!q){out.push(s.trim());s='';}else s+=c;} out.push(s.trim()); return out; };
-  const first=split(lines[0]).map(x=>x.toLowerCase()); const hasHeader=first.includes('week')||first.includes('weekof');
-  const rows=(hasHeader?lines.slice(1):lines).map(split);
-  return rows.map(r=>normalizePlan({week:r[0],weekOf:r[1]||'',title:r[2]||'',url:r[3]||'',source:r[4]||'import'})).filter(x=>x.week&&x.title&&x.url);
-}
-function csvEscape(v){ const s=String(v??''); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
-function toCsv(plans){ return ['week,weekOf,title,url,source',...plans.map(p=>[p.week,p.weekOf,p.title,p.url,p.source||'manual'].map(csvEscape).join(','))].join('\r\n'); }
 async function dashboard(){
   const cfg=loadConfig(),plans=loadPlans(),state=loadState();
   const courseId=parseClassroomIds(cfg.courseUrl).courseId;
@@ -455,7 +451,7 @@ handleIpc('config:save',(_e,v)=>{ensureAutomationIdle();return saveConfig({...lo
 handleIpc('setup:finish',(_e,time)=>{ensureAutomationIdle();return finishFirstRunSetup(time)});
 handleIpc('plans:get',()=>loadPlans());
 handleIpc('plans:save',(_e,v)=>{ensureAutomationIdle();return savePlans(v)});
-handleIpc('plans:import',async()=>{ensureAutomationIdle();const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Auto Turn-In plan lists',extensions:['csv','json']}]});if(r.canceled)return null;const p=r.filePaths[0],txt=fs.readFileSync(p,'utf8');const plans=(p.toLowerCase().endsWith('.json')?JSON.parse(txt):parseCsv(txt)).map(x=>({...x,source:'import'}));return savePlans(plans)});
+handleIpc('plans:import',async()=>{ensureAutomationIdle();const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Auto Turn-In plan lists',extensions:['csv','json']}]});if(r.canceled)return null;const p=r.filePaths[0],txt=fs.readFileSync(p,'utf8');const plans=(p.toLowerCase().endsWith('.json')?JSON.parse(txt):parseCsv(txt,normalizePlan)).map(x=>({...x,source:'import'}));return savePlans(plans)});
 handleIpc('plans:export',async()=>{const plans=loadPlans();const r=await dialog.showSaveDialog({defaultPath:'classroom-auto-turn-in-plans.csv',filters:[{name:'Auto Turn-In plan list',extensions:['csv']}]});if(r.canceled)return null;fs.writeFileSync(r.filePath,toCsv(plans));return r.filePath});
 handleIpc('course:select',async()=>withExclusiveBrowserOperation('Classroom selection',async()=>{const out=await runNodeScript('select-course.js');return lastPayload(out,'course')||{courseUrl:loadConfig().courseUrl,courseDisplayName:loadConfig().courseDisplayName}}));
 handleIpc('topics:discover',async()=>withExclusiveBrowserOperation('Classroom topic check',async()=>{const out=await runNodeScript('discover-topics.js');const topics=lastPayload(out,'topics');return Array.isArray(topics)?topics:[]}));
@@ -494,5 +490,9 @@ handleIpc('grading:discover-classroom',(_e,courseId)=>discoverGradingAssignments
 handleIpc('grading:process-classroom',(_e,v)=>processClassroomGrading(v||{}));
 handleIpc('grading:select-review-folder',()=>selectGradingReviewFolder());
 handleIpc('grading:open-review-folder',()=>openGradingReviewFolder());
+handleIpc('roster:get-state',()=>rosterIntegration.state());
+handleIpc('roster:discover',()=>rosterIntegration.discover());handleIpc('roster:read-operations',()=>rosterIntegration.readOperationsRoster());
+handleIpc('roster:apply-safe',()=>applyApprovedRosterChanges());
+handleIpc('roster:save-mappings',(_e,v)=>rosterIntegration.saveMappings(v));
 handleIpc('diagnostics:cleanup',()=>{const cfg=loadConfig();return cleanupDiagnostics(cfg.diagnosticRetentionDays||45)});
 handleIpc('logs:open',()=>{const dir=path.join(dataDir(),'logs');fs.mkdirSync(dir,{recursive:true});return shell.openPath(dir)});

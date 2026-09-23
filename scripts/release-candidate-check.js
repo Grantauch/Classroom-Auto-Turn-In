@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8');
 const pkg=JSON.parse(read('package.json'));
-assert.equal(pkg.version,'0.9.22','Release-candidate package version must be 0.9.22');
+assert.equal(pkg.version,'0.9.26','Release-candidate package version must be 0.9.26');
 assert.equal(pkg.build?.appId,'org.classroomautoturnin.app','Stable Windows app identity changed');
 assert.equal(pkg.build?.productName,'Classroom Auto Turn-In','Stable product name changed');
 assert.deepEqual(pkg.build?.win?.target,['nsis'],'Recovery release must build only the teacher NSIS installer');
@@ -20,7 +20,7 @@ assert.equal(pkg.dependencies?.['playwright-core'],'1.55.0','Playwright version 
 assert.equal(pkg.devDependencies?.electron,'38.1.2','Electron version drifted');
 assert.equal(pkg.devDependencies?.['electron-builder'],'26.0.12','electron-builder version drifted');
 const html=read('renderer/index.html'),ui=read('renderer/app.js'),main=read('main.js'),protocol=read('engine/protocol.js'),config=read('engine/app-config.js');
-assert(html.includes('v0.9.22')&&ui.includes('v0.9.22'),'Teacher-facing version labels are not v0.9.22');
+assert(html.includes('v0.9.26')&&ui.includes('v0.9.26'),'Teacher-facing version labels are not v0.9.26');
 assert(!/\bbeta\b/i.test(html),'Teacher-facing UI still labels the app beta');
 assert(!/\bTODO\b|\bFIXME\b/.test([main,ui,...fs.readdirSync(path.join(root,'engine')).filter(x=>x.endsWith('.js')).map(x=>read(`engine/${x}`))].join('\n')),'TODO/FIXME marker remains in runtime source');
 assert(protocol.includes('VERSION=1')||protocol.includes('VERSION = 1')||protocol.includes('version:VERSION'),'Structured process protocol contract changed unexpectedly');
@@ -36,7 +36,7 @@ assert(!/npm install\s/i.test(wf),'RC CI must not resolve dependencies dynamical
 assert(/npm ci/.test(wf),'RC CI must use npm ci');
 for(const f of ['ARCHITECTURE.md','RC-FIELD-VALIDATION.md','RELEASE-BLOCKERS.md','SUPPORT-CODES.md','RC-STATUS.md'])assert(fs.existsSync(path.join(root,f)),`Required RC document missing: ${f}`);
 const status=read('RC-STATUS.md'),blockers=read('RELEASE-BLOCKERS.md');
-assert(status.includes('v0.9.22 GoClassroom Multi-Class Grading Preview Release Candidate')&&!status.includes('Rev B'),'RC status is stale');
+assert(status.includes('v0.9.26 GoClassroom Approved Roster Sync Preview Release Candidate')&&!status.includes('Rev B'),'RC status is stale');
 assert(blockers.includes('Windows distribution gate'),'Release blockers do not describe the real installer gate');
-assert(wf.includes("- 'v0.9.22*'")&&wf.includes('windows-installed-validation.ps1')&&wf.includes('check:e2e'),'Windows CI is stale or lacks installed-package and end-to-end validation');
+assert(wf.includes("- 'v0.9.26*'")&&wf.includes('windows-installed-validation.ps1')&&wf.includes('check:e2e'),'Windows CI is stale or lacks installed-package and end-to-end validation');
 console.log('Release-candidate freeze checks passed: identity, versions, safe defaults, build rules, and RC documents are aligned.');
