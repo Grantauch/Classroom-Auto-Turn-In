@@ -36,6 +36,19 @@ function normalizeAddRows(rows=[]){
 function normalizeNameRows(rows=[]){
   return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:cleanWriteText(row?.studentEmail,'student email',320).toLowerCase(),studentName:cleanWriteText(row?.studentName,'student name',120),beforeName:cleanWriteText(row?.beforeName,'previous student name',120),classPeriod:cleanWriteText(row?.classPeriod,'class period',120)}));
 }
+const ROSTER_RECOVERY_TARGET_BYTES=8*1024;
+function estimatePendingRecoveryBytes(add,updateName){
+  const keyOf=row=>`${row.studentEmail}::${row.classPeriod}`;
+  const plan={
+    v:2,
+    addActions:add.map(row=>({key:keyOf(row),action:'reactivated',beforeName:row.studentName,stage:'PLANNED'})),
+    nameActions:updateName.map(row=>({key:keyOf(row),stage:'PLANNED'})),
+    missingPinEmails:[...new Set(add.map(row=>row.studentEmail))],
+    missingPinCardKeys:add.map(keyOf)
+  };
+  const record={v:3,status:'PENDING',at:'2026-09-22T00:00:00.000Z',updatedAt:'2026-09-22T00:00:00.000Z',payloadDigest:'x'.repeat(43),plan};
+  return Buffer.byteLength(JSON.stringify(record),'utf8');
+}
 function validateWriteRequest(request={},expected={}){
   if(!request||typeof request!=='object'||Array.isArray(request))throw new Error('The approved roster write request is invalid. Compare rosters again.');
   const requestId=String(request.requestId||'').trim(),baseRevision=String(request.baseRevision||'').trim();
@@ -55,6 +68,7 @@ function validateWriteRequest(request={},expected={}){
   if(all.some(row=>/^[=+\-@]/.test(row.studentName))||updateName.some(row=>/^[=+\-@]/.test(row.beforeName)))throw new Error('The approved roster batch contains a student name that cannot be written safely. Compare rosters again.');
   const desiredByEmail=new Map();
   for(const row of all){const prior=desiredByEmail.get(row.studentEmail);if(prior&&prior!==row.studentName)throw new Error(`The approved roster batch contains conflicting names for ${row.studentEmail}. Compare rosters again.`);desiredByEmail.set(row.studentEmail,row.studentName)}
+  if(estimatePendingRecoveryBytes(add,updateName)>ROSTER_RECOVERY_TARGET_BYTES)throw new Error('This roster batch is too large to preserve safely for crash recovery. Sync a smaller batch before continuing.');
   return {confirmation:'APPLY SAFE ROSTER CHANGES',requestId,baseRevision,add,updateName};
 }
 function validateWriteResult(result,expected={}){
@@ -67,4 +81,4 @@ function validateWriteResult(result,expected={}){
   if(expected.updateNameCount!==undefined&&(counts.requestedNameUpdates!==Number(expected.updateNameCount)||counts.nameRowsUpdated!==Number(expected.updateNameCount)))throw new Error('The Hall Pass / Check-In roster write did not verify every approved name update. Reopen GoClassroom and retry the same approved batch.');
   return {ok:true,schemaVersion:1,requestId:String(result.requestId),appliedAt:String(result.appliedAt||''),writeContract:String(result.writeContract),previousRevision:String(result.previousRevision),revision:String(result.revision),counts};
 }
-module.exports={decodeBridgeArg,validateBridge,teacherUrl,validRevision,validateOperationsPayload,validateWriteRequest,validateWriteResult};
+module.exports={decodeBridgeArg,validateBridge,teacherUrl,validRevision,validateOperationsPayload,validateWriteRequest,validateWriteResult,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES};

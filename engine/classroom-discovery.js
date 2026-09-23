@@ -11,15 +11,36 @@ const TOPIC_WAIT_MS=20000;
 function collectAssignmentDueEvidenceDom(){
   const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
   const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
-  const looksRelevant=v=>/\bNo due date\b|\bDue\s+(?:Today|Tomorrow|Yesterday|Sun(?:day)?|Mon(?:day)?|Tue(?:s|sday)?|Wed(?:nesday)?|Thu(?:r|rs|rsday)?|Fri(?:day)?|Sat(?:urday)?|Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?|\d{1,2}[/.\-]\d{1,2})\b/i.test(v);
+  const exactDue=v=>/^(?:No due date|Due\s+(?:Today|Tomorrow|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue(?:s)?|Wed|Thu(?:rs)?|Fri|Sat|Jan(?:uary)?\s+\d{1,2}(?:,\s*\d{4})?|Feb(?:ruary)?\s+\d{1,2}(?:,\s*\d{4})?|Mar(?:ch)?\s+\d{1,2}(?:,\s*\d{4})?|Apr(?:il)?\s+\d{1,2}(?:,\s*\d{4})?|May\s+\d{1,2}(?:,\s*\d{4})?|Jun(?:e)?\s+\d{1,2}(?:,\s*\d{4})?|Jul(?:y)?\s+\d{1,2}(?:,\s*\d{4})?|Aug(?:ust)?\s+\d{1,2}(?:,\s*\d{4})?|Sep(?:t(?:ember)?)?\s+\d{1,2}(?:,\s*\d{4})?|Oct(?:ober)?\s+\d{1,2}(?:,\s*\d{4})?|Nov(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|Dec(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)(?:,?\s+\d{1,2}:\d{2}\s*(?:AM|PM))?)$/i.test(v);
   const out=[];
-  for(const el of document.querySelectorAll('time,[datetime],[aria-label],[title],div,span,p')){
+  for(const el of document.querySelectorAll('[aria-label],[title],[data-tooltip],time')){
     if(!visible(el))continue;
-    for(const raw of [el.innerText,el.textContent,el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('datetime')]){
-      const text=clean(raw);if(!text||text.length>260||!looksRelevant(text))continue;out.push(text);
+    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-tooltip')];
+    for(const raw of labels){
+      const text=clean(raw);if(!text||text.length>120||!exactDue(text))continue;out.push(text);
+    }
+    if(el.tagName==='TIME'&&labels.some(raw=>/\bDue\b|\bNo due date\b/i.test(clean(raw)))){
+      const text=clean(el.innerText||el.textContent);if(text&&text.length<=120&&exactDue(text))out.push(text);
     }
   }
-  return [...new Set(out)].slice(0,80);
+  const main=document.querySelector('main,[role="main"]');
+  if(main){
+    const headings=[...main.querySelectorAll('h1,[role="heading"][aria-level="1"]')].filter(visible);
+    const title=headings[0]||null;
+    if(title){
+      const follows=node=>!!(title.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING);
+      const boundary=[...main.querySelectorAll('p,h2,h3')].find(el=>visible(el)&&follows(el))||null;
+      for(const el of main.querySelectorAll('div,span,time')){
+        if(!visible(el)||el.children.length||!follows(el))continue;
+        if(boundary&&(el===boundary||!!(boundary.compareDocumentPosition(el)&Node.DOCUMENT_POSITION_FOLLOWING)))continue;
+        if(el.closest('a,button,[role="button"],[role="textbox"],[contenteditable="true"]'))continue;
+        const text=clean(el.innerText||el.textContent);
+        if(!text||text.length>120||!exactDue(text))continue;
+        out.push(text);
+      }
+    }
+  }
+  return [...new Set(out)].slice(0,40);
 }
 
 function localDateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}

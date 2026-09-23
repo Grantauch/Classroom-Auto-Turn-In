@@ -10,7 +10,8 @@ function createSecureJsonStore({safeStorage,localData}){
     return value;
   }
   function read(name,fallback){
-    const envelope=localData.readJson(name,null);
+    const readEnvelope=typeof localData.readJsonStrict==='function'?localData.readJsonStrict:localData.readJson;
+    const envelope=readEnvelope(name,null);
     if(!envelope)return fallback;
     if(Number(envelope.secureJsonVersion)!==1||typeof envelope.encrypted!=='string'||!envelope.encrypted)throw new Error(`${name} is not a valid encrypted GoClassroom record.`);
     assertAvailable();

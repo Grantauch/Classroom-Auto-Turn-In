@@ -300,9 +300,13 @@ function rosterUnresolvedCount(course={}){
   const explicit=Array.isArray(course.unresolved)?course.unresolved.length:0;
   return explicit+Math.max(0,Number(course.discoveredStudentRows||0)-Number(course.students?.length||0)-explicit);
 }
-function rosterMappingOptions(current=''){
-  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6'];
-  const choices=current&&!standard.includes(current)?[current,...standard]:standard;
+function rosterPeriodNumber(value){const match=String(value||'').trim().match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
+function rosterMappingOptions(current='',authoritative=[]){
+  const live=[...new Set((Array.isArray(authoritative)?authoritative:[]).map(value=>String(value||'').trim()).filter(value=>/^Period\s+[1-6](?:\b|\s|$)/i.test(value)))];
+  const represented=new Set(live.map(rosterPeriodNumber).filter(Boolean));
+  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6'].filter(value=>!represented.has(rosterPeriodNumber(value)));
+  const choices=[...live,...standard];
+  if(current&&!choices.includes(current))choices.unshift(current);
   return `<option value="">Choose period…</option>`+choices.map(value=>`<option value="${escapeHtml(value)}" ${value===current?'selected':''}>${escapeHtml(value)}</option>`).join('');
 }
 function renderRosters(state=latestRosterState||{}){
@@ -319,11 +323,11 @@ function renderRosters(state=latestRosterState||{}){
   $('#rosterDiff').innerHTML=state.lastDiscoveryAt
     ? `<b>Latest comparison:</b> ${Number(diff.added||0)} added · ${Number(diff.removed||0)} removed · ${Number(diff.changed||0)} changed · ${Number(diff.unresolved||0)} unresolved. <span class="muted">No operational roster was changed.</span>`
     : 'Run roster discovery to create the first snapshot.';
-  const mappings=state.mappings?.classMappings||{};
+  const mappings=state.mappings?.classMappings||{},operationalPeriods=Array.isArray(state?.operations?.classPeriods)?state.operations.classPeriods:[];
   $('#rosterClassList').innerHTML=classes.length?classes.map(course=>{
     const mapped=mappings[course.courseId]?.classPeriod||'';
     const ready=Array.isArray(course.students)?course.students.length:0,review=rosterUnresolvedCount(course);
-    return `<div class="roster-class-card" data-course-id="${escapeHtml(course.courseId)}"><div class="roster-class-copy"><strong>${escapeHtml(course.courseDisplayName||'Classroom')}</strong><span>${ready} verified ${ready===1?'student':'students'}${review?` · ${review} need${review===1?'s':''} identity review`:''}</span></div><label class="field roster-map-field">School period<select class="roster-map-select" data-course-id="${escapeHtml(course.courseId)}">${rosterMappingOptions(mapped)}</select></label></div>`;
+    return `<div class="roster-class-card" data-course-id="${escapeHtml(course.courseId)}"><div class="roster-class-copy"><strong>${escapeHtml(course.courseDisplayName||'Classroom')}</strong><span>${ready} verified ${ready===1?'student':'students'}${review?` · ${review} need${review===1?'s':''} identity review`:''}</span></div><label class="field roster-map-field">School period<select class="roster-map-select" data-course-id="${escapeHtml(course.courseId)}">${rosterMappingOptions(mapped,operationalPeriods)}</select></label></div>`;
   }).join(''):'<div class="empty-state">No Classroom roster snapshot has been saved yet.</div>';
   const pendingRecovery=state?.pendingWrite?.status==='PENDING';
   $$('.roster-map-select').forEach(select=>{select.disabled=pendingRecovery;select.onchange=()=>{markDirty('rosters');renderRosterPreviewFromControls();const live=$('#rosterLiveComparison');if(live)live.innerHTML='<div class="notice compact"><b>Comparison needs refresh.</b> Save the period mapping, then compare rosters again.</div>';const apply=$('#applyOperationsRoster');if(apply)apply.disabled=true;};});
@@ -349,7 +353,7 @@ function renderRosterPreviewFromControls(){
     if(!mapping){unmapped++;blocked+=verified+needsReview;continue}
     if(duplicatePeriods.has(String(mapping.classPeriod||'').toLowerCase())){duplicateMapped++;blocked+=verified+needsReview;continue}
     ready+=verified;review+=needsReview;blocked+=needsReview;
-    const complete=course.studentsHeadingFound===true&&!course.discoveryError&&needsReview===0&&Number(course.discoveredStudentRows||0)===verified;
+    const complete=course.studentsHeadingFound===true&&course.scrollComplete===true&&!course.discoveryError&&needsReview===0&&Number(course.discoveredStudentRows||0)===verified;
     if(!complete)removalHoldClasses++;
   }
   const el=$('#rosterOperationsPreview');if(!el)return;
@@ -374,23 +378,24 @@ function renderLiveRosterComparison(state=latestRosterState||{}){
   (plan.add||[]).forEach(x=>push('ADD',x,'can be applied after confirmation'));
   (plan.updateName||[]).forEach(x=>push('NAME',x,`${x.before?.studentName||''} → ${x.after?.studentName||''}`));
   (plan.deactivate||[]).forEach(x=>push('REVIEW REMOVE',x,'never applied automatically'));
-  (plan.held||[]).forEach(x=>push('HELD',x,x.reason==='SOURCE_ROSTER_NOT_AUTHORITATIVE'?'source roster is incomplete':'class mapping is ambiguous'));
+  (plan.held||[]).forEach(x=>push('HELD',x,x.reason==='SOURCE_ROSTER_NOT_AUTHORITATIVE'?'source roster is incomplete':x.reason==='CLASS_PERIOD_LABEL_MISMATCH'?`choose the existing class label: ${(x.suggestedClassPeriods||[]).join(', ')}`:'class mapping is ambiguous'));
   const writeText=safeCount?`${safeCount} safe change${safeCount===1?' is':'s are'} eligible for a separate teacher confirmation. `:'No safe additions or name updates are waiting. ';
   el.innerHTML=`<div class="roster-operation-counts"><div><span>Already correct</span><strong>${Number(c.unchanged||0)}</strong></div><div><span>To add</span><strong>${Number(c.add||0)}</strong></div><div><span>Name updates</span><strong>${Number(c.updateName||0)}</strong></div><div><span>Removal review</span><strong>${Number(c.deactivate||0)}</strong></div><div><span>Held safely</span><strong>${Number(c.held||0)+Number(c.blocked||0)}</strong></div></div><div class="notice compact"><b>Fresh live comparison.</b> ${Number(ops.count||0)} active operations membership${Number(ops.count||0)===1?'':'s'} read ${ops.lastReadAt?relativeTime(ops.lastReadAt):''}. ${writeText}Removals remain review-only.</div>${rows.length?`<div class="roster-change-list">${rows.join('')}</div>`:'<div class="empty-state">The mapped roster is already aligned with the active operations roster.</div>'}`;
 }
 async function compareOperationsRoster(){
-  if(dirty.rosters)throw new Error('Save the period mapping before comparing rosters.');
+  if(dirty.has('rosters'))throw new Error('Save the period mapping before comparing rosters.');
   const state=await cati.readOperationsRoster();renderRosters(state);clearDirty('rosters');const c=state?.syncPlan?.counts||{};
   toast(`Roster comparison complete: ${Number(c.unchanged||0)} correct, ${Number(c.add||0)} add, ${Number(c.updateName||0)} name update, ${Number(c.deactivate||0)} removal review, ${Number(c.held||0)+Number(c.blocked||0)} held safely. Nothing was changed live.`);return state;
 }
 async function applyOperationsRoster(){
   const pendingRecovery=latestRosterState?.pendingWrite?.status==='PENDING';
-  if(dirty.rosters&&!pendingRecovery)throw new Error('Save the period mapping and compare rosters again before applying changes.');
+  if(dirty.has('rosters')&&!pendingRecovery)throw new Error('Save the period mapping and compare rosters again before applying changes.');
   const outcome=await cati.applySafeRosterChanges();
   if(outcome?.cancelled)return outcome;
   const state=outcome?.state||await cati.getRosterState();renderRosters(state);clearDirty('rosters');
   const c=outcome?.result?.counts||{},changed=Number(c.added||0)+Number(c.reactivated||0)+Number(c.nameRowsUpdated||0);
-  toast(`Roster sync verified: ${Number(c.added||0)} added, ${Number(c.reactivated||0)} reactivated, ${Number(c.nameRowsUpdated||0)} name update${Number(c.nameRowsUpdated||0)===1?'':'s'}. No students were removed.${outcome?.refreshNeeded?' Run Compare rosters again to refresh the live view.':''}`);
+  if(outcome?.verified!==true){toast(`The server accepted the approved roster batch, but GoClassroom has not verified the live result yet. The exact recovery request is still protected; use Retry approved batch.`,true);return outcome;}
+  toast(`Roster sync verified: ${Number(c.added||0)} added, ${Number(c.reactivated||0)} reactivated, ${Number(c.nameRowsUpdated||0)} name update${Number(c.nameRowsUpdated||0)===1?'':'s'}. No students were removed.`);
   return outcome;
 }
 async function loadRosters(){
@@ -575,7 +580,7 @@ function meaningForProblem(msg){const s=friendlyMessage(msg||'');if(/sign in/i.t
 async function loadHelpSummary(){const d=latestDashboard||await cati.getDashboard();latestDashboard=d;const diag=d.diagnostics||{},block=(diag.currentBlockers||[])[0],failure=diag.unresolvedFailure||null,last=block?.message||failure?.message||'',supportCode=block?.supportCode||failure?.supportCode||'';const code=$('#helpCode');if(!last){$('#helpLastProblem').textContent='No current problems';$('#helpMeaning').textContent='Auto Turn-In is not reporting a current problem.';$('#helpAction').textContent='No action is needed right now.';code.textContent='';code.classList.add('hidden');return}const [title,action]=meaningForProblem(last);$('#helpLastProblem').textContent=title;$('#helpMeaning').textContent=friendlyMessage(last);$('#helpAction').textContent=action;if(supportCode){code.textContent=`Support code: ${supportCode}`;code.classList.remove('hidden')}else{code.textContent='';code.classList.add('hidden')}}
 $('#refreshLogs').onclick=()=>withBusy($('#refreshLogs'),'Refreshing…',async()=>{await loadLogs();await loadHelpSummary()});$('#openLogs').onclick=()=>cati.openLogs();$('#cleanupLogs').onclick=()=>withBusy($('#cleanupLogs'),'Cleaning…',async()=>{const r=await cati.cleanupDiagnostics();toast(`Removed ${r.removed} old support file${r.removed===1?'':'s'}.`);await loadLogs()});
 $('#runDiagnostics').onclick=()=>withBusy($('#runDiagnostics'),'Checking…',async()=>{await Promise.all([checkEnvironment([]),loadDashboard(),loadLogs()]);await loadHelpSummary();toast('App health checked.');});
-$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.26 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${blockerEvidence(x)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
+$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.27 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${blockerEvidence(x)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
 
 cati.onAiDraftReady(d=>{toast(`Week ${d.week} AI lesson-plan draft is ready for review.`);loadDashboard();if($('#ai')?.classList.contains('active'))loadAi()});
 

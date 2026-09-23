@@ -12,7 +12,7 @@ function createRosterApplyHandler({dialog,getRosterIntegration}){
       detail:'No student will be removed automatically. New or reactivated memberships may receive missing PIN material, but GoClassroom will not email PINs. Hall Pass and Check-In history is preserved. The server will reject the batch if the live roster changed after comparison.'
     });
     if(answer.response!==1)return {cancelled:true,state};
-    return integration.applySafeChanges();
+    return integration.applySafeChanges(validated);
   };
 }
 module.exports={createRosterApplyHandler};

@@ -1,8 +1,8 @@
-# v0.9.26 GoClassroom Approved Roster Sync Preview Release Candidate Status
+# v0.9.27 GoClassroom Roster Safety Repair Release Candidate Status
 
 ## Current status
 
-v0.9.26 preserves the v0.9.25 live roster comparison foundation and adds the first deliberately limited write path from GoClassroom into the Hall Pass / Check-In Version 29 roster bridge.
+v0.9.27 preserves the v0.9.25 live roster comparison foundation and hardens the deliberately limited write path from GoClassroom into the Hall Pass / Check-In Version 29 roster bridge.
 
 This is a **source preview / release candidate**, not a field-validated production installer. No real roster change should be applied until the Windows package gate and a controlled teacher test have passed.
 
@@ -22,7 +22,7 @@ This is a **source preview / release candidate**, not a field-validated producti
 - Retrying uses the same request ID so the Version 29 server can replay/recover the idempotent batch instead of creating duplicate memberships.
 - A successful response must verify the same request ID, write contract, previous revision, and a new revision.
 - After success, GoClassroom clears the pending request and re-reads the live operations roster. If that follow-up read fails, the completed write remains recorded and the UI requires a fresh comparison.
-- Removal candidates remain visible as **review-only** even when Classroom evidence is complete. v0.9.26 never removes a student automatically.
+- Removal candidates remain visible as **review-only** even when Classroom evidence is complete. v0.9.27 never removes a student automatically.
 
 ## Automated evidence completed in this source workspace
 
@@ -34,13 +34,13 @@ This is a **source preview / release candidate**, not a field-validated producti
 - Approved-write response validation proving request ID and before/after revisions are checked.
 - Service simulation proving additions and name corrections are the only sent writes and removal candidates remain review-only.
 - Simulated uncertain browser failure proving the encrypted pending request survives and the retry uses the identical request ID.
-- Core `scripts/check.js` source gate passes for v0.9.26.
+- Core `scripts/check.js` source gate passes for v0.9.27.
 
 ## Still required before replacing an installed copy
 
 - Restore pinned dependencies with `npm ci` and run the full deep/release-ready suite.
 - Run DOM, browser, and offline E2E gates.
-- Build the v0.9.26 unsigned per-user NSIS installer on the Windows release environment.
+- Build the v0.9.27 unsigned per-user NSIS installer on the Windows release environment.
 - Run packaged self-test and Defender scan.
 - Verify an in-place upgrade from the currently installed GoClassroom preserves teacher data, browser profile, and scheduled-task definitions.
 - Perform a controlled live test using a synthetic/test membership first: compare, add, name-correct, simulate/recover a retry if practical, and verify no removal occurs.

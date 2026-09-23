@@ -1,8 +1,8 @@
 const fs=require('fs'),path=require('path'),os=require('os'),cp=require('child_process');
 const {collectStrictTopicAssignmentsDom,collectDrivePlanRowsDom}=require('../engine/dom-helpers');
-const {markWeekInstructionsDom}=require('../engine/classroom-discovery');
+const {markWeekInstructionsDom,collectAssignmentDueEvidenceDom}=require('../engine/classroom-discovery');
 const {collectStudentEvidenceDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,collectStudentSubmissionRowsDom}=require('../engine/classroom-grading');
-function browserPath(){
+function browserPaths(){
   const guesses=process.platform==='win32'?[
     process.env.LOCALAPPDATA&&path.join(process.env.LOCALAPPDATA,'Google','Chrome','Application','chrome.exe'),
     process.env.PROGRAMFILES&&path.join(process.env.PROGRAMFILES,'Google','Chrome','Application','chrome.exe'),
@@ -11,18 +11,17 @@ function browserPath(){
     process.env.PROGRAMFILES&&path.join(process.env.PROGRAMFILES,'Microsoft','Edge','Application','msedge.exe'),
     process.env['PROGRAMFILES(X86)']&&path.join(process.env['PROGRAMFILES(X86)'],'Microsoft','Edge','Application','msedge.exe')
   ]:['/usr/bin/chromium','/usr/bin/google-chrome'];
-  const direct=guesses.filter(Boolean).find(fs.existsSync);if(direct)return direct;
+  const found=guesses.filter(Boolean).filter(fs.existsSync);
   if(process.platform==='win32'){
     for(const name of ['chrome.exe','msedge.exe']){
       const r=cp.spawnSync('where.exe',[name],{encoding:'utf8',timeout:5000});
-      const candidate=String(r.stdout||'').split(/\r?\n/).map(x=>x.trim()).find(x=>x&&fs.existsSync(x));
-      if(candidate)return candidate;
+      for(const candidate of String(r.stdout||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean))if(fs.existsSync(candidate))found.push(candidate);
     }
   }
-  return null;
+  return [...new Set(found.map(x=>path.resolve(x)))];
 }
-const browser=browserPath();
-if(!browser){
+const browsers=browserPaths();
+if(!browsers.length){
   if(process.platform==='win32'){console.error('DOM fixture checks FAILED: Chrome or Edge could not be located on this Windows PC.');process.exit(1)}
   console.log('DOM fixture checks skipped on this non-Windows audit host: no local Chromium-family browser found.');process.exit(0)
 }
@@ -31,16 +30,28 @@ function runFixture(name,body,script){
   const file=path.join(dir,`${name}.html`);
   const html=`<!doctype html><html><head><meta charset="utf-8"><style>body{font:16px sans-serif}.card,[role=row]{display:block;width:700px;min-height:48px;margin:12px;padding:8px;border:1px solid #aaa}span{display:inline-block}</style></head><body>${body}<script>${script}<\/script></body></html>`;
   fs.writeFileSync(file,html);
-  const r=cp.spawnSync(browser,['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--dump-dom',`file://${file}`],{encoding:'utf8',timeout:30000});
-  if(r.error){if(process.platform!=='win32'&&r.error.code==='ETIMEDOUT'){console.log('DOM fixture checks skipped on this non-Windows audit host: local Chromium headless mode timed out.');fs.rmSync(dir,{recursive:true,force:true});process.exit(0)}throw r.error}if(r.status!==0)throw new Error(`${name}: browser exited ${r.status}: ${r.stderr}`);
-  const m=String(r.stdout).match(/data-result="([^"]*)"/);if(!m)throw new Error(`${name}: no fixture result in DOM`);
-  return JSON.parse(decodeURIComponent(m[1].replace(/&amp;/g,'&')));
+  let lastTimeout=null;
+  for(let index=0;index<browsers.length;index++){
+    const browser=browsers[index],profile=path.join(dir,`profile-${name}-${index}`);
+    fs.mkdirSync(profile,{recursive:true});
+    const r=cp.spawnSync(browser,['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--disable-background-networking',`--user-data-dir=${profile}`,'--dump-dom',`file://${file}`],{encoding:'utf8',timeout:30000});
+    if(r.error){
+      if(r.error.code==='ETIMEDOUT'){lastTimeout=r.error;continue}
+      throw r.error;
+    }
+    if(r.status!==0)throw new Error(`${name}: browser exited ${r.status}: ${r.stderr}`);
+    const m=String(r.stdout).match(/data-result="([^"]*)"/);if(!m)throw new Error(`${name}: no fixture result in DOM`);
+    return JSON.parse(decodeURIComponent(m[1].replace(/&amp;/g,'&')));
+  }
+  if(process.platform!=='win32'&&lastTimeout){console.log('DOM fixture checks skipped on this non-Windows audit host: local Chromium headless mode timed out.');fs.rmSync(dir,{recursive:true,force:true});process.exit(0)}
+  throw lastTimeout||new Error(`${name}: no Chromium-family browser could execute the fixture`);
 }
 const assignmentSource=String.raw`Week\s+(\d+)\s*-\s*Lesson Plans`;
 const planSource=String.raw`^Week\s+0?(\d+)\s*-\s*Lesson Plans(?:\.(?:docx|pdf))?$`;
 const assignmentFn=collectStrictTopicAssignmentsDom.toString();
 const driveFn=collectDrivePlanRowsDom.toString();
 const instructionsFn=markWeekInstructionsDom.toString();
+const dueEvidenceFn=collectAssignmentDueEvidenceDom.toString();
 const evidenceFn=collectStudentEvidenceDom.toString();
 const assignmentPointsFn=readAssignmentMaxPointsDom.toString();
 const gradeFieldFn=markTotalGradeInputDom.toString();
@@ -51,6 +62,11 @@ rows=runFixture('classroom-one-card-many-matches',`<section id="topic"><div role
 if(rows.length!==1)throw new Error(`Classroom single-card fixture should deduplicate descendants, got ${rows.length}`);
 rows=runFixture('classroom-overlaid-instructions-link',`<section id="topic"><ol><li class="card" data-stream-item-id="week-5"><div><span>Week 5 - Lesson Plans 9/21/26</span></div><div class="action" style="position:relative;width:160px;height:32px"><span aria-hidden="true">View instructions</span><a aria-label="View instructions" href="/c/course/a/week-5/details" style="position:absolute;inset:0"></a></div></li></ol></section>`,`const fn=${instructionsFn};const root=document.getElementById('topic');const result=fn(root,{source:${JSON.stringify(assignmentSource)},flags:'i',week:5,streamItemId:'week-5'});const tagged=root.querySelector('[data-cati-week-instructions="1"]');const r={result,tag:tagged&&tagged.tagName,href:tagged&&tagged.getAttribute('href')};document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
 if(!rows.result?.ok||rows.tag!=='A'||rows.href!=='/c/course/a/week-5/details')throw new Error(`Classroom overlaid instructions fixture did not choose the real link: ${JSON.stringify(rows)}`);
+rows=runFixture('assignment-detail-due-metadata',`<main role="main"><div><h1>Week 3 - Lesson Plans</h1><div>Principal Office • Sep 1</div><div>100 points</div><div>Due 9/30/2026, 11:59 PM</div><p>Attach this week's lesson plan and turn it in.</p><h3>Class comments</h3><div>Due 10/10/2026, 11:59 PM</div></div></main>`,`const fn=${dueEvidenceFn};const r=fn();document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
+if(rows.length!==1||rows[0]!=='Due 9/30/2026, 11:59 PM')throw new Error(`Assignment detail due-date collector must accept only header metadata before assignment body/comments: ${JSON.stringify(rows)}`);
+rows=runFixture('assignment-detail-body-due-decoy',`<main role="main"><div><h1>Week 3 - Lesson Plans</h1><div>Principal Office • Sep 1</div><div>100 points</div><p>Due 9/30/2026, 11:59 PM</p><h3>Class comments</h3><div>Due 10/10/2026, 11:59 PM</div></div></main>`,`const fn=${dueEvidenceFn};const r=fn();document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
+if(rows.length!==0)throw new Error(`Assignment body/comment due-date text must not become verified due-date evidence: ${JSON.stringify(rows)}`);
+
 rows=runFixture('drive-duplicate-no-ids',`<div role="row"><span>Week 05 - Lesson Plans</span></div><div role="row"><span>Week 05 - Lesson Plans</span></div>`,`const fn=${driveFn};const r=fn({source:${JSON.stringify(planSource)},flags:'i'});document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
 if(rows.length!==2||new Set(rows.map(x=>x.rootKey)).size!==2)throw new Error(`Drive duplicate fixture expected 2 distinct rows, got ${JSON.stringify(rows)}`);
 rows=runFixture('drive-one-row-many-matches',`<div role="row"><span>Week 05 - Lesson Plans</span><span aria-label="Week 05 - Lesson Plans">Week 05 - Lesson Plans</span></div>`,`const fn=${driveFn};const r=fn({source:${JSON.stringify(planSource)},flags:'i'});document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
