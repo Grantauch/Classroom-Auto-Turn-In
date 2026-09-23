@@ -29,28 +29,33 @@ function collectTeachingClassroomsDom(){
 }
 
 async function collectCourseRoster(page,course){
-  const byEmail=new Map();let maxRows=0,headingFound=false;
+  const byEmail=new Map();let maxRows=0,headingFound=false,scrollComplete=false;
   const url=`https://classroom.google.com/c/${encodeURIComponent(course.courseId)}/r`;
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await assertGoogleSession(page,`People for ${course.courseDisplayName}`);
   await page.locator('main,[role="main"]') .first().waitFor({state:'visible',timeout:25000}).catch(()=>{});
   await page.waitForTimeout(1000);
-  for(let pass=0;pass<12;pass++){
+  const capture=async()=>{
     const snapshot=await page.evaluate(collectClassroomPeopleDom,course.courseId).catch(()=>({students:[],discoveredStudentRows:0,studentsHeadingFound:false}));
     headingFound=headingFound||snapshot.studentsHeadingFound===true;maxRows=Math.max(maxRows,Number(snapshot.discoveredStudentRows)||0);
     for(const row of snapshot.students||[])if(row?.email&&!byEmail.has(String(row.email).toLowerCase()))byEmail.set(String(row.email).toLowerCase(),row);
+  };
+  for(let pass=0;pass<12;pass++){
+    await capture();
     const moved=await page.evaluate(()=>{
       const roots=[...document.querySelectorAll('*')].filter(el=>{const s=getComputedStyle(el);return /auto|scroll/.test(s.overflowY||'')&&el.scrollHeight>el.clientHeight+40});
       const root=roots.sort((a,b)=>(b.scrollHeight-b.clientHeight)-(a.scrollHeight-a.clientHeight))[0]||document.scrollingElement||document.documentElement;
       const before=root.scrollTop,max=Math.max(0,root.scrollHeight-root.clientHeight);root.scrollTop=Math.min(max,before+Math.max(500,root.clientHeight*0.85));return {before,after:root.scrollTop,max};
     }).catch(()=>({before:0,after:0,max:0}));
-    if(moved.after>=moved.max-5||moved.after===moved.before)break;
-    await page.waitForTimeout(250);
+    const atEnd=moved.after>=moved.max-5||moved.after===moved.before;
+    await page.waitForTimeout(atEnd?350:250);
+    if(atEnd){await capture();scrollComplete=true;break;}
   }
   const students=[...byEmail.values()];
   if(!headingFound)log(`Roster discovery could not confirm the Students heading in ${course.courseDisplayName}; no guessed roster changes will be allowed.`);
+  if(!scrollComplete)log(`Roster discovery reached its traversal limit in ${course.courseDisplayName}; this class is not eligible to authorize removals.`);
   log(`Roster discovery read ${students.length} verified email identit${students.length===1?'y':'ies'} in ${course.courseDisplayName}${maxRows>students.length?` with at least ${maxRows-students.length} row(s) still needing identity review`:''}.`);
-  return {...course,students,discoveredStudentRows:maxRows,studentsHeadingFound:headingFound};
+  return {...course,students,discoveredStudentRows:maxRows,studentsHeadingFound:headingFound,scrollComplete};
 }
 
 (async()=>{
@@ -69,7 +74,7 @@ async function collectCourseRoster(page,course){
     for(let i=0;i<courses.length;i++){
       const course=courses[i];emit('status',{message:`Reading roster ${i+1} of ${courses.length}: ${course.courseDisplayName}.`});
       try{classes.push(await collectCourseRoster(page,course))}
-      catch(error){classes.push({...course,students:[],discoveredStudentRows:0,discoveryError:clean(error?.message||error,500)});log(`Roster discovery for ${course.courseDisplayName} stopped safely: ${clean(error?.message||error,500)}`)}
+      catch(error){classes.push({...course,students:[],discoveredStudentRows:0,studentsHeadingFound:false,scrollComplete:false,discoveryError:clean(error?.message||error,500)});log(`Roster discovery for ${course.courseDisplayName} stopped safely: ${clean(error?.message||error,500)}`)}
     }
     const snapshot=normalizeRosterSnapshot({source:'google-classroom-ui',discoveredAt:new Date().toISOString(),classes});
     emit('classroom-rosters',{snapshot,issues:classes.filter(c=>c.discoveryError).map(c=>({courseId:c.courseId,courseDisplayName:c.courseDisplayName,message:c.discoveryError}))});
