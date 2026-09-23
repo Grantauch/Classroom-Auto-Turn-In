@@ -23,6 +23,10 @@ const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWr
           .applyRosterSyncChanges(request,writeContract);
       }catch(error){reject(error)}
     }),{request,writeContract:bridge.writeContract});
+    if(raw&&raw.ok===false&&String(raw.status||'')==='REJECTED_NO_ROSTER_EFFECTS'){
+      const error=new Error(String(raw.message||'The roster changed before anything was applied. Compare rosters again.'));
+      error.code='ROSTER_REJECTED_NO_EFFECTS';error.retryable=false;throw error;
+    }
     const result=validateWriteResult(raw,{requestId:request.requestId,baseRevision:request.baseRevision,writeContract:bridge.writeContract,addCount:request.add.length,updateNameCount:request.updateName.length});
     log(`Applied approved GoClassroom roster batch ${result.requestId}: ${result.counts.added} added, ${result.counts.reactivated} reactivated, ${result.counts.nameRowsUpdated} name update(s). No removals were requested.`);
     emit('operations-roster-applied',result);
