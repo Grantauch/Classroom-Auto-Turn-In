@@ -1,6 +1,6 @@
 const fs=require('fs'),path=require('path'),os=require('os'),cp=require('child_process');
 const {collectStrictTopicAssignmentsDom,collectDrivePlanRowsDom}=require('../engine/dom-helpers');
-const {markWeekInstructionsDom}=require('../engine/classroom-discovery');
+const {markWeekInstructionsDom,collectAssignmentDueEvidenceDom}=require('../engine/classroom-discovery');
 const {collectStudentEvidenceDom,readAssignmentMaxPointsDom,markTotalGradeInputDom,collectStudentSubmissionRowsDom}=require('../engine/classroom-grading');
 function browserPaths(){
   const guesses=process.platform==='win32'?[
@@ -51,6 +51,7 @@ const planSource=String.raw`^Week\s+0?(\d+)\s*-\s*Lesson Plans(?:\.(?:docx|pdf))
 const assignmentFn=collectStrictTopicAssignmentsDom.toString();
 const driveFn=collectDrivePlanRowsDom.toString();
 const instructionsFn=markWeekInstructionsDom.toString();
+const dueEvidenceFn=collectAssignmentDueEvidenceDom.toString();
 const evidenceFn=collectStudentEvidenceDom.toString();
 const assignmentPointsFn=readAssignmentMaxPointsDom.toString();
 const gradeFieldFn=markTotalGradeInputDom.toString();
@@ -61,6 +62,11 @@ rows=runFixture('classroom-one-card-many-matches',`<section id="topic"><div role
 if(rows.length!==1)throw new Error(`Classroom single-card fixture should deduplicate descendants, got ${rows.length}`);
 rows=runFixture('classroom-overlaid-instructions-link',`<section id="topic"><ol><li class="card" data-stream-item-id="week-5"><div><span>Week 5 - Lesson Plans 9/21/26</span></div><div class="action" style="position:relative;width:160px;height:32px"><span aria-hidden="true">View instructions</span><a aria-label="View instructions" href="/c/course/a/week-5/details" style="position:absolute;inset:0"></a></div></li></ol></section>`,`const fn=${instructionsFn};const root=document.getElementById('topic');const result=fn(root,{source:${JSON.stringify(assignmentSource)},flags:'i',week:5,streamItemId:'week-5'});const tagged=root.querySelector('[data-cati-week-instructions="1"]');const r={result,tag:tagged&&tagged.tagName,href:tagged&&tagged.getAttribute('href')};document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
 if(!rows.result?.ok||rows.tag!=='A'||rows.href!=='/c/course/a/week-5/details')throw new Error(`Classroom overlaid instructions fixture did not choose the real link: ${JSON.stringify(rows)}`);
+rows=runFixture('assignment-detail-due-metadata',`<main role="main"><div><h1>Week 3 - Lesson Plans</h1><div>Principal Office • Sep 1</div><div>100 points</div><div>Due 9/30/2026, 11:59 PM</div><p>Attach this week's lesson plan and turn it in.</p><h3>Class comments</h3><div>Due 10/10/2026, 11:59 PM</div></div></main>`,`const fn=${dueEvidenceFn};const r=fn();document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
+if(rows.length!==1||rows[0]!=='Due 9/30/2026, 11:59 PM')throw new Error(`Assignment detail due-date collector must accept only header metadata before assignment body/comments: ${JSON.stringify(rows)}`);
+rows=runFixture('assignment-detail-body-due-decoy',`<main role="main"><div><h1>Week 3 - Lesson Plans</h1><div>Principal Office • Sep 1</div><div>100 points</div><p>Due 9/30/2026, 11:59 PM</p><h3>Class comments</h3><div>Due 10/10/2026, 11:59 PM</div></div></main>`,`const fn=${dueEvidenceFn};const r=fn();document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
+if(rows.length!==0)throw new Error(`Assignment body/comment due-date text must not become verified due-date evidence: ${JSON.stringify(rows)}`);
+
 rows=runFixture('drive-duplicate-no-ids',`<div role="row"><span>Week 05 - Lesson Plans</span></div><div role="row"><span>Week 05 - Lesson Plans</span></div>`,`const fn=${driveFn};const r=fn({source:${JSON.stringify(planSource)},flags:'i'});document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
 if(rows.length!==2||new Set(rows.map(x=>x.rootKey)).size!==2)throw new Error(`Drive duplicate fixture expected 2 distinct rows, got ${JSON.stringify(rows)}`);
 rows=runFixture('drive-one-row-many-matches',`<div role="row"><span>Week 05 - Lesson Plans</span><span aria-label="Week 05 - Lesson Plans">Week 05 - Lesson Plans</span></div>`,`const fn=${driveFn};const r=fn({source:${JSON.stringify(planSource)},flags:'i'});document.documentElement.setAttribute('data-result',encodeURIComponent(JSON.stringify(r)));`);
