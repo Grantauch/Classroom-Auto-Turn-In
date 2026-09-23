@@ -208,8 +208,7 @@ function assignmentEligibility(assignment, plan, cfg, now=new Date()){
   // page) is more authoritative than the rest of a Classwork card. Check it
   // first so unrelated card text cannot mask valid due-date evidence.
   const sources=[
-    {name:assignment?.dueSource||'dedicated due-date field',text:String(assignment?.dueText||'').trim()},
-    {name:'Classwork card',text:String(assignment?.cardText||'').trim()}
+    {name:assignment?.dueSource||'dedicated due-date field',text:String(assignment?.dueText||'').trim()}
   ].filter(x=>x.text);
   let due=null,used=null;
   for(const source of sources){const parsed=parseClassroomDueDate(source.text,now);if(parsed){due=parsed;used=source;break;}}

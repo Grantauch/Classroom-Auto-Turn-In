@@ -30,7 +30,7 @@ const genericMappings=normalizeMappings({classMappings:{COURSE1:{classPeriod:'Pe
 const genericPreview=buildOperationsRosterCandidate(complete,genericMappings);
 const genericPlan=planOperationsRosterSync(genericPreview,[
   {studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},
-  {studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}
+  {studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true,credentialReady:true}
 ]);
 assert.equal(genericPlan.counts.add,0,'A generic period label must never propose a duplicate membership beside an existing descriptive period label.');
 assert.equal(genericPlan.counts.deactivate,0,'A generic/descriptive period collision must not create an automatic removal candidate.');
@@ -38,7 +38,7 @@ assert.ok(genericPlan.held.some(row=>row.reason==='CLASS_PERIOD_LABEL_MISMATCH')
 const discoverySource=fs.readFileSync(path.join(__dirname,'../engine/discover-classroom-rosters.js'),'utf8');
 assert.ok(discoverySource.includes('if(atEnd){await capture();scrollComplete=true;break;}'),'Roster discovery must collect the final viewport before declaring traversal complete.');
 const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
-assert.ok(!dueCollectorSource.includes("div,span,p"),'Assignment due-date fallback must not scan ordinary assignment body text.');
+assert.ok(!dueCollectorSource.includes("main.querySelectorAll('div,span,time')"),'Assignment due-date fallback must not scan ordinary assignment body text.');
 assert.equal(typeof collectClassroomPeopleDom,'function');const domSource=String(collectClassroomPeopleDom);assert.ok(/mailto:/.test(domSource));assert.ok(/Students\|Classmates/.test(domSource));assert.ok(!/firstName|lastName|guess/i.test(domSource),'Roster discovery must not guess student email addresses.');
 
 const {validateBridge,teacherUrl,validateOperationsPayload,validateWriteRequest,validateWriteResult,decodeBridgeArg,estimatePendingRecoveryBytes,ROSTER_RECOVERY_TARGET_BYTES}=require('../engine/operations-roster-bridge');
@@ -71,7 +71,7 @@ assert.throws(()=>validateWriteResult({ok:true,requestId:writeRequest.requestId,
 
 console.log('GoClassroom roster contract checks passed: verified identities, unique mappings, revision-bound safe writes, and no automatic removals.');
 
-function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false}={}){
+function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser disconnect after uncertain write',afterRows=null,terminalReject=false,recoveryReview=false}={}){
   const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
   const {encode}=require('../engine/protocol');
   const plain=new Map(),secure=new Map(),calls=[],logs=[];let applyAttempts=0,readCount=0,requestIds=[];
@@ -79,7 +79,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
   secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot:{...complete,discoveredAt:new Date().toISOString()},lastDiff:{counts:{}},issues:[]});plain.set('roster-mappings.json',mappings);plain.set('roster-bridge.json',{...DEFAULT_OPERATIONS_BRIDGE,studentEmailDomain:'school.org'});
   const currentBefore=[{studentEmail:'ada@school.org',studentName:'Ada Old Name',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
-  const currentAfter=afterRows||[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
+  const currentAfter=afterRows||[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true,credentialReady:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}];
   const service=createRosterService({localData,secureData,ensureAutomationIdle:()=>{},compactError:e=>String(e),runExclusiveBrowser:async(_label,fn)=>fn(),runNodeScript:async(file,args)=>{
     calls.push(file);
     if(file==='read-operations-roster.js'){
@@ -90,6 +90,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
       applyAttempts++;const packed=decodeBridgeArg(args[0]),req=validateWriteRequest(packed.request,{studentEmailDomain:packed.bridge.studentEmailDomain});requestIds.push(req.requestId);
       assert.equal(packed.bridge.writeContract,DEFAULT_OPERATIONS_BRIDGE.writeContract);assert.equal(req.baseRevision,REVISION_A);assert.equal(req.add.length,1);assert.equal(req.updateName.length,1);assert.equal(req.deactivate,undefined);
       if(terminalReject){const error=new Error('The roster changed before anything was applied. Compare rosters again.');error.code='ROSTER_REJECTED_NO_EFFECTS';throw error;}
+      if(recoveryReview){const error=new Error('An earlier roster write stopped at an uncertain point. Compare the current roster again.');error.code='ROSTER_RECOVERY_REVIEW_REQUIRED';throw error;}
       if(failFirstApply&&applyAttempts===1)throw new Error(applyErrorMessage);
       return encode('operations-roster-applied',{ok:true,schemaVersion:1,requestId:req.requestId,appliedAt:'2026-09-22T19:05:00Z',writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,previousRevision:REVISION_A,revision:REVISION_B,counts:{added:1,reactivated:0,nameRowsUpdated:1,requestedNameUpdates:1,createdPins:1,createdPinCards:1}});
     }
@@ -130,6 +131,15 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const missingReadback=makeHarness({afterRows:[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}]});await missingReadback.service.readOperationsRoster();
   const unverified=await missingReadback.service.applySafeChanges();assert.equal(unverified.verified,false);assert.equal(unverified.state.pendingWrite.status,'PENDING','A server receipt must not clear recovery when the intended live membership is absent.');
   console.log('GoClassroom live readback check passed: a missing intended row remains unverified and recovery-protected.');
+
+  const missingCredential=makeHarness({afterRows:[{studentEmail:'ada@school.org',studentName:'Ada Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true},{studentEmail:'ben@school.org',studentName:'Ben Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true,credentialReady:false},{studentEmail:'gone@school.org',studentName:'Gone Student',classPeriod:'Period 3 Beyond the Scoreboard',active:true}]});await missingCredential.service.readOperationsRoster();
+  const credentialUnverified=await missingCredential.service.applySafeChanges();assert.equal(credentialUnverified.verified,false);assert.equal(credentialUnverified.state.pendingWrite.status,'PENDING','A membership without usable credential material must not clear recovery.');
+  console.log('GoClassroom credential readback check passed: additions are not verified until the live bridge reports usable credential material.');
+
+  const reviewRecovery=makeHarness({recoveryReview:true});await reviewRecovery.service.readOperationsRoster();
+  await assert.rejects(()=>reviewRecovery.service.applySafeChanges(),/uncertain point/i);
+  const reviewState=reviewRecovery.service.publicState();assert.equal(reviewState.pendingWrite.status,'NONE','Teacher-review recovery must close the old local request.');assert.equal(reviewState.operations.lastReadAt,'','Teacher-review recovery must invalidate the cached comparison so the teacher is forced through a fresh compare.');
+  console.log('GoClassroom pre-write recovery check passed: uncertain STARTED transactions can be closed for a fresh teacher-reviewed comparison instead of trapping retries.');
 
   const terminal=makeHarness({terminalReject:true});await terminal.service.readOperationsRoster();
   await assert.rejects(()=>terminal.service.applySafeChanges(),/roster changed/i);

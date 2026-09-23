@@ -27,7 +27,7 @@ function createLocalData(getUserDataDir){
     issues.delete(name);
     return value;
   }
-  function writeJson(name,value){atomicWriteJson(jsonPath(name),value,{backup:true});issues.delete(name);return value}
+  function writeJson(name,value,{requireBackup=false}={}){atomicWriteJson(jsonPath(name),value,{backup:true,requireBackup});issues.delete(name);return value}
   function loadConfig(){
     const raw=readJson('config.json',{});
     return validateConfig(migrateConfig(raw,{profileDir:defaultProfileDirForDataRoot(dataDir())}));

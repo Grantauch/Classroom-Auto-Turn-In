@@ -120,7 +120,7 @@ function itemHtml(state, item) {
     : `<span class="title">${esc(item.title)}</span>`;
   return `<li class="item" role="listitem" ${state.noStreamItemIds ? '' : `data-stream-item-id="${esc(item.id)}"`}>
 <div class="item-head" role="button" aria-expanded="false" tabindex="0" data-item="${esc(item.id)}">
-<span aria-hidden="true">&#128196;</span>${titleHtml}<span class="due">${esc(dueLabel(item, state))}</span></div>
+<span aria-hidden="true">&#128196;</span>${titleHtml}<span class="due" aria-label="${esc(dueLabel(item, state))}">${esc(dueLabel(item, state))}</span></div>
 <div class="item-body" hidden><div>Posted Sep 1</div><div>${esc(status)}</div><div>Please attach this week's plan.</div>
 <div class="instructions-control" style="position:relative;width:160px;height:32px"><span aria-hidden="true">View instructions</span><a aria-label="View instructions" href="${href}" style="position:absolute;inset:0"></a></div></div></li>`;
 }
@@ -171,7 +171,7 @@ function renderDetails(state, item) {
   }).join('');
   const privateLink = state.privateCommentLink ? `<div><a href="https://example.org/meeting-notes">https://example.org/meeting-notes</a></div>` : '';
   const body = `${classroomHeader(state, 'classwork')}<div hidden><div>Your work</div><div>Add or create</div></div><main role="main"><div class="cols">
-<div class="main-col"><h1>${esc(item.title)}</h1><div>Principal Office &#8226; Sep 1</div><div>100 points</div><div class="due">${esc(dueLabel(item, state, { detail: true }))}</div>
+<div class="main-col"><h1>${esc(item.title)}</h1><div>Principal Office &#8226; Sep 1</div><div>100 points</div><div class="due" aria-label="${esc(dueLabel(item, state, { detail: true }))}">${esc(dueLabel(item, state, { detail: true }))}</div>
 <p>Attach this week's lesson plan and turn it in.</p>${materials}<div class="card"><h3>Class comments</h3><div role="textbox" contenteditable="true" aria-label="Add class comment"></div></div></div>
 <aside class="side-col"><div class="card" id="yourwork">${yourWorkHtml(state, item)}</div>
 <div class="card"><h3>Private comments</h3>${privateLink}<div role="textbox" contenteditable="true" aria-label="Add private comment..." style="border:1px solid #ccc;min-height:36px"></div></div></aside></div></main>

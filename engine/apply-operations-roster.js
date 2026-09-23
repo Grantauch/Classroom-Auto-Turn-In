@@ -27,6 +27,10 @@ const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWr
       const error=new Error(String(raw.message||'The roster changed before anything was applied. Compare rosters again.'));
       error.code='ROSTER_REJECTED_NO_EFFECTS';error.retryable=false;throw error;
     }
+    if(raw&&raw.ok===false&&String(raw.status||'')==='REQUIRES_TEACHER_REVIEW'){
+      const error=new Error(String(raw.message||'An earlier roster write stopped at an uncertain point. Compare the current roster again before applying anything else.'));
+      error.code='ROSTER_RECOVERY_REVIEW_REQUIRED';error.retryable=false;throw error;
+    }
     const result=validateWriteResult(raw,{requestId:request.requestId,baseRevision:request.baseRevision,writeContract:bridge.writeContract,addCount:request.add.length,updateNameCount:request.updateName.length});
     log(`Applied approved GoClassroom roster batch ${result.requestId}: ${result.counts.added} added, ${result.counts.reactivated} reactivated, ${result.counts.nameRowsUpdated} name update(s). No removals were requested.`);
     emit('operations-roster-applied',result);

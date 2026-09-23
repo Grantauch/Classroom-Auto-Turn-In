@@ -113,12 +113,14 @@ if(iso(parseClassroomDueDate('Due 09/21/2026',now))!=='2026-09-21')throw new Err
 if(iso(parseClassroomDueDate('Due 9/21/26',now))!=='2026-09-21')throw new Error('Due-date parser failed two-digit numeric year');
 if(iso(parseClassroomDueDate('Due Yesterday, 8:00 AM',now))!=='2026-09-14')throw new Error('Due-date parser failed Yesterday');
 if(iso(parseClassroomDueDate('Due Jan 4, 8:00 AM',new Date(2026,11,20)))!=='2027-01-04')throw new Error('Due-date year inference failed');
-const future=assignmentEligibility({cardText:'Due Sep 21, 8:00 AM'},{week:5},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+const future=assignmentEligibility({dueText:'Due Sep 21, 8:00 AM'},{week:5},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(future.eligible)throw new Error('Future assignment was incorrectly eligible');
-const overdue=assignmentEligibility({cardText:'Due Sep 14, 8:00 AM'},{week:4},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+const overdue=assignmentEligibility({dueText:'Due Sep 14, 8:00 AM'},{week:4},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(!overdue.eligible)throw new Error('Overdue assignment was incorrectly blocked');
 const unknownDue=assignmentEligibility({cardText:'Assignment posted with no readable due date'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(unknownDue.eligible||!unknownDue.unknown)throw new Error('Unreadable due date is not treated as an explicit unknown/blocking state');
+const instructionDueDecoy=assignmentEligibility({cardText:'Week 8 - Lesson Plans Instructions Due Sep 14, 2026'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+if(instructionDueDecoy.eligible||!instructionDueDecoy.unknown)throw new Error('Instruction/body due-date text was incorrectly treated as authoritative Classroom due evidence');
 const dedicatedDue=assignmentEligibility({cardText:'Week 8 - Lesson Plans',dueText:'Due Sep 15',dueSource:'verified assignment detail page'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(dedicatedDue.unknown||!dedicatedDue.eligible||dedicatedDue.dueSource!=='verified assignment detail page')throw new Error('Dedicated detail-page due date is masked by unrelated card text');
 const misleadingTitleDate=assignmentEligibility({cardText:'Assignment posted with no readable due date',text:'Week 8 - Lesson Plans 09/14/2026'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);

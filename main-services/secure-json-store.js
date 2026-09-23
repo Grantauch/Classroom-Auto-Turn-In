@@ -6,7 +6,7 @@ function createSecureJsonStore({safeStorage,localData}){
     assertAvailable();
     const plaintext=JSON.stringify(value);
     const encrypted=safeStorage.encryptString(plaintext).toString('base64');
-    localData.writeJson(name,{secureJsonVersion:1,encrypted});
+    localData.writeJson(name,{secureJsonVersion:1,encrypted},{requireBackup:true});
     return value;
   }
   function read(name,fallback){

@@ -15,7 +15,7 @@ for(const text of ['Due 13/21/2026','Due 9/31/2026','Due 2/29/2026']) assert.equ
 assert.equal(ymd(lib.parseClassroomDueDate('Due Jan 4, 8:00 AM',new Date(2026,11,20))),'2027-01-04');
 assert.equal(ymd(lib.parseClassroomDueDate('Due Feb 29, 8:00 AM',new Date(2024,1,1))),'2024-02-29');
 // No due-date inference from unrelated assignment text.
-{const noDue=lib.assignmentEligibility({cardText:'No due date',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now);
+{const noDue=lib.assignmentEligibility({dueText:'No due date',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now);
 assert.equal(noDue.eligible,false);assert.equal(noDue.date,null);assert.equal(noDue.reason,'no due date in Classroom');}
 assert.equal(lib.assignmentEligibility({cardText:'Posted Sep 1',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now).unknown,true);
 {const detail=lib.assignmentEligibility({cardText:'Week 8 - Lesson Plans',dueText:'Due 9/15/2026',dueSource:'verified assignment detail page'},{},{submitOverdue:true},now);
@@ -51,9 +51,12 @@ fs.writeFileSync(configFile,'{bad json');
 assert.deepEqual(lib.readJsonWithBackup(configFile,{fallback:{},label:'Test config'}),{ok:2});
 fs.writeFileSync(configFile,'{bad again');fs.writeFileSync(configFile+'.bak','{also bad');
 assert.throws(()=>lib.readJsonWithBackup(configFile,{fallback:{},label:'Test config'}),e=>e.code==='DATA_CORRUPT');
-// A surviving backup also recovers when the primary file vanished entirely.
+// Once corruption is unrecoverable, later reads stay blocked even if files disappear or are replaced piecemeal.
 fs.writeFileSync(configFile+'.bak',JSON.stringify({ok:3}));fs.rmSync(configFile,{force:true});
-assert.deepEqual(lib.readJsonWithBackup(configFile,{fallback:{},label:'Test config'}),{ok:3});
+assert.throws(()=>lib.readJsonWithBackup(configFile,{fallback:{},label:'Test config'}),e=>e.code==='DATA_CORRUPT');
+// A complete validated rewrite (primary + backup) is the explicit reconciliation point that clears the marker.
+lib.atomicWriteJson(configFile,{ok:4},{backup:true,requireBackup:true});
+assert.deepEqual(lib.readJsonWithBackup(configFile,{fallback:{},label:'Test config'}),{ok:4});
 
 // Lock owner semantics and state backup remain intact under repeated writes.
 const lock=lib.acquireRunLock();assert.throws(()=>lib.acquireRunLock(),e=>e.code==='RUN_LOCKED');assert.equal(lib.releaseRunLock({token:'wrong'}),false);assert.equal(lib.releaseRunLock(lock),true);

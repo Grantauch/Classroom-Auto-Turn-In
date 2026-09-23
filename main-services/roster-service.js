@@ -135,7 +135,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     const missing=[];
     for(const row of request.add||[]){
       const live=byKey.get(`${row.studentEmail}::${row.classPeriod.toLowerCase()}`);
-      if(!live||live.studentName!==row.studentName)missing.push({studentEmail:row.studentEmail,classPeriod:row.classPeriod});
+      if(!live||live.studentName!==row.studentName||live.credentialReady!==true)missing.push({studentEmail:row.studentEmail,classPeriod:row.classPeriod});
     }
     for(const row of request.updateName||[]){
       const live=byKey.get(`${row.studentEmail}::${row.classPeriod.toLowerCase()}`);
@@ -163,6 +163,17 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
           throw localError;
         }
         appLog(`Roster batch ${request.requestId} was rejected before any roster effect. The stale comparison was cleared so the teacher can compare again.`);
+        throw error;
+      }
+      if(String(error?.code||'')==='ROSTER_RECOVERY_REVIEW_REQUIRED'){
+        try{
+          secureData.write('operations-roster.secure.json',emptyOperationsState());
+          secureData.write('roster-write-pending.secure.json',emptyPendingWrite());
+        }catch(localError){
+          appLog(`Roster batch ${request.requestId} needs teacher-reviewed recovery, but local recovery state could not be reset safely.${safeRosterLogCode(localError)}`);
+          throw localError;
+        }
+        appLog(`Roster batch ${request.requestId} reached an uncertain pre-write recovery state. The old request was closed and the cached comparison was cleared; a fresh comparison is required.`);
         throw error;
       }
       appLog(`Approved roster batch ${request.requestId} did not return a verified completion. The encrypted pending request was retained for idempotent recovery.${safeRosterLogCode(error)}`);
