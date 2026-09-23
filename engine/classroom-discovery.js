@@ -1,9 +1,56 @@
-const {log}=require('./lib');
+const {log,parseClassroomDueDate}=require('./lib');
 const {parseClassroomIds,normalizeText}=require('./safety');
 const {collectStrictTopicAssignmentsDom}=require('./dom-helpers');
 const {assignmentDetailVisible,pollUntil}=require('./classroom-actions');
 
 const TOPIC_WAIT_MS=20000;
+
+// Collect small, visible pieces of due-date evidence from an assignment detail
+// page. The Node-side reader below still validates every candidate with the
+// conservative Classroom parser before the value can affect eligibility.
+function collectAssignmentDueEvidenceDom(){
+  const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&s.display!=='none'&&s.visibility!=='hidden'};
+  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
+  const exactDue=v=>/^(?:No due date|Due\s+(?:Today|Tomorrow|Yesterday|Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sun|Mon|Tue(?:s)?|Wed|Thu(?:rs)?|Fri|Sat|Jan(?:uary)?\s+\d{1,2}(?:,\s*\d{4})?|Feb(?:ruary)?\s+\d{1,2}(?:,\s*\d{4})?|Mar(?:ch)?\s+\d{1,2}(?:,\s*\d{4})?|Apr(?:il)?\s+\d{1,2}(?:,\s*\d{4})?|May\s+\d{1,2}(?:,\s*\d{4})?|Jun(?:e)?\s+\d{1,2}(?:,\s*\d{4})?|Jul(?:y)?\s+\d{1,2}(?:,\s*\d{4})?|Aug(?:ust)?\s+\d{1,2}(?:,\s*\d{4})?|Sep(?:t(?:ember)?)?\s+\d{1,2}(?:,\s*\d{4})?|Oct(?:ober)?\s+\d{1,2}(?:,\s*\d{4})?|Nov(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|Dec(?:ember)?\s+\d{1,2}(?:,\s*\d{4})?|\d{1,2}[/.-]\d{1,2}(?:[/.-]\d{2,4})?)(?:,?\s+\d{1,2}:\d{2}\s*(?:AM|PM))?)$/i.test(v);
+  const sameDueText=(a,b)=>clean(a).toLowerCase()===clean(b).toLowerCase();
+  const out=[];
+  // Only accept a semantically labelled deadline field whose visible value
+  // agrees with that label. Do not scan generic div/span/body text: assignment
+  // instructions and comments may legitimately contain strings such as
+  // "Due Sep 22, 2026" and must never become deadline evidence.
+  for(const el of document.querySelectorAll('[aria-label],[title],[data-tooltip],[data-tooltip-text],time')){
+    if(!visible(el)||el.closest('a,button,[role="button"],[role="textbox"],[contenteditable="true"]'))continue;
+    const visibleText=clean(el.innerText||el.textContent);
+    const parentText=clean(el.parentElement&&(el.parentElement.innerText||el.parentElement.textContent));
+    const displayed=[visibleText,parentText].find(text=>text&&text.length<=120&&exactDue(text))||'';
+    if(!displayed)continue;
+    const labels=[el.getAttribute('aria-label'),el.getAttribute('title'),el.getAttribute('data-tooltip'),el.getAttribute('data-tooltip-text')];
+    const labelled=labels.map(clean).find(text=>text&&text.length<=120&&exactDue(text)&&sameDueText(text,displayed));
+    if(labelled)out.push(displayed);
+  }
+  return [...new Set(out)].slice(0,12);
+}
+
+function localDateKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+
+async function readAssignmentDueDate(page,{timeout=8000,now=new Date()}={}){
+  let lastEvidence=[];
+  const found=await pollUntil(async()=>{
+    const evidence=await page.evaluate(collectAssignmentDueEvidenceDom).catch(()=>[]);
+    lastEvidence=Array.isArray(evidence)?evidence:[];
+    const recognized=[];
+    for(const text of lastEvidence){
+      const due=parseClassroomDueDate(text,now);
+      if(due)recognized.push({kind:'date',key:localDateKey(due),dueText:text});
+      else if(/\bNo due date\b/i.test(text))recognized.push({kind:'none',key:'NO_DUE_DATE',dueText:'No due date'});
+    }
+    const unique=new Map(recognized.map(x=>[`${x.kind}:${x.key}`,x]));
+    if(unique.size>1)return {ok:false,ambiguous:true,dueText:'',source:'verified assignment detail page',evidence:lastEvidence.slice(0,12)};
+    if(unique.size===1){const one=[...unique.values()][0];return {ok:true,ambiguous:false,dueText:one.dueText,source:'verified assignment detail page',date:one.kind==='date'?one.key:null,evidence:lastEvidence.slice(0,12)};}
+    return null;
+  },timeout,350);
+  return found||{ok:false,ambiguous:false,dueText:'',source:'verified assignment detail page',evidence:lastEvidence.slice(0,12)};
+}
 
 // Classroom renders Classwork after the page load event, so wait for the
 // selected topic to appear before deciding it is missing.
@@ -282,4 +329,4 @@ async function getAssignmentLinks(page, regex, cfg) {
   return out;
 }
 
-module.exports={getStrictTopicRegion,expandStrictTopic,collectStrictTopicAssignments,markScopedWeekTitle,markWeekInstructionsDom,openWeekAssignmentFromClasswork,verifyAssignmentIdentity,getAssignmentLinks};
+module.exports={getStrictTopicRegion,expandStrictTopic,collectStrictTopicAssignments,markScopedWeekTitle,markWeekInstructionsDom,collectAssignmentDueEvidenceDom,readAssignmentDueDate,openWeekAssignmentFromClasswork,verifyAssignmentIdentity,getAssignmentLinks};

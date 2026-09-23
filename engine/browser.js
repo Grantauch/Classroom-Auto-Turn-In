@@ -38,9 +38,17 @@ function channelOrder(cfg={}){
   return ['chrome','msedge'];
 }
 
-function launchOnce(cfg,channel,silent,extra,overrides={}){
+async function launchOnce(cfg,channel,silent,extra,overrides={}){
   const extraArgs=Array.isArray(extra.args)?extra.args:[];
   const rest={...extra}; delete rest.args;
+  const e2eBundled=process.env.CATI_E2E_MOCK_STATE&&process.env.CATI_E2E_BUNDLED_BROWSER==='1';
+  if(e2eBundled){
+    const browser=await chromium.launch({headless:silent,args:['--no-first-run','--no-default-browser-check',...extraArgs]});
+    const context=await browser.newContext({viewport:silent?{width:1440,height:1000}:null,...rest,...overrides});
+    const closeContext=context.close.bind(context);
+    context.close=async()=>{try{await closeContext()}finally{await browser.close().catch(()=>{})}};
+    return context;
+  }
   return chromium.launchPersistentContext(cfg.profileDir,{
     headless:silent,
     channel,

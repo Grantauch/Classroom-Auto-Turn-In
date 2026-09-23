@@ -1,6 +1,38 @@
-# v0.9.17 Windows Multi-PC and Free AI Release Candidate — Field Validation
+# GoClassroom v0.9.26 Release Candidate — Field Validation
 
 This is the final validation ledger before v1.0.0. A check is only marked PASS when it was actually observed on the Windows/district-Google environment.
+
+## v0.9.26 approved roster sync
+
+- [ ] Run **Discover Classroom rosters** and compare the class/student counts with the real Google Classroom rosters.
+- [ ] Map each intended class to the correct Period 1–6; confirm duplicate/conflicting mappings are rejected.
+- [ ] Run the live Hall Pass / Check-In comparison and manually verify the add, name-update, and removal-review counts.
+- [ ] Confirm **Apply safe changes** stays disabled until a fresh Version 29 live comparison exists.
+- [ ] Confirm the native dialog defaults to Cancel and lists only additions/name corrections; removal candidates remain review-only.
+- [ ] Apply one controlled addition and verify it appears once in Hall Pass / Check-In.
+- [ ] Apply one controlled name correction and verify the intended membership only.
+- [ ] Confirm roster sync does not automatically email a PIN.
+- [ ] Force a stale live-roster revision and confirm the write is rejected with a compare-again message.
+- [ ] In a controlled interruption test, confirm GoClassroom retains the pending encrypted batch and retries the same request ID.
+- [ ] After success, refresh the live roster and confirm the applied safe changes no longer appear pending.
+
+
+## v0.9.23 due-date repair
+
+- [ ] With the same assignment that produced `AT-CLS-110` in v0.9.22, run Safety Check and confirm the verified assignment detail page supplies the due date.
+- [ ] Confirm common numeric dates such as `9/21` no longer trigger `AT-CLS-110`.
+- [ ] If both the card and detail page truly omit a date, confirm GoClassroom stops with `AT-CLS-110`, includes the affected week, and submits nothing.
+
+## v0.9.22 GoClassroom additions retained in v0.9.26
+
+- [ ] Add at least five teaching Classrooms through the dedicated Draft grading picker.
+- [ ] Switch classes and confirm assignment discovery changes to the selected class only.
+- [ ] Remove and re-add one class; confirm the Google Classroom itself is unchanged.
+- [ ] Confirm the lesson-plan Classroom, topic, Drive folder, schedule, and Safety Check state remain unchanged throughout.
+- [ ] Confirm the write-enabled native dialog names the grading Classroom and assignment.
+- [ ] Choose a restricted review folder, enable private review copies, and verify a complete packet after one preview run.
+- [ ] Confirm review copies remain off by default and no packet is created when disabled.
+- [ ] If using Google Drive for desktop, confirm the folder is restricted and the school retention policy is documented.
 
 > **v0.9.17 note — September 18, 2026:** v0.9.17 preserves the live Classroom workflow from v0.9.16 and adds optional free AI providers. Classroom/Drive simulation and mocked-provider tests do not replace a teacher-controlled live provider draft. See `VERIFICATION-REPORT.md`. The items below still require the real district environment or a teacher-owned free account.
 >

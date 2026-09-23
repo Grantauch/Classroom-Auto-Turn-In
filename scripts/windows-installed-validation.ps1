@@ -1,7 +1,10 @@
 $ErrorActionPreference='Stop'
 $root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$setup=Get-ChildItem (Join-Path $root 'dist') -Filter 'Classroom-Auto-Turn-In-Setup-0.9.20-*.exe' | Select-Object -First 1
-if(-not $setup){ throw 'Installer EXE was not produced.' }
+$package=Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json
+$expectedVersion=[string]$package.version
+if($expectedVersion -notmatch '^\d+\.\d+\.\d+$'){throw "package.json contains an invalid release version: $expectedVersion"}
+$setup=Get-ChildItem (Join-Path $root 'dist') -Filter "Classroom-Auto-Turn-In-Setup-$expectedVersion-*.exe" | Select-Object -First 1
+if(-not $setup){ throw "Installer EXE for v$expectedVersion was not produced." }
 
 $productionTasks=@(
   'Classroom Auto Turn-In',
@@ -51,6 +54,43 @@ function Assert-PerUserInstall([string]$exe){
     }
   }
 }
+function Invoke-SetupInstall([string]$label){
+  # Hosted Windows runners can occasionally terminate a freshly-created NSIS
+  # launcher with STATUS_ACCESS_VIOLATION while security scanning releases it.
+  # Retry only that exact pre-install status, never any other installer failure,
+  # and never retry after a partial application executable appears.
+  $maxAttempts=4
+  for($attempt=1;$attempt -le $maxAttempts;$attempt++){
+    $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
+    if($p.ExitCode -eq 0){return}
+    if($p.ExitCode -ne -1073741819 -or $attempt -ge $maxAttempts){
+      throw "$label exited $($p.ExitCode)."
+    }
+    foreach($folder in $installFolders){
+      $candidate=Join-Path $env:LOCALAPPDATA ("Programs\$folder\Classroom Auto Turn-In.exe")
+      if(Test-Path $candidate){
+        throw "$label exited $($p.ExitCode) after creating a partial application executable at $candidate; validation will not retry an ambiguous install."
+      }
+    }
+    $delaySeconds=[Math]::Min(15,5*$attempt)
+    Write-Warning "$label hit transient Windows status 0xC0000005 before installing (attempt $attempt of $maxAttempts); retrying after $delaySeconds second(s)."
+    Start-Sleep -Seconds $delaySeconds
+  }
+}
+function Wait-ForUninstallCompletion([string]$appExe,[string]$uninstallExe){
+  # The NSIS launcher may exit before its child process has removed the final
+  # files. Starting the installer during that handoff can crash the new NSIS
+  # process, so require both installed executables to disappear first.
+  $deadline=[DateTime]::UtcNow.AddSeconds(30)
+  while([DateTime]::UtcNow -lt $deadline){
+    if(-not (Test-Path $appExe) -and -not (Test-Path $uninstallExe)){
+      Start-Sleep -Seconds 3
+      return
+    }
+    Start-Sleep -Milliseconds 500
+  }
+  throw "Uninstaller returned but installed files were still present after 30 seconds: $appExe"
+}
 function Run-SelfTest([string]$exe,[string]$out,[string]$isolatedUserData){
   if(Test-Path $out){Remove-Item $out -Force}
   $args=@("--self-test-file=$out","--self-test-user-data=$isolatedUserData","--self-test-browser")
@@ -67,15 +107,14 @@ function Run-SelfTest([string]$exe,[string]$out,[string]$isolatedUserData){
 
 try {
   Write-Host 'Installing release candidate silently as current user...'
-  $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
-  if($p.ExitCode -ne 0){throw "Installer exited $($p.ExitCode)."}
+  Invoke-SetupInstall 'Installer'
   $installedByValidation=$true
   $appExe=Find-AppExe
   Assert-PerUserInstall $appExe
   $versionInfo=(Get-Item $appExe).VersionInfo
   if([string]$versionInfo.ProductName -ne 'Classroom Auto Turn-In'){throw "Installed EXE ProductName resource is wrong: $($versionInfo.ProductName)"}
   if([string]$versionInfo.FileDescription -ne 'Classroom Auto Turn-In'){throw "Installed EXE FileDescription resource is wrong: $($versionInfo.FileDescription)"}
-  if(([string]$versionInfo.FileVersion) -notlike '0.9.20*'){throw "Installed EXE FileVersion resource is wrong: $($versionInfo.FileVersion)"}
+  if(([string]$versionInfo.FileVersion) -notlike "$expectedVersion*"){throw "Installed EXE FileVersion resource is wrong: $($versionInfo.FileVersion); expected $expectedVersion"}
 
   $first=Run-SelfTest $appExe $test1 $userData
   $marker=Join-Path $userData 'data\ci-preserve-marker.txt'
@@ -95,18 +134,18 @@ try {
   Write-Host 'Uninstalling while preserving isolated validation data...'
   $p=Start-Process -FilePath $uninstallExe.FullName -ArgumentList '/S' -PassThru -Wait
   if($p.ExitCode -ne 0){throw "Uninstaller exited $($p.ExitCode)."}
+  Wait-ForUninstallCompletion $appExe $uninstallExe.FullName
   $installedByValidation=$false
   if(-not (Test-Path $marker)){throw 'Uninstaller deleted application data; teacher data must be preserved by default.'}
 
   Write-Host 'Reinstalling and rerunning packaged browser self-test...'
-  $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
-  if($p.ExitCode -ne 0){throw "Reinstaller exited $($p.ExitCode)."}
+  Invoke-SetupInstall 'Reinstaller'
   $installedByValidation=$true
   $appExe=Find-AppExe
   Assert-PerUserInstall $appExe
   $versionInfo=(Get-Item $appExe).VersionInfo
   if([string]$versionInfo.ProductName -ne 'Classroom Auto Turn-In'){throw 'Reinstalled EXE lost its ProductName resource.'}
-  if(([string]$versionInfo.FileVersion) -notlike '0.9.20*'){throw 'Reinstalled EXE lost its expected FileVersion resource.'}
+  if(([string]$versionInfo.FileVersion) -notlike "$expectedVersion*"){throw "Reinstalled EXE lost its expected FileVersion resource: $($versionInfo.FileVersion); expected $expectedVersion"}
   $second=Run-SelfTest $appExe $test2 $userData
   if(-not (Test-Path $marker)){throw 'Isolated application-data marker was not preserved through reinstall.'}
   foreach($name in $productionTasks){
@@ -131,3 +170,4 @@ catch {
 finally {
   if(Test-Path $validationRoot){Remove-Item $validationRoot -Recurse -Force -ErrorAction SilentlyContinue}
 }
+

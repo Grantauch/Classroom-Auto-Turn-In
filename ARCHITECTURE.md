@@ -1,4 +1,4 @@
-# Classroom Auto Turn-In — v0.9.20 Classroom Draft Grading Bridge Hardening Release Candidate Architecture
+# GoClassroom — v0.9.26 Approved Roster Sync Preview Architecture
 
 ## Design goal
 
@@ -20,6 +20,7 @@ Electron main process
                 ├─ submit-weekly.js
                 ├─ scan-drive-folder.js
                 ├─ select-course.js
+                ├─ select-grading-course.js
                 ├─ select-drive-folder.js
                 ├─ discover-topics.js
                 ├─ preflight.js
@@ -98,10 +99,13 @@ AI remains outside the core Auto Turn-In requirement and stays OFF by default.
 
 ### `main-services/grading-service.js`
 
-Owns teacher-controlled local grading and the v0.9.20 Classroom draft bridge:
+Owns teacher-controlled local grading and the v0.9.22 multi-Classroom draft bridge:
 
 - grading enable/model settings;
 - separate Classroom draft-write opt-in and bounded batch size;
+- a saved, deduplicated list of up to 20 grading Classrooms that is independent of the lesson-plan `config.json` Classroom;
+- an active grading-Classroom selection and rejection of arbitrary/unsaved course IDs;
+- optional teacher-controlled review-folder settings and review-packet export;
 - loopback Ollama availability/model discovery;
 - manual one-off grading through `engine/grading.js`;
 - Classroom assignment discovery through a bounded helper process;
@@ -137,16 +141,19 @@ Owns the local grading contract:
 - deterministic prompt-injection screening before student work is sent to Ollama;
 - `SAFE_DRAFT` versus `TEACHER_REVIEW` classification.
 
-The renderer never calls Ollama directly. It uses allowlisted IPC through `preload.js`, and the main process/service owns the network request. Student work and grade results are intentionally not written to the local data store.
+The renderer never calls Ollama directly. It uses allowlisted IPC through `preload.js`, and the main process/service owns the network request. Student work and grade results are not written to the application data store. If the teacher explicitly enables private review copies after choosing a folder and accepting the native privacy warning, the service may write a bounded audit packet to that external folder.
 
 ### Classroom grading bridge helpers
 
 - `engine/classroom-grading.js` owns Classroom grading URL parsing, batch bounds, strict DOM helper functions, attachment classification, and grade-field identification.
-- `engine/grading-classroom-discover.js` opens only the configured Classroom and emits a structured assignment list.
+- `engine/select-grading-course.js` reuses the signed-in Classroom picker but returns a grading-course identity without changing lesson-plan Setup.
+- `engine/grading-classroom-discover.js` accepts only a main-process-validated saved grading course and emits a structured assignment list for that course.
 - `engine/grading-classroom-extract.js` reads assignment directions/one explicit point total and a bounded set of student submissions. It accepts only clearly identified direct responses and supported Google Docs plain text; inaccessible, oversized, unsupported, or truncated evidence fails closed.
 - `engine/grading-classroom-write.js` receives only explicitly classified `SAFE_DRAFT` candidates, rejects duplicate students, re-verifies course/assignment/student identity, the single total-grade field, and its visible denominator, fills the score, presses Enter, reloads, and confirms the same nonblank numeric value. It has no Return click path.
 
-The renderer can run preview-only grading with no write call. Write-enabled batches require the persisted draft-write opt-in plus a native main-process confirmation. Confirmation creates an in-memory, assignment-bound authorization that expires after five minutes and is consumed once before extraction begins.
+The renderer can run preview-only grading with no write call. Write-enabled batches require the persisted draft-write opt-in plus a native main-process confirmation naming both the grading Classroom and assignment. Confirmation creates an in-memory, course/assignment-bound authorization that expires after five minutes and is consumed once before extraction begins.
+
+Private review export is a separate persistence boundary. It is off by default, requires a teacher-chosen absolute directory and a native warning, writes a new non-overwriting folder per run, and writes `EXPORT-COMPLETE.txt` last. It does not use the Google Drive API or change sharing permissions. Export failure is reported separately from grading/writeback so a completed Classroom operation is not falsely described as rolled back.
 
 ## Engine
 
@@ -211,7 +218,8 @@ Important files include:
 - `state.json`
 - retry/notification state
 - optional AI settings/drafts/secrets
-- local grading settings (enable/model/draft-write opt-in/batch size only; no student submissions or grade results)
+- local grading settings (enable/model/draft-write opt-in/batch size/saved grading classes/active class/review enable and folder path; no student submissions or grade results in app data)
+- optional teacher-enabled grading review packets in an external folder, which intentionally contain student evidence and validated results
 - logs/screenshots
 - dedicated Google browser profile
 
@@ -257,7 +265,7 @@ Windows release builds additionally require:
 - `ui-e2e-check.js` launches the real desktop app with `electron-main-preload.js`, which points the scheduler service at a mock `powershell.exe` backed by `mock-task-scheduler.js`.
 - `scripts/scheduler-powershell-check.js` proves the generated Task Scheduler scripts in Constrained Language Mode.
 
-v0.9.13, v0.9.16, v0.9.17, v0.9.18, v0.9.19, v0.9.20 and 1.x require a frozen `package-lock.json` before the normal release builder may install dependencies. Release builds use `npm ci` only.
+v0.9.13, v0.9.16, v0.9.17, v0.9.18, v0.9.19, v0.9.20, v0.9.22, v0.9.23, v0.9.24, v0.9.25, v0.9.26 and 1.x require a frozen `package-lock.json` before the normal release builder may install dependencies. Release builds use `npm ci` only.
 
 ## Multi-PC layer
 

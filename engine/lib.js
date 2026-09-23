@@ -142,7 +142,23 @@ const MONTH_INDEX={jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,
 const MONTH_PATTERN='Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
 const WEEKDAY_PATTERN='Sun(?:day)?|Mon(?:day)?|Tue(?:s|sday)?|Wed(?:nesday)?|Thu(?:r|rs|rsday)?|Fri(?:day)?|Sat(?:urday)?';
 const MONTH_DAY_RE=new RegExp(`\\bDue\\s+(?:(?:${WEEKDAY_PATTERN})\\.?,?\\s+)?(${MONTH_PATTERN})\\.?\\s+(\\d{1,2})\\b(?:,\\s*(\\d{4})\\b)?`,'i');
+const NUMERIC_DAY_RE=new RegExp(`\\bDue\\s+(?:(?:${WEEKDAY_PATTERN})\\.?,?\\s+)?(\\d{1,2})[\\/.\\-](\\d{1,2})(?:[\\/.\\-](\\d{2}|\\d{4}))?\\b`,'i');
 const WEEKDAY_ONLY_RE=new RegExp(`\\bDue\\s+(${WEEKDAY_PATTERN})\\b(?!\\.?,?\\s+(?:(?:${MONTH_PATTERN})\\b|\\d{1,2}[/.-]\\d{1,2}))`,'i');
+function validCalendarDate(year,month,day){
+  const d=new Date(year,month,day);
+  return d.getFullYear()===year&&d.getMonth()===month&&d.getDate()===day?startOfDay(d):null;
+}
+function inferredCalendarDate(month,day,yearText,now){
+  if(yearText){
+    const raw=Number(yearText),year=String(yearText).length===2?2000+raw:raw;
+    return Number.isFinite(year)?validCalendarDate(year,month,day):null;
+  }
+  const today=startOfDay(now);
+  const candidates=[today.getFullYear()-1,today.getFullYear(),today.getFullYear()+1].map(y=>validCalendarDate(y,month,day)).filter(Boolean);
+  if(!candidates.length) return null;
+  candidates.sort((a,b)=>Math.abs(a-today)-Math.abs(b-today));
+  return candidates[0];
+}
 function parseClassroomDueDate(text, now=new Date()){
   const s=String(text||'').replace(/\s+/g,' ').trim();
   if(!s) return null;
@@ -152,16 +168,13 @@ function parseClassroomDueDate(text, now=new Date()){
   const m=s.match(MONTH_DAY_RE);
   if(m){
     const month=MONTH_INDEX[m[1].toLowerCase()]; const day=Number(m[2]);
-    const validDate=y=>{const d=new Date(y,month,day);return d.getFullYear()===y&&d.getMonth()===month&&d.getDate()===day?d:null;};
-    if(Number.isFinite(Number(m[3]))){
-      const d=validDate(Number(m[3])); return d?startOfDay(d):null;
-    }
-    const today=startOfDay(now);
-    const years=[today.getFullYear()-1,today.getFullYear(),today.getFullYear()+1];
-    const candidates=years.map(validDate).filter(Boolean);
-    if(!candidates.length) return null;
-    candidates.sort((a,b)=>Math.abs(a-today)-Math.abs(b-today));
-    return startOfDay(candidates[0]);
+    return inferredCalendarDate(month,day,m[3],now);
+  }
+  const numeric=s.match(NUMERIC_DAY_RE);
+  if(numeric){
+    const month=Number(numeric[1])-1,day=Number(numeric[2]);
+    if(month<0||month>11) return null;
+    return inferredCalendarDate(month,day,numeric[3],now);
   }
   // A weekday without a date ("Due Friday") means the next such day within
   // the coming week; Classroom uses Today/Tomorrow for the nearest days.
@@ -189,20 +202,27 @@ function lastScheduledCheckBeforeDue(due, today, cfg){
 function assignmentEligibility(assignment, plan, cfg, now=new Date()){
   const today=startOfDay(now);
   const overdue=cfg.submitOverdue!==false;
-  // Teacher Edition uses the authoritative due date shown by Classroom. If it
-  // cannot be read, the caller must block rather than infer "nothing is due."
-  const text=assignment?.cardText||assignment?.dueText||'';
-  const due=parseClassroomDueDate(text,now);
+  // Only a dedicated, positively identified Classroom due-date field may
+  // affect eligibility. Classwork card/body text is intentionally excluded:
+  // instructions and comments can contain date-looking strings that are not
+  // the assignment deadline. If dedicated evidence is absent, fail closed and
+  // let the caller verify the assignment detail page.
+  const sources=[
+    {name:assignment?.dueSource||'dedicated due-date field',text:String(assignment?.dueText||'').trim()}
+  ].filter(x=>x.text);
+  let due=null,used=null;
+  for(const source of sources){const parsed=parseClassroomDueDate(source.text,now);if(parsed){due=parsed;used=source;break;}}
   // Classroom's own "No due date" label is a known state, not an unreadable
   // date: the assignment is never due, so it is never turned in automatically.
-  if(!due&&/\bNo due date\b/i.test(text)&&!/\bDue\s+\S/i.test(text.replace(/\bNo due date\b/ig,''))) return {eligible:false,early:false,unknown:false,reason:'no due date in Classroom',date:null,time:null};
-  if(!due) return {eligible:false,unknown:true,reason:'Classroom due date could not be determined',date:null,time:null};
+  const noDue=sources.find(source=>/\bNo due date\b/i.test(source.text)&&!/\bDue\s+\S/i.test(source.text.replace(/\bNo due date\b/ig,'')));
+  if(!due&&noDue) return {eligible:false,early:false,unknown:false,reason:'no due date in Classroom',date:null,time:null,dueText:noDue.text,dueSource:noDue.name};
+  if(!due) return {eligible:false,unknown:true,reason:'Classroom due date could not be determined',date:null,time:null,dueText:sources[0]?.text||'',dueSource:sources[0]?.name||'none'};
   const same=due.getTime()===today.getTime();
   const past=due.getTime()<today.getTime();
   const early=!same&&!past&&lastScheduledCheckBeforeDue(due,today,cfg);
   const eligible=same||early||(past&&overdue);
   const reason=same?'due today':early?'due on a day with no scheduled check':past?(overdue?'overdue':'past due; overdue catch-up is off'):'future due date';
-  return {eligible,early,unknown:false,reason,date:localDateKey(due),time:due.getTime()};
+  return {eligible,early,unknown:false,reason,date:localDateKey(due),time:due.getTime(),dueText:used?.text||'',dueSource:used?.name||''};
 }
 
 module.exports={ROOT,readJsonWithBackup,defaultConfig,loadConfig,saveConfig,loadPlans,savePlans,loadState,saveState,atomicWriteJson,acquireRunLock,releaseRunLock,getRunLockInfo,cleanupDiagnostics,log,logPath,logDir,screenshotPath,parseClassroomDueDate,assignmentEligibility};

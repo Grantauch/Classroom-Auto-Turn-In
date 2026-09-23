@@ -26,7 +26,7 @@ function classroomDisplayName(payload={}){
   return candidates[0]||'Selected Classroom';
 }
 
-function installClassroomPicker(){
+function installClassroomPicker(options={}){
   if(location.hostname.toLowerCase()!=='classroom.google.com')return false;
   const match=location.pathname.match(/^\/(?:u\/\d+\/)?(?:c|w)\/([^/?#]+)/i);
   let host=document.getElementById('cati-classroom-picker');
@@ -38,11 +38,14 @@ function installClassroomPicker(){
   host.id='cati-classroom-picker';
   host.style.cssText='position:fixed;right:24px;bottom:24px;z-index:2147483647;background:#111827;color:white;padding:14px 16px;border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.35);font:13px Segoe UI,Arial,sans-serif;max-width:330px';
   const text=document.createElement('div');
-  text.textContent='Classroom Auto Turn-In: if this is the Classroom that receives your lesson plans, choose it here.';
+  const purpose=String(options.purpose||'lesson-plans');
+  text.textContent=purpose==='grading'
+    ? 'GoClassroom: if this is one of the classes you grade, add it to your grading list.'
+    : 'GoClassroom: if this is the Classroom that receives your lesson plans, choose it here.';
   text.style.cssText='margin-bottom:10px;line-height:1.35;color:#dbe4f0';
   const btn=document.createElement('button');
   btn.type='button';
-  btn.textContent='Use this Classroom';
+  btn.textContent=purpose==='grading'?'Add grading Classroom':'Use this Classroom';
   btn.style.cssText='flex:1;border:0;border-radius:9px;padding:10px 12px;background:#3468e8;color:white;font-weight:700;cursor:pointer';
   btn.addEventListener('click',async event=>{
     event.preventDefault();
@@ -57,8 +60,11 @@ function installClassroomPicker(){
         try{
           const url=new URL(anchor.href,location.href);
           const found=url.hostname.toLowerCase()==='classroom.google.com'&&url.pathname.match(/^\/(?:u\/\d+\/)?c\/([^/?#]+)\/?$/i);
-          const label=String(anchor.textContent||'').replace(/\s+/g,' ').trim();
-          return found&&found[1]===courseId&&label.length<=160?label:'';
+          if(!found||found[1]!==courseId)return '';
+          // innerText keeps the rendered break between the class name and its section, so
+          // "U.S. History" and "1st Hour" do not run together as "U.S. History1st Hour".
+          const label=String(anchor.innerText||anchor.textContent||'').replace(/\s+/g,' ').trim();
+          return label.length<=160?label:'';
         }catch{return ''}
       }).find(label=>label&&!notName.test(label))||'';
       if(typeof window.catiPickClassroom!=='function')throw new Error('The Classroom picker is not connected to the app.');
@@ -90,7 +96,7 @@ function installClassroomPicker(){
   return true;
 }
 
-async function createClassroomPickerBridge(context,onPick,{onCancel=()=>{}}={}){
+async function createClassroomPickerBridge(context,onPick,{onCancel=()=>{},purpose='lesson-plans'}={}){
   const pageBindings=new WeakMap();
   let disposed=false;
   const bind=async page=>{
@@ -113,7 +119,7 @@ async function createClassroomPickerBridge(context,onPick,{onCancel=()=>{}}={}){
         if(page.isClosed())continue;
         try{
           await bind(page);
-          if(await page.evaluate(installClassroomPicker))visible++;
+          if(await page.evaluate(installClassroomPicker,{purpose}))visible++;
         }catch(error){
           if(classroomCourseId(page.url()))throw error;
         }

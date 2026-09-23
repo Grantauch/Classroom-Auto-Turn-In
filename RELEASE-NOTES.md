@@ -1,38 +1,27 @@
-# Classroom Auto Turn-In v0.9.20 — Classroom Draft Grading Bridge Hardening Release Candidate
+# GoClassroom v0.9.27 — Roster Safety Repair Preview
 
-v0.9.20 hardens the v0.9.19 teacher-controlled Classroom Draft Grading Bridge without weakening its draft-only boundary.
+v0.9.27 advances the v0.9.25 read-only live roster comparison into a deliberately narrow teacher-approved sync path with the Hall Pass / Check-In Version 29 bridge.
 
-## Clean Windows release verification
+## Hardened in v0.9.27
 
-- Added checkout-stable line-ending rules and normalized source assertions so the SHA-256 source manifest verifies consistently after a real Git checkout.
-- A disposable GitHub-hosted Windows runner passed the full source, DOM, Chrome, 21-scenario offline Classroom/Drive, installer build, clean current-user install, data-preserving uninstall, reinstall, packaged-browser retest, hash, and artifact-upload workflow.
-- The final downloadable installer is the independently tested hosted-runner artifact. CATI remains unsigned and still requires a controlled school-PC/SmartScreen/live-Classroom pilot.
+- **Apply safe changes** action after a fresh live roster comparison.
+- Native Cancel-by-default teacher confirmation before any roster write.
+- Revision-bound Version 29 write contract (`2026-09-22-roster-write-v1`).
+- Additions and name corrections only; no automatic removal/deactivation/delete path.
+- Encrypted pending-write record created before the browser call begins.
+- Idempotent retry using the exact same request ID after an uncertain browser/server result.
+- Follow-up live roster read after a verified successful batch.
+- Comparison invalidation after roster discovery or period-mapping changes.
+- Teacher UI showing pending recovery state, safe write counts, and review-only removals.
+- `AT-ROS-106` support path for an approved roster batch that cannot be verified safely.
+- Expanded roster regression tests covering write validation, revision verification, no-removal behavior, and uncertain-write recovery.
 
-## Hardening in v0.9.20
+## Safety boundary
 
-- Moved consequential per-run confirmation into a native, Cancel-by-default main-process dialog.
-- Added short-lived, assignment-bound, single-use write authorization.
-- Rejects concurrent grading batches, duplicate student identities, mismatched configured courses, noncanonical assignment URLs, and mismatched writer results.
-- Requires one explicit positive rubric total and one explicit Classroom point total before `SAFE_DRAFT` write eligibility.
-- Rechecks the grade-field denominator before writing and after reload.
-- Prevents a blank field from falsely verifying as a saved zero.
-- Rejects overlong/truncated directions, combined submissions, and Google Docs exports instead of grading partial evidence.
-- Requires model rubric labels to come from the teacher rubric and evidence quotes to appear in the submission.
-- Stops direct instruction-like prompt injection before student work is sent to Ollama.
-- Keeps attachment titles out of the Ollama prompt and prevents Ollama errors from echoing student work into logs.
+GoClassroom v0.9.27 does not automatically remove students. Even when a Classroom roster is complete enough to identify a likely removal, the item is labeled **REVIEW REMOVE** and is not included in the server request.
 
-## Fail-closed evidence rules
+The Hall Pass / Check-In server remains authoritative. It validates the teacher, contract, base roster revision, request ID, batch size, membership identity, and previous name; rejects stale/conflicting data; audits accepted changes; and supports replay/recovery of the same request ID. New memberships may receive missing PIN material, but this sync path does not email PINs.
 
-Current automatic extraction accepts direct answer/response fields and Google Docs plain text. If CATI sees unsupported, inaccessible, oversized, ambiguous, or incomplete evidence; cannot identify one grade field and denominator; cannot verify assignment/rubric points; or detects instruction-like prompt injection, that student stops at teacher review.
+## Release status
 
-## What CATI still never does
-
-- It never clicks Return.
-- It never publishes a grade to a student.
-- It never overwrites an existing grade.
-- It never scales a draft score when rubric points and Classroom points disagree.
-- It never uses external lesson-plan AI providers for student grading.
-
-## Validation status
-
-See `VERIFICATION-REPORT.md` for the exact automated, browser, build, installer, and packaged-app checks completed for v0.9.20. Live district Classroom DOM/writeback and teacher benchmark validation remain release blockers.
+The source-level roster gates pass. Windows packaging, packaged-app validation, and a controlled live roster test are still required before this build replaces the installed teacher copy or is described as production-ready.

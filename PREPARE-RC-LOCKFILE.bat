@@ -1,10 +1,10 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
-title Classroom Auto Turn-In - Prepare v0.9.20 Dependency Lock
+title GoClassroom Preview - Prepare v0.9.26 Dependency Lock
 
 echo ============================================================
-echo   Classroom Auto Turn-In v0.9.20 - Prepare Dependency Lock
+echo   GoClassroom Preview v0.9.26 - Prepare Dependency Lock
 echo ============================================================
 echo.
 echo This is a ONE-TIME release-candidate preparation step.

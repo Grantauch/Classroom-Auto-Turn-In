@@ -9,13 +9,17 @@ function ymd(d){return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2
 const now=new Date(2026,8,15,8,0,0);
 // Calendar parsing: valid dates stay exact; impossible dates fail closed.
 for(const [text,want] of [['Due Jan 1, 2027, 8:00 AM','2027-01-01'],['Due Feb 28, 2026, 8:00 AM','2026-02-28'],['Due Sep 30, 2026, 11:59 PM','2026-09-30'],['Due Dec 31, 2026, 8:00 AM','2026-12-31']]) assert.equal(ymd(lib.parseClassroomDueDate(text,now)),want,text);
+for(const [text,want] of [['Due 9/21','2026-09-21'],['Due Mon 9/21','2026-09-21'],['Due 09/21/2026','2026-09-21'],['Due 9/21/26','2026-09-21']]) assert.equal(ymd(lib.parseClassroomDueDate(text,now)),want,text);
 for(const text of ['Due Feb 29, 2026','Due Feb 30, 2026','Due Apr 31, 2026','Due Sep 31, 2026']) assert.equal(lib.parseClassroomDueDate(text,now),null,text);
+for(const text of ['Due 13/21/2026','Due 9/31/2026','Due 2/29/2026']) assert.equal(lib.parseClassroomDueDate(text,now),null,text);
 assert.equal(ymd(lib.parseClassroomDueDate('Due Jan 4, 8:00 AM',new Date(2026,11,20))),'2027-01-04');
 assert.equal(ymd(lib.parseClassroomDueDate('Due Feb 29, 8:00 AM',new Date(2024,1,1))),'2024-02-29');
 // No due-date inference from unrelated assignment text.
-{const noDue=lib.assignmentEligibility({cardText:'No due date',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now);
+{const noDue=lib.assignmentEligibility({dueText:'No due date',dueSource:'verified assignment detail page',cardText:'Meeting date 09/14/2026'},{},{submitOverdue:true},now);
 assert.equal(noDue.eligible,false);assert.equal(noDue.date,null);assert.equal(noDue.reason,'no due date in Classroom');}
 assert.equal(lib.assignmentEligibility({cardText:'Posted Sep 1',text:'Meeting date 09/14/2026'},{},{submitOverdue:true},now).unknown,true);
+{const detail=lib.assignmentEligibility({cardText:'Week 8 - Lesson Plans',dueText:'Due 9/15/2026',dueSource:'verified assignment detail page'},{},{submitOverdue:true},now);
+assert.equal(detail.unknown,false);assert.equal(detail.eligible,true);assert.equal(detail.dueSource,'verified assignment detail page');}
 // URL trust boundaries.
 for(const u of ['https://docs.google.com/document/d/ABC/edit','https://docs.google.com/spreadsheets/d/ABC/edit','https://docs.google.com/presentation/d/ABC/edit','https://drive.google.com/file/d/ABC/view','https://drive.google.com/open?id=ABC']) assert.equal(safety.isGooglePlanFileUrl(u),true,u);
 for(const u of ['https://drive.google.com/drive/folders/ABC','https://classroom.google.com/c/ABC','https://example.com/file/d/ABC','https://docs.google.com/forms/d/ABC/edit']) assert.equal(safety.isGooglePlanFileUrl(u),false,u);

@@ -1,7 +1,8 @@
 const fs=require('fs'),path=require('path'),cp=require('child_process'),os=require('os');
 const root=path.join(__dirname,'..');
-const files=['main.js','preload.js','renderer/app.js','main-services/local-data.js','main-services/engine-runner.js','main-services/ai-service.js','main-services/grading-service.js','main-services/scheduler-service.js','engine/app-config.js','engine/json-store.js','engine/protocol.js','engine/classroom-actions.js','engine/classroom-discovery.js','engine/lib.js','engine/safety.js','engine/browser.js','engine/classroom-picker.js','engine/drive-picker.js','engine/preflight.js','engine/submit-weekly.js','engine/select-course.js','engine/discover-topics.js','engine/select-drive-folder.js','engine/scan-drive-folder.js','engine/scheduler.js','engine/dom-helpers.js','engine/validation.js','engine/ai-recovery.js','engine/grading.js','engine/docx-writer.js','engine/upload-draft-plan.js','engine/retry-policy.js','engine/browser-mode.js','engine/page-evidence.js'];
+const files=['main.js','preload.js','renderer/app.js','main-services/local-data.js','main-services/engine-runner.js','main-services/ai-service.js','main-services/grading-service.js','main-services/roster-service.js','main-services/roster-integration.js','main-services/roster-confirmation.js','main-services/secure-json-store.js','main-services/scheduler-service.js','engine/app-config.js','engine/json-store.js','engine/protocol.js','engine/classroom-actions.js','engine/classroom-discovery.js','engine/classroom-roster.js','engine/discover-classroom-rosters.js','engine/operations-roster-bridge.js','engine/read-operations-roster.js','engine/apply-operations-roster.js','engine/lib.js','engine/safety.js','engine/browser.js','engine/classroom-picker.js','engine/drive-picker.js','engine/preflight.js','engine/submit-weekly.js','engine/select-course.js','engine/select-grading-course.js','engine/discover-topics.js','engine/select-drive-folder.js','engine/scan-drive-folder.js','engine/scheduler.js','engine/dom-helpers.js','engine/validation.js','engine/ai-recovery.js','engine/grading.js','engine/docx-writer.js','engine/upload-draft-plan.js','engine/retry-policy.js','engine/browser-mode.js','engine/page-evidence.js'];
 for(const f of files){const p=path.join(root,f);if(!fs.existsSync(p))throw new Error(`Missing ${f}`);cp.execFileSync(process.execPath,['--check',p],{stdio:'inherit'});}
+cp.execFileSync(process.execPath,[path.join(root,'scripts/secure-roster-storage-check.js')],{stdio:'inherit'});
 
 // Git may materialize text as LF or CRLF depending on checkout settings.
 // Normalize before source-shape assertions so the release gate verifies content,
@@ -106,14 +107,22 @@ if(cleaned.removed<1||fs.existsSync(oldFile)||!fs.existsSync(newFile))throw new 
 const now=new Date(2026,8,15,8,0,0);
 const iso=d=>d&&`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 if(iso(parseClassroomDueDate('Due Sep 21, 8:00 AM',now))!=='2026-09-21')throw new Error('Due-date parser failed Sep 21');
+if(iso(parseClassroomDueDate('Due 9/21',now))!=='2026-09-21')throw new Error('Due-date parser failed numeric month/day');
+if(iso(parseClassroomDueDate('Due Mon 9/21',now))!=='2026-09-21')throw new Error('Due-date parser failed weekday plus numeric month/day');
+if(iso(parseClassroomDueDate('Due 09/21/2026',now))!=='2026-09-21')throw new Error('Due-date parser failed four-digit numeric year');
+if(iso(parseClassroomDueDate('Due 9/21/26',now))!=='2026-09-21')throw new Error('Due-date parser failed two-digit numeric year');
 if(iso(parseClassroomDueDate('Due Yesterday, 8:00 AM',now))!=='2026-09-14')throw new Error('Due-date parser failed Yesterday');
 if(iso(parseClassroomDueDate('Due Jan 4, 8:00 AM',new Date(2026,11,20)))!=='2027-01-04')throw new Error('Due-date year inference failed');
-const future=assignmentEligibility({cardText:'Due Sep 21, 8:00 AM'},{week:5},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+const future=assignmentEligibility({dueText:'Due Sep 21, 8:00 AM',dueSource:'verified assignment detail page'},{week:5},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(future.eligible)throw new Error('Future assignment was incorrectly eligible');
-const overdue=assignmentEligibility({cardText:'Due Sep 14, 8:00 AM'},{week:4},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+const overdue=assignmentEligibility({dueText:'Due Sep 14, 8:00 AM',dueSource:'verified assignment detail page'},{week:4},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(!overdue.eligible)throw new Error('Overdue assignment was incorrectly blocked');
 const unknownDue=assignmentEligibility({cardText:'Assignment posted with no readable due date'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(unknownDue.eligible||!unknownDue.unknown)throw new Error('Unreadable due date is not treated as an explicit unknown/blocking state');
+const instructionalDue=assignmentEligibility({cardText:'Week 8 - Lesson Plans Instructions: Due Sep 14, 2026'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+if(instructionalDue.eligible||!instructionalDue.unknown)throw new Error('Classwork instructional text still becomes authoritative due-date evidence');
+const dedicatedDue=assignmentEligibility({cardText:'Week 8 - Lesson Plans',dueText:'Due Sep 15',dueSource:'verified assignment detail page'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
+if(dedicatedDue.unknown||!dedicatedDue.eligible||dedicatedDue.dueSource!=='verified assignment detail page')throw new Error('Dedicated detail-page due date is masked by unrelated card text');
 const misleadingTitleDate=assignmentEligibility({cardText:'Assignment posted with no readable due date',text:'Week 8 - Lesson Plans 09/14/2026'},{week:8},{eligibilityMode:'classroomDueDate',submitOverdue:true},now);
 if(misleadingTitleDate.eligible||!misleadingTitleDate.unknown)throw new Error('Eligibility still infers a due date from unrelated assignment/title text');
 if(defaultConfig().screenshotOnEveryRun!==false)throw new Error('Successful-run screenshots are still enabled by default');
@@ -124,7 +133,8 @@ for(const title of ['Week 05 - Lesson Plans','Week 5 - Lesson Plans.docx','Week 
 if('Week 5 - Math Homework'.match(planRe))throw new Error('Default plan regex is too broad');
 
 const submitSource=fs.readFileSync(path.join(root,'engine/submit-weekly.js'),'utf8');
-const submissionSafetySource=submitSource+'\n'+actionSource+'\n'+discoverySource;
+const dueResolutionSource=fs.readFileSync(path.join(root,'engine/due-date-resolution.js'),'utf8');
+const submissionSafetySource=submitSource+'\n'+actionSource+'\n'+discoverySource+'\n'+dueResolutionSource;
 for(const required of ['getStrictTopicRegion','verifyAssignmentIdentity','verifyPlanAttachment','state.submissions[key]','LIVE run blocked: the current setup does not have a valid dry-run safety certificate']){
   if(!submissionSafetySource.includes(required))throw new Error(`Trust-release safety control missing: ${required}`);
 }
@@ -149,7 +159,7 @@ if(!actionSource.includes('assertSafeAttachmentSet'))throw new Error('Unexpected
 if(!submitSource.includes('STATE_UNCONFIRMED'))throw new Error('Ambiguous legacy recovery state is not blocked');
 if(submitSource.includes("confirmedBy='submission action absent on fresh detail page'"))throw new Error('Legacy button-absence confirmation regression returned');
 if(!actionSource.includes("const scope=await getYourWorkScope(page)"))throw new Error('Submission completion evidence is not scoped to Your work');
-if(!submitSource.includes('DUE_DATE_UNKNOWN'))throw new Error('Unreadable Classroom due dates are not surfaced as blockers');
+if(!submissionSafetySource.includes('DUE_DATE_UNKNOWN'))throw new Error('Unreadable Classroom due dates are not surfaced as blockers');
 if(!submitSource.includes('safeScreenshot'))throw new Error('Diagnostics screenshots can still affect automation flow');
 if(!submitSource.includes('refreshTrustedDrivePlans'))throw new Error('Teacher Edition does not refresh the approved Drive folder before automation');
 if(!submitSource.includes('Safety test fallback queued: Week'))throw new Error('Safety check cannot queue a future matching assignment after already-completed older work');
@@ -172,7 +182,7 @@ const htmlSource=fs.readFileSync(path.join(root,'renderer/index.html'),'utf8');
 for(const required of ['Naming & safety options','Add or correct a plan manually','More status details','Finish & turn on','Help & support'])if(!htmlSource.includes(required))throw new Error(`Commercial Teacher UI element missing: ${required}`);
 if(htmlSource.includes('id="saveSchedule"'))throw new Error('Teacher UI still exposes a save-without-install schedule button');
 if(htmlSource.includes('planWeekOf'))throw new Error('Retired plan-week-start mode is still exposed in Teacher Edition');
-if(!htmlSource.includes('v0.9.20'))throw new Error('Teacher Edition sidebar version is stale');
+if(!htmlSource.includes('v0.9.27'))throw new Error('Teacher Edition sidebar version is stale');
 if(htmlSource.indexOf('id="wizPlanRegex"')>htmlSource.indexOf('id="wizScanDrive"'))throw new Error('Custom Drive naming rule is still inaccessible before the required Drive scan');
 if(!htmlSource.includes('must be on and signed in'))throw new Error('Teacher UI does not explain that the computer must be on and signed in');
 if(!mainSource.includes('mainWindow.setMenu(null)')||!mainSource.includes('autoHideMenuBar:true'))throw new Error('Generic Electron application menu is still exposed');
@@ -199,7 +209,7 @@ if(!actionSource.includes("querySelectorAll('[data-file-id],[data-doc-id],[data-
 const topicsSource=fs.readFileSync(path.join(root,'engine/discover-topics.js'),'utf8');
 if(!topicsSource.includes('accounts\\.google\\.com'))throw new Error('Topic discovery does not diagnose expired Google sign-in');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-if(pkg.version!=='0.9.20')throw new Error('package.json version is not 0.9.20');
+if(pkg.version!=='0.9.27')throw new Error('package.json version is not 0.9.27');
 if(String(pkg.dependencies['playwright-core']).startsWith('^')||String(pkg.devDependencies.electron).startsWith('^')||String(pkg.devDependencies['electron-builder']).startsWith('^'))throw new Error('Top-level build/runtime dependencies are not pinned exactly');
 const portableNode=fs.readFileSync(path.join(root,'scripts/Get-PortableNode.ps1'),'utf8');
 if(!portableNode.includes("$version = 'v22.19.0'"))throw new Error('Portable Node build version is not pinned');
@@ -231,13 +241,34 @@ if(!gradingSource.includes('format:GRADE_SCHEMA')||!gradingSource.includes('thin
 if(!gradingSource.includes('Rubric possible points do not add up to max_score.')||!gradingSource.includes('Reported score does not equal the rubric point total.'))throw new Error('Local grading arithmetic validation is missing');
 if(!gradingSource.includes("['127.0.0.1','localhost','::1','[::1]']")||!gradingServiceSource.includes('baseUrl=DEFAULT_OLLAMA_URL')&&!gradingServiceSource.includes('baseUrl:DEFAULT_OLLAMA_URL'))throw new Error('Local grading is not restricted to loopback Ollama');
 if(gradingServiceSource.includes('studentWork')&&gradingServiceSource.includes("writeJson('grading-drafts"))throw new Error('Local grading persists student work unexpectedly');
-if(!htmlSource.includes('Local draft grading')||!htmlSource.includes('CATI never clicks <b>Return</b>')||!rendererSource.includes('Preview only. No Classroom grade was changed.')||!rendererSource.includes('CATI never clicks Return'))throw new Error('Teacher-facing local grading / draft-only safety boundary is missing');
+if(!htmlSource.includes('Draft grading')||!htmlSource.includes('GoClassroom never clicks <b>Return</b>')||!rendererSource.includes('Preview only. No Classroom grade was changed.')||!rendererSource.includes('GoClassroom never clicks Return'))throw new Error('Teacher-facing local grading / draft-only safety boundary is missing');
+const rosterSource=fs.readFileSync(path.join(root,'engine/classroom-roster.js'),'utf8');
+const rosterServiceSource=fs.readFileSync(path.join(root,'main-services/roster-service.js'),'utf8');
+const secureRosterSource=fs.readFileSync(path.join(root,'main-services/secure-json-store.js'),'utf8');
+const rosterDiscoverSource=fs.readFileSync(path.join(root,'engine/discover-classroom-rosters.js'),'utf8');
+const operationsRosterSource=fs.readFileSync(path.join(root,'engine/read-operations-roster.js'),'utf8');
+const operationsBridgeSource=fs.readFileSync(path.join(root,'engine/operations-roster-bridge.js'),'utf8');
+if(!mainSource.includes("handleIpc('roster:get-state'")||!mainSource.includes("handleIpc('roster:discover'")||!mainSource.includes("handleIpc('roster:read-operations'")||!mainSource.includes("handleIpc('roster:apply-safe'")||!mainSource.includes("handleIpc('roster:save-mappings'"))throw new Error('Roster discovery/comparison/write IPC bridge is missing');
+if(!fs.readFileSync(path.join(root,'preload.js'),'utf8').includes('getRosterState')||!fs.readFileSync(path.join(root,'preload.js'),'utf8').includes('readOperationsRoster')||!fs.readFileSync(path.join(root,'preload.js'),'utf8').includes('applySafeRosterChanges'))throw new Error('Roster preload bridge is missing');
+if(!rosterSource.includes('STUDENT_EMAIL_REQUIRED')||!/never guesses an address from a name/i.test(rosterSource))throw new Error('Roster discovery lost its verified-email fail-closed boundary');
+if(!rosterServiceSource.includes("secureData.write('roster-sync.secure.json'")||!rosterServiceSource.includes("secureData.write('roster-write-pending.secure.json'")||!rosterServiceSource.includes('ROSTER_WRITE_CONFIRMATION'))throw new Error('Roster cache / approved-write safety boundary is missing');
+if(!secureRosterSource.includes('safeStorage.encryptString')||!secureRosterSource.includes('safeStorage.decryptString'))throw new Error('Roster cache is not protected by OS-backed encryption');
+if(!rosterDiscoverSource.includes('collectClassroomPeopleDom')||!rosterDiscoverSource.includes('studentsHeadingFound'))throw new Error('Classroom People roster discovery is missing its Students-section evidence boundary');
+if(!operationsRosterSource.includes('getRosterSyncSnapshot')||!operationsBridgeSource.includes('normalizeOperationsRoster')||!operationsBridgeSource.includes('validateOperationsPayload'))throw new Error('Operations roster read bridge is missing');
+if(/teacherAddStudentClass|teacherRemoveStudentClass|teacherApplyUnmatchedEmail|teacherResetStudentPin/.test(operationsRosterSource))throw new Error('Operations roster comparison script contains an unapproved roster mutation RPC');
+const applyRosterSource=fs.readFileSync(path.join(root,'engine/apply-operations-roster.js'),'utf8');
+if(!applyRosterSource.includes('applyRosterSyncChanges')||!operationsBridgeSource.includes('validateWriteRequest')||!operationsBridgeSource.includes('validateWriteResult'))throw new Error('Approved operations roster write bridge is missing');
+if(/deactivate\s*:|remove\s*:|delete\s*:/.test(applyRosterSource))throw new Error('Approved operations roster writer must not construct removal requests');
+if(!htmlSource.includes('Safe roster sync.')||!htmlSource.includes('id="rosterClassList"')||!htmlSource.includes('id="applyOperationsRoster"')||!rendererSource.includes('applySafeRosterChanges'))throw new Error('Teacher-facing safe roster sync controls are missing');
+cp.execFileSync(process.execPath,[path.join(root,'scripts/roster-sync-check.js')],{stdio:'inherit'});
 const classroomGradingSource=fs.readFileSync(path.join(root,'engine/classroom-grading.js'),'utf8');
 const gradingPreloadSource=fs.readFileSync(path.join(root,'preload.js'),'utf8');
 const classroomGradingDiscoverSource=fs.readFileSync(path.join(root,'engine/grading-classroom-discover.js'),'utf8');
 const classroomGradingExtractSource=fs.readFileSync(path.join(root,'engine/grading-classroom-extract.js'),'utf8');
 const classroomGradingWriteSource=fs.readFileSync(path.join(root,'engine/grading-classroom-write.js'),'utf8');
 if(!mainSource.includes("handleIpc('grading:discover-classroom'")||!mainSource.includes("handleIpc('grading:process-classroom'")||!gradingPreloadSource.includes('discoverGradingAssignments')||!gradingPreloadSource.includes('processClassroomGrading'))throw new Error('Classroom draft-grading IPC bridge is missing');
+if(!mainSource.includes("handleIpc('grading:select-classroom'")||!mainSource.includes("handleIpc('grading:remove-classroom'")||!gradingPreloadSource.includes('selectGradingClassroom')||!htmlSource.includes('gradingClassroomSelect'))throw new Error('Independent multi-Classroom grading controls are missing');
+if(!gradingServiceSource.includes('gradingClassrooms')||!gradingServiceSource.includes('reviewExportEnabled')||!gradingServiceSource.includes('exportReviewPacket')||!htmlSource.includes('gradingReviewExportEnabled'))throw new Error('Multi-Classroom settings or teacher-controlled review exports are missing');
 if(!gradingServiceSource.includes('classroomDraftWriteEnabled:false')||!gradingServiceSource.includes("if(writeDrafts&&!settings.classroomDraftWriteEnabled)")||!gradingServiceSource.includes("status==='SAFE_DRAFT'"))throw new Error('Classroom draft-write opt-in / SAFE_DRAFT gate is missing');
 if(!classroomGradingExtractSource.includes('supported Google Doc attachment')&&!classroomGradingExtractSource.includes('GOOGLE DOC ATTACHMENT'))throw new Error('Classroom grading extraction does not include supported Google Docs evidence');
 if(!classroomGradingExtractSource.includes('At least one student attachment could not be read safely'))throw new Error('Classroom grading extraction no longer fails closed on incomplete evidence');
@@ -255,7 +286,7 @@ if(!rendererSource.includes('function applyAiVisibility')||!rendererSource.inclu
 if(!rendererSource.includes('optedIn:false,enabled:false'))throw new Error('Teacher cannot fully opt out and hide optional AI recovery');
 if(!mainSource.includes("coreIssueNames=new Set(['config.json','plans.json'])"))throw new Error('Optional AI data corruption can still leak into core Auto Turn-In blockers');
 if(!htmlSource.includes('Content-Security-Policy'))throw new Error('Renderer Content Security Policy is missing');
-if(!htmlSource.includes('v0.9.20'))throw new Error('Teacher Edition sidebar version is not v0.9.20');
+if(!htmlSource.includes('v0.9.27'))throw new Error('Teacher Edition sidebar version is not v0.9.27');
 
 const preloadText=fs.readFileSync(path.join(root,'preload.js'),'utf8');
 const errorCatalog=fs.readFileSync(path.join(root,'engine/user-errors.js'),'utf8');
@@ -263,11 +294,11 @@ if(mainSource.includes("app.getPath('localAppData')"))throw new Error('Invalid E
 if(!appConfigSource.includes("browser-profile"))throw new Error('Browser profile is not centralized under the application data root');
 if(!mainSource.includes('handleIpc(')||!mainSource.includes('encodePublicError')&&!mainSource.includes('publicError'))throw new Error('Central user-facing IPC error boundary is missing');
 if(!preloadText.includes('cleanRemoteError')||!preloadText.includes('CATI_UI|'))throw new Error('Preload does not strip Electron remote-method error wrappers');
-for(const required of ['AT-APP-101','AT-GGL-101','AT-CLS-110','AT-DRV-105','AT-ATT-101','AT-SUB-102','AT-SCH-101','AT-SCH-106','AT-AI-203','AT-GRD-201'])if(!errorCatalog.includes(required))throw new Error(`Precise support-code catalog is missing ${required}`);
+for(const required of ['AT-APP-101','AT-GGL-101','AT-CLS-110','AT-DRV-105','AT-ATT-101','AT-SUB-102','AT-SCH-101','AT-SCH-106','AT-AI-203','AT-GRD-201','AT-ROS-105'])if(!errorCatalog.includes(required))throw new Error(`Precise support-code catalog is missing ${required}`);
 if(!rendererSource.includes('Support code:')||!htmlSource.includes('id="attentionCode"')||!htmlSource.includes('id="helpCode"'))throw new Error('Teacher-facing support codes are not surfaced for actionable problems');
 if(htmlSource.includes('Technical log')||htmlSource.includes('Help & diagnostics')||htmlSource.includes('regular expression'))throw new Error('Developer language is still visible in the teacher interface');
 if(!htmlSource.includes('Files for school technology support')||!rendererSource.includes('Support files are stored on this computer and are not shown inside the app.'))throw new Error('Raw logs are still exposed directly in the teacher interface');
 
 if(!protocolSource.includes("const PREFIX='CATI_EVENT:'")||!runnerSource.includes("lastPayload(output,'run-result')"))throw new Error('Versioned child-process protocol is not wired end-to-end');
 try{fs.rmSync(testData,{recursive:true,force:true})}catch{/* best-effort fallback */}
-console.log('Project syntax, Trust/Reliability safety, Teacher Edition, v0.8.2 stabilization, v0.9.0 silent retry, v0.9.17 free-AI, v0.9.18 local grading, and v0.9.20 Classroom draft-grading hardening checks passed.');
+console.log('Project syntax, Trust/Reliability safety, Teacher Edition, multi-Classroom grading, approved roster sync, optional private review export, and v0.9.27 GoClassroom preview checks passed.');

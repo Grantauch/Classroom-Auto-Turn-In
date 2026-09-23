@@ -3,8 +3,10 @@ name: Build Windows Release Candidate
 on:
   workflow_dispatch:
   push:
+    branches:
+      - 'feature/goclassroom-review-fixes-v0.9.27'
     tags:
-      - 'v0.9.20*'
+      - 'v0.9.27*'
       - 'v1.*'
 
 jobs:
@@ -26,7 +28,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path package-lock.json)) {
-            throw "package-lock.json is required for v0.9.20 and 1.x release builds. Run PREPARE-RC-LOCKFILE.bat, retain the lockfile, and commit/package it before release."
+            throw "package-lock.json is required for v0.9.27 and 1.x release builds. Run PREPARE-RC-LOCKFILE.bat, retain the lockfile, and commit/package it before release."
           }
 
       - name: Install exact locked dependencies
@@ -66,7 +68,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Classroom-Auto-Turn-In-v0.9.20-Windows
+          name: GoClassroom-v0.9.27-Windows
           path: |
             dist/Classroom-Auto-Turn-In-Setup-*.exe
             dist/*.blockmap

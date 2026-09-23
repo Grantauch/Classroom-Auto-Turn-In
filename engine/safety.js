@@ -11,6 +11,12 @@ function parseClassroomIds(url){
     for(let i=0;i<parts.length-1;i++){
       if((parts[i]==='c'||parts[i]==='w')&&!courseId) courseId=parts[i+1]||'';
       if(parts[i]==='a'&&!assignmentId) assignmentId=parts[i+1]||'';
+      // Classroom's teacher-side student submission view uses /g/tg/{course}/{assignment}
+      // with the student identity in the #u= fragment rather than in the pathname.
+      if(parts[i]==='g'&&parts[i+1]==='tg'){
+        if(!courseId)courseId=parts[i+2]||'';
+        if(!assignmentId)assignmentId=parts[i+3]||'';
+      }
     }
     return {courseId,assignmentId};
   }catch{return {courseId:'',assignmentId:''};}

@@ -4,6 +4,7 @@ const html=fs.readFileSync(path.join(root,'renderer/index.html'),'utf8');
 const js=fs.readFileSync(path.join(root,'renderer/app.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'renderer/styles.css'),'utf8');
 const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
+if(!js.includes("pendingRecovery=state?.pendingWrite?.status==='PENDING'")||!js.includes("$('#compareOperationsRoster').disabled=pendingRecovery"))throw new Error('Pending roster recovery does not lock discovery/mapping/compare controls.');
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
 const counts=new Map();for(const id of ids)counts.set(id,(counts.get(id)||0)+1);
 const dup=[...counts].filter(([,n])=>n>1).map(([id])=>id);if(dup.length)throw new Error(`Duplicate HTML id(s): ${dup.join(', ')}`);

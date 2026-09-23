@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="GoClassroom ringed planet logo">
+  <defs>
+    <linearGradient id="planet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#48D7FF"/>
+      <stop offset="0.55" stop-color="#1597FF"/>
+      <stop offset="1" stop-color="#0B2B63"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.4" stop-color="#48D7FF"/>
+      <stop offset="1" stop-color="#1597FF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="70" fill="url(#planet)"/>
+  <path d="M35 145 C70 94 175 63 224 92 C250 108 223 137 190 155 C126 190 52 190 30 169 C20 160 22 154 35 145Z"
+        fill="none" stroke="url(#ring)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M42 160 C94 182 172 164 215 125" fill="none" stroke="#FFFFFF" stroke-opacity=".65" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="99" cy="92" r="15" fill="#FFFFFF" opacity=".16"/>
+</svg>

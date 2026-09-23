@@ -1,4 +1,10 @@
-# Privacy — Classroom Auto Turn-In v0.9.20
+# Privacy — GoClassroom v0.9.26
+
+## Roster discovery and comparison
+
+When the teacher chooses **Find my rosters**, GoClassroom may read student names and school email addresses that Google Classroom exposes in classes the teacher teaches. The Classroom roster snapshot is stored only on that Windows account in an OS-encrypted cache using Electron secure storage. If Windows secure storage is unavailable, GoClassroom does not persist the roster snapshot. Class-to-period mappings are stored separately and do not contain student roster data. GoClassroom never guesses a missing student email address.
+
+When the teacher chooses **Compare rosters**, GoClassroom opens the configured Hall Pass / Check-In Apps Script service using the teacher's existing local Google session and requests a read-only active-membership snapshot. That response contains student email, student name, class/period, and active status only; it does not include PINs, pass history, attendance/check-in history, access overrides, or workbook row numbers. The returned snapshot is also stored through the same OS-encrypted local storage. v0.9.26 computes the comparison locally. Only after a fresh revision-bound comparison and native teacher confirmation may GoClassroom send the approved addition/name-correction rows to the operations service. Removal candidates are never sent as automatic write actions. The exact pending request is stored with OS-backed encryption until completion/recovery.
 
 ## Normal Auto Turn-In
 
@@ -20,13 +26,21 @@ For a Classroom grading run, CATI may temporarily read:
 - supported Google Docs attachment text exported through the teacher's signed-in Google session;
 - existing grade-field state needed to avoid overwriting a grade.
 
-The submission text and grading result are kept in memory for the run and are not intentionally written to CATI data files or support logs. The saved local-grading settings are limited to enable state, selected model, Classroom draft-write opt-in, and batch size.
+By default, submission text and grading results are kept in memory for the run and are not intentionally written to application data files or support logs. Saved local-grading settings include enable state, selected model, Classroom draft-write opt-in, batch size, saved grading-Classroom identifiers/display names, active grading-Classroom identifier, private-review enable flag, and the teacher-chosen review-folder path.
 
 CATI sends Ollama only the assignment directions, teacher-provided rubric, and supported submission text needed for grading. Student names and attachment titles are not intentionally included in the Ollama grading packet. A submission containing direct instruction-like prompt-injection patterns is held for teacher review before being sent to Ollama. Ollama HTTP errors are reduced to bounded categories so a server error cannot echo the submission into CATI logs.
 
+## Optional private grading review copies
+
+Review copies are off by default. When a teacher chooses a folder, accepts the native student-data warning, and explicitly enables the feature, GoClassroom intentionally writes a new review folder after each Classroom grading run. This is the only supported student-work persistence path.
+
+The review packet may contain student name/identifier, assignment title/directions/point total, exact supported evidence used for grading, evidence-completeness status, limited attachment descriptors, normalized proposed grade and rubric breakdown, `SAFE_DRAFT`/`TEACHER_REVIEW`, independent validation, model name, and Classroom draft-write verification status. It does not contain browser cookies, passwords, Google tokens, raw unvalidated model responses, or the browser profile.
+
+The teacher may choose a Google Drive for desktop folder, but GoClassroom does not upload through the Drive API, change permissions, make public links, or select a retention period. The teacher/school must restrict access and apply district retention policy. A complete packet includes `EXPORT-COMPLETE.txt`; absence of that marker means an interrupted export should not be treated as complete.
+
 ## Draft-grade writeback
 
-When the teacher separately enables draft-grade writing and explicitly confirms a write-enabled batch in the native Cancel-by-default dialog, CATI may enter validated numeric scores into the Classroom total-grade field. The one-time authorization exists only in memory, expires after five minutes, is bound to one course/assignment, and cannot be reused. CATI does not click Return, does not publish the grade to students, and does not write model feedback into Classroom in v0.9.20.
+When the teacher separately enables draft-grade writing and explicitly confirms a write-enabled batch in the native Cancel-by-default dialog, GoClassroom may enter validated numeric scores into the Classroom total-grade field. The one-time authorization exists only in memory, expires after five minutes, is bound to one saved grading course/assignment, and cannot be reused. GoClassroom does not click Return, does not publish the grade to students, and does not write model feedback into Classroom in v0.9.25.
 
 Existing draft/final grades are not overwritten. Unsupported or incomplete evidence is held for teacher review instead of being graded from partial information.
 

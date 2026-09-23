@@ -6,11 +6,15 @@ const {createLocalData}=require('./main-services/local-data');
 const {createEngineRunner}=require('./main-services/engine-runner');
 const {createAiService}=require('./main-services/ai-service');
 const {createGradingService}=require('./main-services/grading-service');
+const {createRosterIntegration}=require('./main-services/roster-integration');
+const {createRosterApplyHandler}=require('./main-services/roster-confirmation');
 const {createGradingRequestHandler}=require('./main-services/grading-confirmation');
 const {createSchedulerService}=require('./main-services/scheduler-service');
 const {createMachineService}=require('./main-services/machine-service');
+const {createIpcErrorReporter}=require('./main-services/ipc-error-reporter');
 const {buildSetupExport,parseSetupImport}=require('./main-services/setup-transfer');
 const {runPackagedSelfTest}=require('./main-services/packaged-self-test');
+const {parseCsv,toCsv}=require('./main-services/plan-csv');
 const {lastPayload}=require('./engine/protocol');
 const {schedulePoints,retryOffsets,triggerStartTime} = require('./engine/scheduler');
 const {nextRetryPlan,isRetryChainFresh} = require('./engine/retry-policy');
@@ -68,11 +72,7 @@ function compactError(err){
   return String(err?.message||err||'Unknown error').replace(/\s+/g,' ').trim().slice(0,2000);
 }
 
-function userSafeError(operation,err){
-  const info=publicError(err,operation);
-  appLog(`[${info.code}] ${operation} failed: ${info.technical}`);
-  return info;
-}
+const userSafeError=createIpcErrorReporter({publicError,appLog});
 function handleIpc(channel,handler){
   ipcMain.handle(channel,async(event,...args)=>{
     try{return await handler(event,...args)}
@@ -134,16 +134,19 @@ function getGradingService(){
 function gradingState(){return getGradingService().state()}
 async function saveGradingSettings(v={}){
   const service=getGradingService(),current=service.loadSettings();
-  if(v.classroomDraftWriteEnabled===true&&!current.classroomDraftWriteEnabled){
-    const ans=await dialog.showMessageBox({type:'warning',buttons:['Cancel','Allow draft-grade writing'],defaultId:0,cancelId:0,title:'Allow Classroom draft-grade writing?',message:'CATI may enter validated draft scores into Google Classroom.',detail:'CATI will never click Return. Draft grades remain hidden from students until you choose to return work in Classroom. Existing grades are never overwritten.'});
-    if(ans.response!==1)return {...current,cancelled:true};
-  }
+  if(v.classroomDraftWriteEnabled===true&&!current.classroomDraftWriteEnabled){const ans=await dialog.showMessageBox({type:'warning',buttons:['Cancel','Allow draft-grade writing'],defaultId:0,cancelId:0,title:'Allow Classroom draft-grade writing?',message:'GoClassroom may enter validated draft scores into Google Classroom.',detail:'GoClassroom will never click Return. Draft grades remain hidden from students until you choose to return work in Classroom. Existing grades are never overwritten.'});if(ans.response!==1)return {...current,cancelled:true}}
+  if(v.reviewExportEnabled===true&&!current.reviewExportEnabled){const ans=await dialog.showMessageBox({type:'warning',buttons:['Cancel','Save private review copies'],defaultId:0,cancelId:0,title:'Save grading review copies?',message:'This will intentionally save student work and AI-assisted grading data in the folder you chose.',detail:'Keep that folder private and follow your school or district retention rules. GoClassroom will not share the folder or make it public. You can turn review copies off at any time.'});if(ans.response!==1)return {...current,cancelled:true}}
   return service.saveSettings(v||{});
 }
-function createDraftGrade(v){return getGradingService().grade(v||{})}
-function discoverGradingAssignments(){return getGradingService().discoverAssignments()}
+function createDraftGrade(v){return getGradingService().grade(v||{})}function discoverGradingAssignments(courseId){return getGradingService().discoverAssignments(courseId)}
+async function selectGradingClassroom(){const selected=await withExclusiveBrowserOperation('Grading Classroom selection',async()=>lastPayload(await runNodeScript('select-grading-course.js'),'grading-course'));if(!selected)throw new Error('GoClassroom did not receive a grading Classroom selection.');return getGradingService().addGradingClassroom(selected)} // The save must stay outside the browser lock: addGradingClassroom runs ensureAutomationIdle, which rejects while the lock is held (AT-GRD-194).
+function removeGradingClassroom(courseId){return getGradingService().removeGradingClassroom(courseId)}
+async function selectGradingReviewFolder(){ensureAutomationIdle();const result=await dialog.showOpenDialog({title:'Choose a private grading review folder',properties:['openDirectory','createDirectory']});if(result.canceled||!result.filePaths[0])return null;return getGradingService().saveSettings({...getGradingService().loadSettings(),reviewFolderPath:path.resolve(result.filePaths[0])})}
+async function openGradingReviewFolder(){const settings=getGradingService().loadSettings();if(!settings.reviewFolderPath)throw new Error('Choose a grading review folder first.');const result=await shell.openPath(settings.reviewFolderPath);if(result)throw new Error(result);return true}
 const processClassroomGrading=createGradingRequestHandler({dialog,getGradingService});
 
+const rosterIntegration=createRosterIntegration({safeStorage,localData,ensureAutomationIdle,compactError,runNodeScript,runExclusiveBrowser:withExclusiveBrowserOperation});
+const applyApprovedRosterChanges=createRosterApplyHandler({dialog,getRosterIntegration:()=>rosterIntegration});
 function getRunLockInfo(){try{return JSON.parse(fs.readFileSync(path.join(dataDir(),'automation.lock'),'utf8'))}catch{return null}}
 function acquireMainAutomationLock(label='setup action'){
   ensureData();const file=path.join(dataDir(),'automation.lock');const token=`main-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;const payload={pid:process.pid,startedAt:new Date().toISOString(),token,label};
@@ -333,15 +336,6 @@ async function runBackgroundAutomation(){
     return Number(err.exitCode)||1;
   }
 }
-function parseCsv(text){
-  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim()); if(!lines.length)return [];
-  const split=(line)=>{ const out=[]; let s='',q=false; for(let i=0;i<line.length;i++){const c=line[i]; if(c==='"'){if(q&&line[i+1]==='"'){s+='"';i++;}else q=!q;}else if(c===','&&!q){out.push(s.trim());s='';}else s+=c;} out.push(s.trim()); return out; };
-  const first=split(lines[0]).map(x=>x.toLowerCase()); const hasHeader=first.includes('week')||first.includes('weekof');
-  const rows=(hasHeader?lines.slice(1):lines).map(split);
-  return rows.map(r=>normalizePlan({week:r[0],weekOf:r[1]||'',title:r[2]||'',url:r[3]||'',source:r[4]||'import'})).filter(x=>x.week&&x.title&&x.url);
-}
-function csvEscape(v){ const s=String(v??''); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
-function toCsv(plans){ return ['week,weekOf,title,url,source',...plans.map(p=>[p.week,p.weekOf,p.title,p.url,p.source||'manual'].map(csvEscape).join(','))].join('\r\n'); }
 async function dashboard(){
   const cfg=loadConfig(),plans=loadPlans(),state=loadState();
   const courseId=parseClassroomIds(cfg.courseUrl).courseId;
@@ -400,7 +394,7 @@ async function finishFirstRunSetup(time){
 }
 
 function createWindow(){
-  mainWindow=new BrowserWindow({width:1280,height:840,minWidth:820,minHeight:680,backgroundColor:'#f4f6f9',autoHideMenuBar:true,icon:path.join(__dirname,'assets','icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,webviewTag:false}});
+  mainWindow=new BrowserWindow({width:1280,height:840,minWidth:820,minHeight:680,backgroundColor:'#f2f8fe',autoHideMenuBar:true,icon:path.join(__dirname,'assets','GoClassroom.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,webviewTag:false}});
   mainWindow.setMenu(null);
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
@@ -454,7 +448,7 @@ handleIpc('config:save',(_e,v)=>{ensureAutomationIdle();return saveConfig({...lo
 handleIpc('setup:finish',(_e,time)=>{ensureAutomationIdle();return finishFirstRunSetup(time)});
 handleIpc('plans:get',()=>loadPlans());
 handleIpc('plans:save',(_e,v)=>{ensureAutomationIdle();return savePlans(v)});
-handleIpc('plans:import',async()=>{ensureAutomationIdle();const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Auto Turn-In plan lists',extensions:['csv','json']}]});if(r.canceled)return null;const p=r.filePaths[0],txt=fs.readFileSync(p,'utf8');const plans=(p.toLowerCase().endsWith('.json')?JSON.parse(txt):parseCsv(txt)).map(x=>({...x,source:'import'}));return savePlans(plans)});
+handleIpc('plans:import',async()=>{ensureAutomationIdle();const r=await dialog.showOpenDialog({properties:['openFile'],filters:[{name:'Auto Turn-In plan lists',extensions:['csv','json']}]});if(r.canceled)return null;const p=r.filePaths[0],txt=fs.readFileSync(p,'utf8');const plans=(p.toLowerCase().endsWith('.json')?JSON.parse(txt):parseCsv(txt,normalizePlan)).map(x=>({...x,source:'import'}));return savePlans(plans)});
 handleIpc('plans:export',async()=>{const plans=loadPlans();const r=await dialog.showSaveDialog({defaultPath:'classroom-auto-turn-in-plans.csv',filters:[{name:'Auto Turn-In plan list',extensions:['csv']}]});if(r.canceled)return null;fs.writeFileSync(r.filePath,toCsv(plans));return r.filePath});
 handleIpc('course:select',async()=>withExclusiveBrowserOperation('Classroom selection',async()=>{const out=await runNodeScript('select-course.js');return lastPayload(out,'course')||{courseUrl:loadConfig().courseUrl,courseDisplayName:loadConfig().courseDisplayName}}));
 handleIpc('topics:discover',async()=>withExclusiveBrowserOperation('Classroom topic check',async()=>{const out=await runNodeScript('discover-topics.js');const topics=lastPayload(out,'topics');return Array.isArray(topics)?topics:[]}));
@@ -487,7 +481,15 @@ handleIpc('ai:dismiss',(_e,id)=>{ensureAutomationIdle();const all=loadAiDrafts()
 handleIpc('grading:get-state',()=>gradingState());
 handleIpc('grading:save-settings',(_e,v)=>saveGradingSettings(v||{}));
 handleIpc('grading:grade',(_e,v)=>createDraftGrade(v||{}));
-handleIpc('grading:discover-classroom',()=>discoverGradingAssignments());
+handleIpc('grading:select-classroom',()=>selectGradingClassroom());
+handleIpc('grading:remove-classroom',(_e,courseId)=>removeGradingClassroom(courseId));
+handleIpc('grading:discover-classroom',(_e,courseId)=>discoverGradingAssignments(courseId));handleIpc('grading:discover-my-classrooms',()=>getGradingService().discoverTeachingClassrooms());
 handleIpc('grading:process-classroom',(_e,v)=>processClassroomGrading(v||{}));
+handleIpc('grading:select-review-folder',()=>selectGradingReviewFolder());
+handleIpc('grading:open-review-folder',()=>openGradingReviewFolder());
+handleIpc('roster:get-state',()=>rosterIntegration.state());
+handleIpc('roster:discover',()=>rosterIntegration.discover());handleIpc('roster:read-operations',()=>rosterIntegration.readOperationsRoster());
+handleIpc('roster:apply-safe',()=>applyApprovedRosterChanges());
+handleIpc('roster:save-mappings',(_e,v)=>rosterIntegration.saveMappings(v));
 handleIpc('diagnostics:cleanup',()=>{const cfg=loadConfig();return cleanupDiagnostics(cfg.diagnosticRetentionDays||45)});
 handleIpc('logs:open',()=>{const dir=path.join(dataDir(),'logs');fs.mkdirSync(dir,{recursive:true});return shell.openPath(dir)});

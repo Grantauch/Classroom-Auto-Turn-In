@@ -1,8 +1,10 @@
-# Classroom Auto Turn-In v0.9.20 — Classroom Draft Grading Bridge Hardening Release Candidate
+# GoClassroom v0.9.27 — Roster Safety Repair Preview
 
-Classroom Auto Turn-In (CATI) is a teacher-controlled Windows app for safe scheduled Google Classroom lesson-plan turn-in. v0.9.20 preserves the verified Auto Turn-In baseline, the optional approval-required free-AI lesson-plan recovery path, the v0.9.18 local Ollama grading foundation, and the v0.9.19 Classroom Draft Grading Bridge.
+GoClassroom is the umbrella product built on the existing Classroom Auto Turn-In (CATI) Windows identity. v0.9.27 preserves the stable app ID, install identity, saved setup, browser profile, scheduled-task names, v0.9.23 due-date repair, and v0.9.25 live roster comparison while adding a teacher-confirmed, revision-bound roster write path.
 
-v0.9.20 hardens the **Classroom Draft Grading Bridge** so incomplete evidence, ambiguous point totals, duplicate identities, concurrent batches, stale/mismatched write results, and renderer-only confirmation cannot cross the draft-write boundary.
+GoClassroom can discover teaching Classrooms locally, accept only evidence-backed student email identities, require explicit Classroom-to-period mappings, compare against the current Hall Pass / Check-In roster, and apply only additions and name corrections after native confirmation. Removal candidates remain review-only. Pending writes are encrypted and retried with the same idempotent request ID after uncertain failures.
+
+The supplied GoClassroom production SVG/icon pack is used directly in the new teacher-first interface. “GoClassroom” remains a preview name pending a formal trademark/domain review; the current installer retains the proven Classroom Auto Turn-In compatibility identity.
 
 ## Hard grading boundary
 
@@ -26,7 +28,7 @@ For the selected assignment CATI currently supports:
 
 Sheets, Slides, PDFs, arbitrary Drive files, images, and other unsupported attachments cause the affected submission to stop at `TEACHER_REVIEW` rather than grading from partial evidence.
 
-Student work and grading results are held in memory for the run and are not intentionally persisted in CATI data files. CATI persists only local-grading settings: enable state, selected Ollama model, the separate Classroom draft-write opt-in, and batch size.
+By default, student work and grading results are held in memory for the run and are not intentionally persisted in application data files. v0.9.22 adds an explicit teacher-controlled exception: **Private grading review copies**. If the teacher chooses a private folder, accepts the student-data warning, and turns the option on, GoClassroom writes one review folder per run containing the assignment context, exact evidence used, proposed grade, rubric breakdown, safety classification, independent validation, and Classroom write status. The feature is off by default and never changes Drive sharing permissions.
 
 ## Local AI contract
 
@@ -39,16 +41,18 @@ Student work and grading results are held in memory for the run and are not inte
 
 ## Classroom grading workflow
 
-1. Open **Local grading**.
+1. Open **Draft grading**.
 2. Turn local grading on and choose an installed Ollama model.
-3. Select **Find Classroom assignments**.
-4. Choose one assignment and paste the rubric.
-5. Leave **For this run, save...** unchecked for a preview-only batch.
-6. Review `SAFE_DRAFT` and `TEACHER_REVIEW` results.
-7. If desired, separately enable Classroom draft writing, save that setting, check the per-run write box, and confirm the native Cancel-by-default batch dialog.
-8. CATI enters only validated draft scores after rechecking the grade-field denominator, reloads each student page, and verifies the saved number. It never clicks Return.
+3. Select **Add grading Classroom**, open one class you teach, and choose **Add grading Classroom** in the browser. Repeat for each class.
+4. Choose a grading Classroom in the app, then select **Find assignments in this class**.
+5. Choose one assignment and paste the rubric.
+6. Leave **For this run, save...** unchecked for a preview-only batch.
+7. Review `SAFE_DRAFT` and `TEACHER_REVIEW` results.
+8. Optionally choose a private grading review folder and enable review copies. This intentionally persists student data in that folder and should follow school retention policy.
+9. If desired, separately enable Classroom draft writing, save that setting, check the per-run write box, and confirm the native Cancel-by-default batch dialog, which names the grading Classroom and assignment.
+10. GoClassroom enters only validated draft scores after rechecking the grade-field denominator, reloads each student page, and verifies the saved number. It never clicks Return.
 
-See `CLASSROOM-DRAFT-GRADING-v0.9.20.md` for the detailed contract. The v0.9.19 document remains in this package as historical baseline documentation.
+See `GOCLASSROOM-MULTI-CLASS-GRADING-v0.9.22.md` for the new multi-class and review-copy contract. The v0.9.19 and v0.9.20 grading documents remain in this package as historical baseline documentation.
 
 ## Release status
 
@@ -71,16 +75,18 @@ npm run check:release-ready
 
 The end-to-end/browser checks remain separate because they require the packaged/browser environment.
 
-For a Windows installer build, extract this source package to a short local path such as `C:\CATI-Build\v0.9.20` before running `BUILD-SETUP-EXE.bat`. The pinned NSIS 3.0.4.1 toolchain still uses legacy Windows path handling and can fail when the source is nested under a very long folder path even though the source checks pass.
+For a Windows installer build, extract this source package to a short local path such as `C:\CATI-Build\v0.9.27` before running `BUILD-SETUP-EXE.bat`. The pinned NSIS 3.0.4.1 toolchain still uses legacy Windows path handling and can fail when the source is nested under a very long folder path even though the source checks pass.
 
 ## Important files
 
 - `engine/grading.js` — local Ollama grading contract and validation.
 - `engine/classroom-grading.js` — Classroom grading URL/DOM helpers and fail-closed extraction rules.
 - `engine/grading-classroom-discover.js` — assignment discovery.
+- `engine/select-grading-course.js` — dedicated grading-Classroom picker that does not modify lesson-plan Setup.
 - `engine/grading-classroom-extract.js` — bounded student-work extraction.
 - `engine/grading-classroom-write.js` — draft-score fill and reload verification; no Return action.
 - `main-services/grading-service.js` — orchestrates discovery, extraction, local grading, validation, and optional draft writeback.
+- `main-services/grading-service.js` also owns the saved grading-class list and optional private review export.
 - `main-services/grading-confirmation.js` — native per-run confirmation and one-time write authorization handoff.
 - `renderer/index.html` / `renderer/app.js` — teacher controls and preview/write selection.
 - `scripts/classroom-grading-bridge-check.js` — offline bridge regression checks.

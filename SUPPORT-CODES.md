@@ -59,7 +59,10 @@ Support codes are short labels shown with important problems. A teacher should n
 | AT-GRD-205 | The Classroom draft-grading batch timed out. | No uncertain grade was written; retry with a smaller batch if needed. |
 | AT-GRD-206 | The one-time draft-write confirmation is missing, expired, or already used. | Start a new batch and confirm it again; no grade was changed. |
 | AT-GRD-207 | Another Classroom grading batch is already running. | Wait for it to finish before starting another batch. |
-| AT-GRD-208 | The selected grading assignment does not match the Classroom configured in Setup. | Find the assignment again from Local grading before retrying. |
+| AT-GRD-208 | The selected grading assignment does not match a saved grading Classroom. | Choose the grading class again and find its assignments before retrying. |
+| AT-ROS-104 | The encrypted local roster preview could not be opened or saved safely. | Restart GoClassroom; if it repeats, run roster discovery again on this Windows account. |
+| AT-ROS-105 | The current Hall Pass / Check-In roster could not be read safely. | Confirm the teacher Google account can open the operations dashboard, then compare rosters again. Nothing was changed. |
+| AT-ROS-106 | An approved GoClassroom roster update could not be verified safely. | If a batch is pending, retry that same approved batch before scanning, remapping, or comparing again. |
 
 Unknown problems use a general support code and are still shown in plain English. Technical details remain in the local support files rather than on teacher screens.
 
@@ -123,6 +126,16 @@ These codes are used only if the normal typed main-process error cannot cross th
 | `AT-GRD-197` | `grading:grade` | The local draft grade could not be created safely. Nothing was published to Classroom. |
 | `AT-GRD-196` | `grading:discover-classroom` | CATI could not read the selected Classroom assignment list safely. No grades were changed. |
 | `AT-GRD-195` | `grading:process-classroom` | CATI could not finish the Classroom draft-grading batch safely. No uncertain grade was written. |
+| `AT-GRD-194` | `grading:select-classroom` | The grading Classroom could not be added. Lesson-plan Setup and grades were not changed. |
+| `AT-GRD-193` | `grading:remove-classroom` | The grading Classroom could not be removed from the local list. Google Classroom was not changed. |
+| `AT-GRD-192` | `grading:select-review-folder` | The private grading review folder could not be selected. No student work was saved by that action. |
+| `AT-GRD-191` | `grading:open-review-folder` | Windows could not open the saved private grading review folder. |
+| `AT-GRD-190` | `grading:discover-my-classrooms` | GoClassroom could not read your class list. Saved classes and grades were not changed. |
+| `AT-ROS-101` | `roster:get-state` | GoClassroom could not load the saved roster preview. No Hall Pass or Check-In roster was changed. |
+| `AT-ROS-102` | `roster:discover` | GoClassroom could not safely read the Classroom rosters. No Hall Pass or Check-In roster was changed. |
+| `AT-ROS-103` | `roster:save-mappings` | The class-to-period mapping could not be saved. No Hall Pass or Check-In roster was changed. |
+| `AT-ROS-105` | `roster:read-operations` | GoClassroom could not safely read the current Hall Pass / Check-In roster. Nothing was synchronized. |
+| `AT-ROS-106` | `roster:apply-safe` | GoClassroom could not verify the approved roster update. Retry the same approved batch before changing the roster preview. |
 | `AT-SUP-198` | `diagnostics:cleanup` | Old support files could not be cleaned up. This does not affect automatic turn-in. |
 | `AT-SUP-196` | `logs:open` | Windows could not open the Auto Turn-In support folder. |
 | `AT-PC-105` | `machine:get` | Auto Turn-In could not read this computer's local role. Restart the app and try again. |

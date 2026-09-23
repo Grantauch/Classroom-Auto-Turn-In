@@ -1,13 +1,14 @@
 const { launchTeacherContext } = require('./browser');
 const path = require('path');
 const {spawn} = require('child_process');
-const {loadConfig,loadPlans,savePlans,loadState,saveState,log,screenshotPath,assignmentEligibility,acquireRunLock,releaseRunLock} = require('./lib');
+const {loadConfig,loadPlans,savePlans,loadState,saveState,log,screenshotPath,acquireRunLock,releaseRunLock} = require('./lib');
 const {assertUniquePlans,computeSafetyFingerprint,extractGoogleFileId,parseClassroomIds,schoolYearKey,stateKey} = require('./safety');
-const {assertGoogleSession,maybeClick,isSubmitted,isReturned,getSubmissionAction,verifyPlanAttachment,assertSafeAttachmentSet,attachLink,verifyDryRunControls,submitAssignment,assignmentDetailVisible}=require('./classroom-actions');
+const {assertGoogleSession,maybeClick,isSubmitted,isReturned,getSubmissionAction,verifyPlanAttachment,assertSafeAttachmentSet,attachLink,verifyDryRunControls,submitAssignment}=require('./classroom-actions');
 const {emit,lastPayload,lastError,parseLine}=require('./protocol');
-const {openWeekAssignmentFromClasswork,verifyAssignmentIdentity,getAssignmentLinks}=require('./classroom-discovery');
+const {getAssignmentLinks}=require('./classroom-discovery');
 const {isTransientFailure}=require('./transient-error');
 const {savePageEvidence}=require('./page-evidence');
+const {buildEligibilityQueues,openVerifiedAssignmentDetail}=require('./due-date-resolution');
 
 const forceDry = process.argv.includes('--dry-run');
 
@@ -54,13 +55,6 @@ function makeOutcome(status,message,{retryable=false,errorType=null}={}){
 function emitOutcome(result){ emit('run-result',result); }
 const SAFETY_PROBE_LIMIT=6;
 function startOfToday(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime(); }
-const COMPLETED_LIST_LABEL=/\b(Turned in late|Turned in|Done late|Handed in late|Handed in|Marked as done|Graded|Returned)\b/i;
-function listedAsCompleted(a){
-  const text=String(a?.cardText||'').replace(/\s+/g,' ');
-  if(/\bDue\b/i.test(text)) return '';
-  const m=text.match(COMPLETED_LIST_LABEL);
-  return m?m[1]:'';
-}
 async function openClassworkPage(page,cfg){
   const {courseId}=parseClassroomIds(cfg.courseUrl);
   const onClasswork=()=>{const ids=parseClassroomIds(page.url());return /\/w\//.test(new URL(page.url()).pathname)&&ids.courseId===courseId;};
@@ -148,35 +142,7 @@ async function refreshTrustedDrivePlans(cfg){
     const links=await getAssignmentLinks(page,regex,cfg);
     log(`Selected topic "${cfg.topicName}" exposes matching week(s): ${links.map(x=>x.week).join(', ')}.`);
     const classworkUrl=page.url();
-    const plansByWeek=new Map(plans.map(p=>[Number(p.week),p]));
-    const candidates=[];
-    const ineligible=[];
-    const missingPlans=[];
-    for (const a of links) {
-      if (a.week<cfg.earliestWeek || a.week>cfg.latestWeek) continue;
-      const plan=plansByWeek.get(Number(a.week));
-      const listedDone=listedAsCompleted(a);
-      if (!plan) {
-        missingPlans.push(a.week);
-        const withoutPlan=assignmentEligibility(a,null,cfg);
-        if(withoutPlan.unknown&&listedDone) log(`Week ${a.week}: Classroom lists it as ${listedDone}; no due date is needed and nothing will be done.`);
-        else if(withoutPlan.unknown) addBlocker('DUE_DATE_UNKNOWN',`Week ${a.week} was found, but its Classroom due date could not be read. Nothing was assumed.`,{week:a.week,assignmentTitle:a.text||''});
-        else if(withoutPlan.eligible&&!listedDone) addBlocker('MISSING_PLAN',`Week ${a.week} is eligible in Classroom, but no matching plan is loaded.`,{week:a.week,assignmentTitle:a.text||'',dueText:a.dueText||'',cardText:a.cardText||''});
-        continue;
-      }
-      const eligibility=assignmentEligibility(a,plan,cfg);
-      if (eligibility.unknown) {
-        // Classroom may show a status such as "Turned in" in place of the due
-        // date for finished work. Nothing will be clicked for such a card, so
-        // it is not treated as a blocker; the detail page is still the only
-        // proof used before any action.
-        if (listedDone) { log(`Week ${a.week}: Classroom lists it as ${listedDone}; it is not a turn-in candidate.`); continue; }
-        addBlocker('DUE_DATE_UNKNOWN',`Week ${a.week} was found, but its Classroom due date could not be read. Nothing was submitted.`,{week:a.week,assignmentTitle:a.text||''}); continue;
-      }
-      if (!eligibility.eligible) { ineligible.push({...a,plan,eligibility,week:a.week,reason:eligibility.reason,date:eligibility.date}); continue; }
-      if (eligibility.early) log(`Week ${a.week}: due ${eligibility.date}, which is not a scheduled check day. Today is the last scheduled check before it is due.`);
-      candidates.push({...a,plan,eligibility});
-    }
+    const {candidates,ineligible,missingPlans}=await buildEligibilityQueues({page,links,plans,cfg,classworkUrl,regex,addBlocker});
     // A safety test is non-mutating, so it may verify a correctly matched
     // assignment that is not due today. Prefer the nearest upcoming week, then
     // the most recent earlier week. Several are queued because weeks that are
@@ -197,24 +163,16 @@ async function refreshTrustedDrivePlans(cfg){
     for (const item of candidates) {
       if(dry && verifiedDry.length) break;
       if (submitted>=cfg.maxSubmissionsPerRun) { runStats.deferred=Math.max(0,candidates.length-candidates.indexOf(item)); log(`Submission cap reached; ${runStats.deferred} candidate(s) deferred to the next check.`); break; }
-      let opened=false;
-      if (item.href) {
-        try {
-          await page.goto(item.href,{waitUntil:'domcontentloaded',timeout:30000});
-          opened=await assignmentDetailVisible(page,15000);
-        } catch{/* best-effort fallback */}
-      }
-      if (!opened) opened=await openWeekAssignmentFromClasswork(page,item,classworkUrl,regex,cfg);
+      const opened=await openVerifiedAssignmentDetail(page,item,classworkUrl,regex,cfg);
       if (!opened) {
         await savePageEvidence(page,`ERROR-open-week-${item.week}`).catch(()=>{});
         addBlocker('ASSIGNMENT_OPEN_FAILED',`Week ${item.week} is eligible, but its assignment detail page could not be opened safely.`,{week:item.week});
         continue;
       }
-      await page.waitForTimeout(650);
 
       // Re-read identity from the actual detail page before any attachment or
       // submission action. Course ID + assignment ID become the durable state key.
-      const identity=await verifyAssignmentIdentity(page,item,cfg,regex);
+      const identity=opened.identity;
       const key=stateKey(identity.courseId,identity.assignmentId);
       log(`Week ${item.week}: verified assignment identity ${identity.courseId}/${identity.assignmentId} (${identity.title}).`);
 
