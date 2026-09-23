@@ -3,6 +3,8 @@ name: Build Windows Release Candidate
 on:
   workflow_dispatch:
   push:
+    branches:
+      - 'feature/goclassroom-approved-roster-sync-v0.9.26'
     tags:
       - 'v0.9.26*'
       - 'v1.*'
