@@ -27,12 +27,19 @@ function publicPending(value={}){
 function createRosterService({localData,secureData,ensureAutomationIdle,runNodeScript,runExclusiveBrowser,compactError}){
   const {readJson,writeJson,appLog}=localData;
   if(!secureData)throw new Error('Roster service requires encrypted local storage.');
-  function loadState(){const raw=secureData.read('roster-sync.secure.json',emptyState());return {...emptyState(),...raw,snapshot:normalizeRosterSnapshot(raw?.snapshot||{}),lastDiff:raw?.lastDiff||emptyState().lastDiff,issues:Array.isArray(raw?.issues)?raw.issues:[]}}
+  const describeError=error=>typeof compactError==='function'?compactError(error):String(error?.message||error||'Unknown error');
+  function recoverableSecureRead(name,fallback,label){
+    try{return secureData.read(name,fallback)}
+    catch(error){appLog(`${label} could not be read and will be treated as stale until it is refreshed. ${describeError(error)}`);return fallback}
+  }
+  function loadState(){const raw=recoverableSecureRead('roster-sync.secure.json',emptyState(),'Cached Classroom roster');return {...emptyState(),...raw,snapshot:normalizeRosterSnapshot(raw?.snapshot||{}),lastDiff:raw?.lastDiff||emptyState().lastDiff,issues:Array.isArray(raw?.issues)?raw.issues:[]}}
   function loadMappings(){return normalizeMappings(readJson('roster-mappings.json',{schemaVersion:1,classMappings:{}}))}
   function loadBridgeSettings(){return normalizeBridgeSettings(readJson('roster-bridge.json',DEFAULT_OPERATIONS_BRIDGE))}
-  function loadOperationsState(){const raw=secureData.read('operations-roster.secure.json',emptyOperationsState());return {...emptyOperationsState(),...raw,roster:normalizeOperationsRoster(raw?.roster||[])}}
+  function loadOperationsState(){const raw=recoverableSecureRead('operations-roster.secure.json',emptyOperationsState(),'Cached Hall Pass roster comparison');return {...emptyOperationsState(),...raw,roster:normalizeOperationsRoster(raw?.roster||[])}}
+  // A pending write is the one encrypted record that is never disposable: if it
+  // cannot be read, GoClassroom must stop rather than risk creating a second batch.
   function loadPendingWrite(){const raw=secureData.read('roster-write-pending.secure.json',emptyPendingWrite());return raw?.status==='PENDING'&&raw?.request?raw:emptyPendingWrite()}
-  function loadLastWrite(){const raw=secureData.read('roster-write-last.secure.json',emptyLastWrite());return {...emptyLastWrite(),...raw}}
+  function loadLastWrite(){const raw=recoverableSecureRead('roster-write-last.secure.json',emptyLastWrite(),'Last roster write receipt');return {...emptyLastWrite(),...raw}}
   function assertNoPendingWrite(){const pending=loadPendingWrite();if(pending.status==='PENDING')throw new Error('A previously approved roster batch still needs recovery. Retry that same batch before scanning, remapping, or comparing again.');}
   function invalidateOperationsComparison(){secureData.write('operations-roster.secure.json',emptyOperationsState())}
   function saveMappings(value={}){

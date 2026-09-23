@@ -84,3 +84,23 @@ function makeHarness({failFirstApply=false}={}){
   const recovered=await recovery.service.applySafeChanges();assert.equal(recovered.state.pendingWrite.status,'NONE');assert.equal(recovery.requestIds.length,2);assert.equal(recovery.requestIds[0],recovery.requestIds[1],'Uncertain failures must retry the exact same idempotent request ID.');
   console.log('GoClassroom roster recovery checks passed: uncertain writes stay encrypted and retry the same server request ID.');
 })().catch(error=>{console.error(error);process.exitCode=1});
+
+{
+  const {createRosterService}=require('../main-services/roster-service');
+  const logs=[];
+  const localData={readJson:(_name,fallback)=>fallback,writeJson:(_name,value)=>value,appLog:message=>logs.push(String(message))};
+  const recoverableSecure={
+    read:(name,fallback)=>{if(name==='roster-write-pending.secure.json')return fallback;throw new Error(`corrupt ${name}`)},
+    write:(_name,value)=>value
+  };
+  const service=createRosterService({localData,secureData:recoverableSecure,ensureAutomationIdle:()=>{},compactError:error=>String(error.message||error)});
+  const state=service.publicState();
+  assert.equal(state.snapshot.classes.length,0,'Unreadable read-only roster cache should fall back to an empty refreshable snapshot.');
+  assert.equal(state.operations.count,0,'Unreadable operations comparison should fall back to an empty refreshable snapshot.');
+  assert.equal(state.pendingWrite.status,'NONE');
+  assert.ok(logs.some(line=>/treated as stale/i.test(line)),'Recoverable encrypted-cache damage should be logged for support.');
+  const criticalSecure={read:(name,fallback)=>{if(name==='roster-write-pending.secure.json')throw new Error('corrupt pending write');return fallback},write:(_name,value)=>value};
+  const critical=createRosterService({localData,secureData:criticalSecure,ensureAutomationIdle:()=>{},compactError:error=>String(error.message||error)});
+  assert.throws(()=>critical.publicState(),/corrupt pending write/i,'An unreadable approved pending write must remain fail-closed.');
+  console.log('GoClassroom encrypted-cache recovery checks passed: disposable roster snapshots can be refreshed, while pending approved writes remain fail-closed.');
+}
