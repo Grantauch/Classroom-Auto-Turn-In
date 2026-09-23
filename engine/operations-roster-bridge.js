@@ -6,12 +6,13 @@ function decodeBridgeArg(value){
   catch{throw new Error('The GoClassroom roster bridge settings are invalid. Nothing was synchronized.')}
 }
 function validateBridge(value={}){
-  const url=String(value.url||'').trim(),contract=String(value.contract||'').trim(),writeContract=String(value.writeContract||'').trim();
+  const url=String(value.url||'').trim(),contract=String(value.contract||'').trim(),writeContract=String(value.writeContract||'').trim(),studentEmailDomain=String(value.studentEmailDomain||'').trim().toLowerCase();
   let parsed=null;try{parsed=new URL(url)}catch{parsed=null}
   if(!parsed||parsed.protocol!=='https:'||parsed.hostname!=='script.google.com'||!/\/macros\//i.test(parsed.pathname))throw new Error('The Hall Pass / Check-In roster bridge URL is not valid. Nothing was synchronized.');
   if(!/^[A-Za-z0-9._:-]{8,120}$/.test(contract))throw new Error('The Hall Pass / Check-In roster bridge contract is not valid. Nothing was synchronized.');
   if(writeContract&&!/^[A-Za-z0-9._:-]{8,120}$/.test(writeContract))throw new Error('The Hall Pass / Check-In roster write contract is not valid. Nothing was synchronized.');
-  return {url:parsed.toString(),contract,writeContract};
+  if(studentEmailDomain&&!/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(studentEmailDomain))throw new Error('The configured student email domain is not valid. Nothing was synchronized.');
+  return {url:parsed.toString(),contract,writeContract,studentEmailDomain};
 }
 function teacherUrl(base){const u=new URL(base);u.searchParams.set('mode','teacher');return u.toString()}
 function validRevision(value){return /^[A-Za-z0-9_-]{20,80}$/.test(String(value||''))}
@@ -34,7 +35,7 @@ function normalizeAddRows(rows=[]){
 function normalizeNameRows(rows=[]){
   return (Array.isArray(rows)?rows:[]).map(row=>({studentEmail:cleanWriteText(row?.studentEmail,'student email',320).toLowerCase(),studentName:cleanWriteText(row?.studentName,'student name',120),beforeName:cleanWriteText(row?.beforeName,'previous student name',120),classPeriod:cleanWriteText(row?.classPeriod,'class period',120)}));
 }
-function validateWriteRequest(request={}){
+function validateWriteRequest(request={},expected={}){
   if(!request||typeof request!=='object'||Array.isArray(request))throw new Error('The approved roster write request is invalid. Compare rosters again.');
   const requestId=String(request.requestId||'').trim(),baseRevision=String(request.baseRevision||'').trim();
   if(!/^[A-Za-z0-9._:-]{8,120}$/.test(requestId)||!validRevision(baseRevision))throw new Error('The approved roster write request is missing its safe comparison identity. Compare rosters again.');
@@ -45,6 +46,11 @@ function validateWriteRequest(request={}){
   if(add.length+updateName.length>200)throw new Error('The approved roster batch is too large. Compare rosters again.');
   const membershipOk=row=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.studentEmail)&&row.studentName&&/^Period\s+[1-6](?:\b|\s|$)/i.test(row.classPeriod);
   if(!add.every(membershipOk)||!updateName.every(row=>membershipOk(row)&&row.beforeName))throw new Error('The approved roster batch contains an invalid membership. Compare rosters again.');
+  const all=[...add,...updateName],studentEmailDomain=String(expected.studentEmailDomain||'').trim().toLowerCase();
+  if(studentEmailDomain&&all.some(row=>row.studentEmail.split('@').pop()!==studentEmailDomain))throw new Error(`The approved roster batch contains a student email outside @${studentEmailDomain}. Compare rosters again.`);
+  if(all.some(row=>/^[=+\-@]/.test(row.studentName))||updateName.some(row=>/^[=+\-@]/.test(row.beforeName)))throw new Error('The approved roster batch contains a student name that cannot be written safely. Compare rosters again.');
+  const desiredByEmail=new Map();
+  for(const row of all){const prior=desiredByEmail.get(row.studentEmail);if(prior&&prior!==row.studentName)throw new Error(`The approved roster batch contains conflicting names for ${row.studentEmail}. Compare rosters again.`);desiredByEmail.set(row.studentEmail,row.studentName)}
   return {confirmation:'APPLY SAFE ROSTER CHANGES',requestId,baseRevision,add,updateName};
 }
 function validateWriteResult(result,expected={}){

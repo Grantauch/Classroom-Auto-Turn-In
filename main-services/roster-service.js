@@ -7,7 +7,8 @@ const DEFAULT_OPERATIONS_BRIDGE={
   schemaVersion:1,
   url:'https://script.google.com/a/macros/mtmorrisschools.org/s/AKfycby2cAUsc1T0tTQkIWTrGwdOrfD2p5cX3EKBG3obW-QY2Ndd8T-cpjoT8bXU__on-qWa/exec',
   contract:'2026-09-22-roster-sync-v1',
-  writeContract:'2026-09-22-roster-write-v1'
+  writeContract:'2026-09-22-roster-write-v1',
+  studentEmailDomain:'students.mtmorrisschools.org'
 };
 const ROSTER_WRITE_CONFIRMATION='APPLY SAFE ROSTER CHANGES';
 function emptyState(){return {schemaVersion:1,lastDiscoveryAt:'',snapshot:{schemaVersion:1,source:'google-classroom-ui',discoveredAt:'',classes:[]},lastDiff:{added:[],removed:[],changed:[],counts:{added:0,removed:0,changed:0,unresolved:0}},issues:[]}}
@@ -15,8 +16,8 @@ function emptyOperationsState(){return {schemaVersion:1,lastReadAt:'',serverNow:
 function emptyPendingWrite(){return {schemaVersion:1,status:'NONE',createdAt:'',request:null}}
 function emptyLastWrite(){return {schemaVersion:1,appliedAt:'',result:null}}
 function normalizeBridgeSettings(value={}){
-  const url=String(value.url||DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim();
-  return {schemaVersion:1,url,contract,writeContract};
+  const url=String(value.url||DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim(),studentEmailDomain=String(value.studentEmailDomain||DEFAULT_OPERATIONS_BRIDGE.studentEmailDomain||'').trim().toLowerCase();
+  return {schemaVersion:1,url,contract,writeContract,studentEmailDomain};
 }
 function encodeBridgeArg(value){return Buffer.from(JSON.stringify(value),'utf8').toString('base64url')}
 function publicPending(value={}){
@@ -83,7 +84,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     return publicState();
   }
   function createWriteRequest(){
-    const pending=loadPendingWrite();if(pending.status==='PENDING')return validateWriteRequest(pending.request);
+    const bridge=loadBridgeSettings(),pending=loadPendingWrite();if(pending.status==='PENDING')return validateWriteRequest(pending.request,{studentEmailDomain:bridge.studentEmailDomain});
     const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState();
     if(!operations.lastReadAt||!operations.revision||!operations.writeContract)throw new Error('Compare with Hall Pass / Check-In immediately before applying roster changes.');
     const plan=planOperationsRosterSync(preview,operations.roster),safeCount=plan.add.length+plan.updateName.length;
@@ -94,7 +95,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       baseRevision:operations.revision,
       add:plan.add.map(x=>({studentEmail:x.studentEmail,studentName:x.studentName,classPeriod:x.classPeriod})),
       updateName:plan.updateName.map(x=>({studentEmail:x.after.studentEmail,studentName:x.after.studentName,beforeName:x.before.studentName,classPeriod:x.after.classPeriod}))
-    });
+    },{studentEmailDomain:bridge.studentEmailDomain});
     secureData.write('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:new Date().toISOString(),request});
     return request;
   }

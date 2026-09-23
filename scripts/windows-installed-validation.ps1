@@ -52,14 +52,15 @@ function Assert-PerUserInstall([string]$exe){
   }
 }
 function Invoke-SetupInstall([string]$label){
-  # NSIS can occasionally terminate with STATUS_ACCESS_VIOLATION on a freshly
-  # provisioned Windows runner while security scanning releases the installer.
-  # Retry that one transient code once, but never retry any other installer
-  # failure or continue if a partial application executable appeared.
-  for($attempt=1;$attempt -le 2;$attempt++){
+  # Hosted Windows runners can occasionally terminate a freshly-created NSIS
+  # launcher with STATUS_ACCESS_VIOLATION while security scanning releases it.
+  # Retry only that exact pre-install status, never any other installer failure,
+  # and never retry after a partial application executable appears.
+  $maxAttempts=4
+  for($attempt=1;$attempt -le $maxAttempts;$attempt++){
     $p=Start-Process -FilePath $setup.FullName -ArgumentList '/S' -PassThru -Wait
     if($p.ExitCode -eq 0){return}
-    if($p.ExitCode -ne -1073741819 -or $attempt -ne 1){
+    if($p.ExitCode -ne -1073741819 -or $attempt -ge $maxAttempts){
       throw "$label exited $($p.ExitCode)."
     }
     foreach($folder in $installFolders){
@@ -68,8 +69,9 @@ function Invoke-SetupInstall([string]$label){
         throw "$label exited $($p.ExitCode) after creating a partial application executable at $candidate; validation will not retry an ambiguous install."
       }
     }
-    Write-Warning "$label hit transient Windows status 0xC0000005 before installing; waiting once and retrying."
-    Start-Sleep -Seconds 5
+    $delaySeconds=[Math]::Min(15,5*$attempt)
+    Write-Warning "$label hit transient Windows status 0xC0000005 before installing (attempt $attempt of $maxAttempts); retrying after $delaySeconds second(s)."
+    Start-Sleep -Seconds $delaySeconds
   }
 }
 function Wait-ForUninstallCompletion([string]$appExe,[string]$uninstallExe){

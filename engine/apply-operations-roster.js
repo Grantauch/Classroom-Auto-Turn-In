@@ -5,7 +5,7 @@ const {decodeBridgeArg,validateBridge,teacherUrl,validateWriteRequest,validateWr
 
 (async()=>{
   const payload=decodeBridgeArg(process.argv[2]);
-  const bridge=validateBridge(payload?.bridge||{}),request=validateWriteRequest(payload?.request||{});
+  const bridge=validateBridge(payload?.bridge||{}),request=validateWriteRequest(payload?.request||{},{studentEmailDomain:bridge.studentEmailDomain});
   if(!bridge.writeContract)throw new Error('The Hall Pass / Check-In roster write contract is missing. Compare rosters again.');
   const cfg=loadConfig(),context=await launchTeacherContext(cfg,{headless:false});
   try{

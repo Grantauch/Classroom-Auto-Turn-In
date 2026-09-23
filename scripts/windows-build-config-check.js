@@ -23,6 +23,7 @@ assert(validation.includes('--self-test-user-data=')&&validation.includes('--sel
 assert(validation.includes('Validation refused to run because a real Classroom Auto Turn-In scheduled task already exists'),'Installed validation must refuse to touch production CATI tasks.');
 assert(!validation.includes('Register-ScheduledTask'),'Installed validation must not seed real scheduled tasks.');
 assert(validation.includes('already installed at $existingApp'),'Installed validation must refuse to overwrite a real CATI installation.');
+assert(validation.includes('$maxAttempts=4')&&validation.includes('$p.ExitCode -ne -1073741819')&&validation.includes('partial application executable'),'Installed validation may retry only the known pre-install NSIS access-violation flake and must still fail closed on partial installs.');
 const bat=fs.readFileSync(path.join(root,'BUILD-SETUP-EXE.bat'),'utf8');
 assert(bat.includes('CSC_IDENTITY_AUTO_DISCOVERY=false'));
 assert(bat.includes('WIN_CSC_LINK='));
