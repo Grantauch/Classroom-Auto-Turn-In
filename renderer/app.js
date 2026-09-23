@@ -325,7 +325,11 @@ function renderRosters(state=latestRosterState||{}){
     const ready=Array.isArray(course.students)?course.students.length:0,review=rosterUnresolvedCount(course);
     return `<div class="roster-class-card" data-course-id="${escapeHtml(course.courseId)}"><div class="roster-class-copy"><strong>${escapeHtml(course.courseDisplayName||'Classroom')}</strong><span>${ready} verified ${ready===1?'student':'students'}${review?` · ${review} need${review===1?'s':''} identity review`:''}</span></div><label class="field roster-map-field">School period<select class="roster-map-select" data-course-id="${escapeHtml(course.courseId)}">${rosterMappingOptions(mapped)}</select></label></div>`;
   }).join(''):'<div class="empty-state">No Classroom roster snapshot has been saved yet.</div>';
-  $$('.roster-map-select').forEach(select=>select.onchange=()=>{markDirty('rosters');renderRosterPreviewFromControls();const live=$('#rosterLiveComparison');if(live)live.innerHTML='<div class="notice compact"><b>Comparison needs refresh.</b> Save the period mapping, then compare rosters again.</div>';});
+  const pendingRecovery=state?.pendingWrite?.status==='PENDING';
+  $$('.roster-map-select').forEach(select=>{select.disabled=pendingRecovery;select.onchange=()=>{markDirty('rosters');renderRosterPreviewFromControls();const live=$('#rosterLiveComparison');if(live)live.innerHTML='<div class="notice compact"><b>Comparison needs refresh.</b> Save the period mapping, then compare rosters again.</div>';const apply=$('#applyOperationsRoster');if(apply)apply.disabled=true;};});
+  if($('#findClassroomRosters'))$('#findClassroomRosters').disabled=pendingRecovery;
+  if($('#saveRosterMappings'))$('#saveRosterMappings').disabled=pendingRecovery;
+  if($('#compareOperationsRoster'))$('#compareOperationsRoster').disabled=pendingRecovery;
   renderRosterPreviewFromControls();
   renderLiveRosterComparison(state);
 }
@@ -380,7 +384,8 @@ async function compareOperationsRoster(){
   toast(`Roster comparison complete: ${Number(c.unchanged||0)} correct, ${Number(c.add||0)} add, ${Number(c.updateName||0)} name update, ${Number(c.deactivate||0)} removal review, ${Number(c.held||0)+Number(c.blocked||0)} held safely. Nothing was changed live.`);return state;
 }
 async function applyOperationsRoster(){
-  if(dirty.rosters)throw new Error('Save the period mapping and compare rosters again before applying changes.');
+  const pendingRecovery=latestRosterState?.pendingWrite?.status==='PENDING';
+  if(dirty.rosters&&!pendingRecovery)throw new Error('Save the period mapping and compare rosters again before applying changes.');
   const outcome=await cati.applySafeRosterChanges();
   if(outcome?.cancelled)return outcome;
   const state=outcome?.state||await cati.getRosterState();renderRosters(state);clearDirty('rosters');
