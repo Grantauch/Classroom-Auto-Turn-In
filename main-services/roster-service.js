@@ -11,6 +11,7 @@ const DEFAULT_OPERATIONS_BRIDGE={
   studentEmailDomain:'students.mtmorrisschools.org'
 };
 const ROSTER_WRITE_CONFIRMATION='APPLY SAFE ROSTER CHANGES';
+const ROSTER_SOURCE_MAX_AGE_MS=10*60*1000;
 function emptyState(){return {schemaVersion:1,lastDiscoveryAt:'',snapshot:{schemaVersion:1,source:'google-classroom-ui',discoveredAt:'',classes:[]},lastDiff:{added:[],removed:[],changed:[],counts:{added:0,removed:0,changed:0,unresolved:0}},issues:[]}}
 function emptyOperationsState(){return {schemaVersion:1,lastReadAt:'',serverNow:'',bridgeContract:'',writeContract:'',revision:'',roster:[]}}
 function emptyPendingWrite(){return {schemaVersion:1,status:'NONE',createdAt:'',request:null}}
@@ -43,6 +44,10 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   function loadPendingWrite(){const raw=secureData.read('roster-write-pending.secure.json',emptyPendingWrite());return raw?.status==='PENDING'&&raw?.request?raw:emptyPendingWrite()}
   function loadLastWrite(){const raw=recoverableSecureRead('roster-write-last.secure.json',emptyLastWrite(),'Last roster write receipt');return {...emptyLastWrite(),...raw}}
   function assertNoPendingWrite(){const pending=loadPendingWrite();if(pending.status==='PENDING')throw new Error('A previously approved roster batch still needs recovery. Retry that same batch before scanning, remapping, or comparing again.');}
+  function assertFreshClassroomSnapshot(state=loadState()){
+    const discoveredAt=Date.parse(String(state.lastDiscoveryAt||state.snapshot?.discoveredAt||''));
+    if(!Number.isFinite(discoveredAt)||Date.now()-discoveredAt>ROSTER_SOURCE_MAX_AGE_MS)throw new Error('The saved Classroom roster scan is too old to approve a roster write. Run Find my rosters again, save the mappings, and compare again.');
+  }
   function invalidateOperationsComparison(){secureData.write('operations-roster.secure.json',emptyOperationsState())}
   function saveMappings(value={}){
     ensureAutomationIdle();assertNoPendingWrite();
@@ -72,7 +77,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     return publicState();
   }
   async function readOperationsRoster(options={}){
-    ensureAutomationIdle();if(options.allowPending!==true)assertNoPendingWrite();
+    ensureAutomationIdle();if(options.allowPending!==true){assertNoPendingWrite();assertFreshClassroomSnapshot();}
     if(typeof runNodeScript!=='function')throw new Error('The Hall Pass / Check-In roster bridge is not available in this build.');
     const bridge=loadBridgeSettings(),arg=encodeBridgeArg(bridge);
     const execute=()=>runNodeScript('read-operations-roster.js',[arg],false,{timeoutMs:4*60*1000});
@@ -86,7 +91,8 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     return publicState();
   }
   function buildNewWriteRequest(requestId,bridge=loadBridgeSettings()){
-    const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState();
+    const state=loadState();assertFreshClassroomSnapshot(state);
+    const mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState();
     if(!operations.lastReadAt||!operations.revision||!operations.writeContract)throw new Error('Compare with Hall Pass / Check-In immediately before applying roster changes.');
     const plan=planOperationsRosterSync(preview,operations.roster),safeCount=plan.add.length+plan.updateName.length;
     if(!safeCount)throw new Error('There are no safe additions or name updates to apply. Removal candidates stay review-only.');
@@ -181,4 +187,4 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   }
   return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
 }
-module.exports={DEFAULT_OPERATIONS_BRIDGE,ROSTER_WRITE_CONFIRMATION,normalizeBridgeSettings,createRosterService};
+module.exports={DEFAULT_OPERATIONS_BRIDGE,ROSTER_WRITE_CONFIRMATION,ROSTER_SOURCE_MAX_AGE_MS,normalizeBridgeSettings,createRosterService};
