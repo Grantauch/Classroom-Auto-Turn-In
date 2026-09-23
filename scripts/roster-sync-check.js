@@ -3,6 +3,7 @@ const fs=require('fs'),path=require('path');
 const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,buildOperationsRosterCandidate,planOperationsRosterSync,collectClassroomPeopleDom}=require('../engine/classroom-roster');
 const {collectAssignmentDueEvidenceDom}=require('../engine/classroom-discovery');
 const {resolveAppsScriptBridgeFrame}=require('../engine/apps-script-frame');
+const {run:runRosterDiscoveryCompletenessCheck}=require('./roster-discovery-completeness-check');
 
 const before=normalizeRosterSnapshot({discoveredAt:'2026-09-21T00:00:00Z',classes:[{courseId:'COURSE1',courseDisplayName:'History',studentsHeadingFound:true,students:[{name:'Ada Student',email:'ada@school.org',studentId:'S1'}],discoveredStudentRows:1}]});
 const after=normalizeRosterSnapshot({discoveredAt:'2026-09-22T00:00:00Z',classes:[{courseId:'COURSE1',courseDisplayName:'History',studentsHeadingFound:true,students:[{name:'Ada Student',email:'ADA@school.org',studentId:'S1'},{name:'Ben Student',email:'ben@school.org',studentId:'S2'},{name:'No Email',studentId:'S3'}],discoveredStudentRows:3}]});
@@ -36,7 +37,8 @@ assert.equal(genericPlan.counts.add,0,'A generic period label must never propose
 assert.equal(genericPlan.counts.deactivate,0,'A generic/descriptive period collision must not create an automatic removal candidate.');
 assert.ok(genericPlan.held.some(row=>row.reason==='CLASS_PERIOD_LABEL_MISMATCH'),'Generic/descriptive period collisions must stop for explicit class-label resolution.');
 const discoverySource=fs.readFileSync(path.join(__dirname,'../engine/discover-classroom-rosters.js'),'utf8');
-assert.ok(discoverySource.includes('if(atEnd){await capture();scrollComplete=true;break;}'),'Roster discovery must collect the final viewport before declaring traversal complete.');
+assert.ok(discoverySource.includes('ROSTER_END_STABILITY_CONFIRMATIONS')&&discoverySource.includes('stableConfirmations>=ROSTER_END_STABILITY_CONFIRMATIONS'),'Roster discovery must require stable end evidence before declaring traversal complete.');
+assert.ok(!discoverySource.includes('moved.after===moved.before'),'A stalled scroll position before the known maximum must not be treated as completion.');
 const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
 assert.ok(!dueCollectorSource.includes("div,span,p"),'Assignment due-date fallback must not scan ordinary assignment body text.');
 assert.equal(typeof collectClassroomPeopleDom,'function');const domSource=String(collectClassroomPeopleDom);assert.ok(/mailto:/.test(domSource));assert.ok(/Students\|Classmates/.test(domSource));assert.ok(!/firstName|lastName|guess/i.test(domSource),'Roster discovery must not guess student email addresses.');
@@ -109,6 +111,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
 }
 
 (async()=>{
+  await runRosterDiscoveryCompletenessCheck();
   const mainFrame={url:()=> 'https://script.google.com/a/macros/example.org/s/DEPLOYMENT/exec',evaluate:async()=>false};
   const appFrame={url:()=> 'https://abc-script.googleusercontent.com/userCodeAppPanel',evaluate:async()=>true};
   const fakePage={mainFrame:()=>mainFrame,frames:()=>[mainFrame,appFrame],waitForTimeout:async()=>{}};
