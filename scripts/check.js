@@ -207,7 +207,7 @@ if(!actionSource.includes("querySelectorAll('[data-file-id],[data-doc-id],[data-
 const topicsSource=fs.readFileSync(path.join(root,'engine/discover-topics.js'),'utf8');
 if(!topicsSource.includes('accounts\\.google\\.com'))throw new Error('Topic discovery does not diagnose expired Google sign-in');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-if(pkg.version!=='0.9.26')throw new Error('package.json version is not 0.9.26');
+if(pkg.version!=='0.9.27')throw new Error('package.json version is not 0.9.27');
 if(String(pkg.dependencies['playwright-core']).startsWith('^')||String(pkg.devDependencies.electron).startsWith('^')||String(pkg.devDependencies['electron-builder']).startsWith('^'))throw new Error('Top-level build/runtime dependencies are not pinned exactly');
 const portableNode=fs.readFileSync(path.join(root,'scripts/Get-PortableNode.ps1'),'utf8');
 if(!portableNode.includes("$version = 'v22.19.0'"))throw new Error('Portable Node build version is not pinned');
@@ -284,7 +284,7 @@ if(!rendererSource.includes('function applyAiVisibility')||!rendererSource.inclu
 if(!rendererSource.includes('optedIn:false,enabled:false'))throw new Error('Teacher cannot fully opt out and hide optional AI recovery');
 if(!mainSource.includes("coreIssueNames=new Set(['config.json','plans.json'])"))throw new Error('Optional AI data corruption can still leak into core Auto Turn-In blockers');
 if(!htmlSource.includes('Content-Security-Policy'))throw new Error('Renderer Content Security Policy is missing');
-if(!htmlSource.includes('v0.9.26'))throw new Error('Teacher Edition sidebar version is not v0.9.26');
+if(!htmlSource.includes('v0.9.27'))throw new Error('Teacher Edition sidebar version is not v0.9.27');
 
 const preloadText=fs.readFileSync(path.join(root,'preload.js'),'utf8');
 const errorCatalog=fs.readFileSync(path.join(root,'engine/user-errors.js'),'utf8');
@@ -299,4 +299,4 @@ if(!htmlSource.includes('Files for school technology support')||!rendererSource.
 
 if(!protocolSource.includes("const PREFIX='CATI_EVENT:'")||!runnerSource.includes("lastPayload(output,'run-result')"))throw new Error('Versioned child-process protocol is not wired end-to-end');
 try{fs.rmSync(testData,{recursive:true,force:true})}catch{/* best-effort fallback */}
-console.log('Project syntax, Trust/Reliability safety, Teacher Edition, multi-Classroom grading, approved roster sync, optional private review export, and v0.9.26 GoClassroom preview checks passed.');
+console.log('Project syntax, Trust/Reliability safety, Teacher Edition, multi-Classroom grading, approved roster sync, optional private review export, and v0.9.27 GoClassroom preview checks passed.');
