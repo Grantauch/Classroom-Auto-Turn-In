@@ -1,7 +1,7 @@
 const crypto=require('crypto');
 const {lastPayload}=require('../engine/protocol');
 const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync}=require('../engine/classroom-roster');
-const {validateWriteRequest,validateRecoveryDecision}=require('../engine/operations-roster-bridge');
+const {validateWriteRequest,validateRecoveryDecision,selectRecoverySafeWriteBatch}=require('../engine/operations-roster-bridge');
 
 const DEFAULT_OPERATIONS_BRIDGE={
   schemaVersion:1,
@@ -96,12 +96,15 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     if(!operations.lastReadAt||!operations.revision||!operations.writeContract)throw new Error('Compare with Hall Pass / Check-In immediately before applying roster changes.');
     const plan=planOperationsRosterSync(preview,operations.roster),safeCount=plan.add.length+plan.updateName.length;
     if(!safeCount)throw new Error('There are no safe additions or name updates to apply. Removal candidates stay review-only.');
+    const plannedAdd=plan.add.map(x=>({studentEmail:x.studentEmail,studentName:x.studentName,classPeriod:x.classPeriod}));
+    const plannedUpdateName=plan.updateName.map(x=>({studentEmail:x.after.studentEmail,studentName:x.after.studentName,beforeName:x.before.studentName,classPeriod:x.after.classPeriod}));
+    const batch=selectRecoverySafeWriteBatch(plannedAdd,plannedUpdateName,{studentEmailDomain:bridge.studentEmailDomain});
     return validateWriteRequest({
       confirmation:ROSTER_WRITE_CONFIRMATION,
       requestId,
       baseRevision:operations.revision,
-      add:plan.add.map(x=>({studentEmail:x.studentEmail,studentName:x.studentName,classPeriod:x.classPeriod})),
-      updateName:plan.updateName.map(x=>({studentEmail:x.after.studentEmail,studentName:x.after.studentName,beforeName:x.before.studentName,classPeriod:x.after.classPeriod}))
+      add:batch.add,
+      updateName:batch.updateName
     },{studentEmailDomain:bridge.studentEmailDomain});
   }
   function validateSafeChanges(){

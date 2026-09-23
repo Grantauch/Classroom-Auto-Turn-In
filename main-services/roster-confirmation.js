@@ -6,11 +6,15 @@ function createRosterApplyHandler({dialog,getRosterIntegration}){
     const updateName=Number(validated.updateName?.length||0);
     if(add+updateName<1)throw new Error('There are no safe roster additions or name updates to apply. Compare rosters again.');
     const retry=pending.status==='PENDING';
+    const plannedSafe=Number(state?.syncPlan?.counts?.add||0)+Number(state?.syncPlan?.counts?.updateName||0);
+    const partialBatch=!retry&&plannedSafe>add+updateName;
+    const remainingSafe=Math.max(0,plannedSafe-add-updateName);
+    const batchDetail=partialBatch?` This is one recovery-safe batch of ${add+updateName} from ${plannedSafe} safe change${plannedSafe===1?'':'s'}. After this batch is verified, GoClassroom will use a fresh live roster comparison before offering the remaining ${remainingSafe} change${remainingSafe===1?'':'s'} for separate approval.`:'';
     const answer=await dialog.showMessageBox({
       type:'warning',buttons:['Cancel',retry?'Retry same approved batch':'Apply safe roster changes'],defaultId:0,cancelId:0,
       title:retry?'Recover approved roster sync?':'Apply safe roster changes?',
       message:retry?'GoClassroom will retry the exact same approved roster request.':`GoClassroom will apply ${add} addition${add===1?'':'s'} and ${updateName} name update${updateName===1?'':'s'}.`,
-      detail:'No student will be removed automatically. New or reactivated memberships may receive missing PIN material, but GoClassroom will not email PINs. Hall Pass and Check-In history is preserved. The server will reject the batch if the live roster changed after comparison.'
+      detail:`No student will be removed automatically. New or reactivated memberships may receive missing PIN material, but GoClassroom will not email PINs. Hall Pass and Check-In history is preserved. The server will reject the batch if the live roster changed after comparison.${batchDetail}`
     });
     if(answer.response!==1)return {cancelled:true,state};
     const outcome=await integration.applySafeChanges(validated);

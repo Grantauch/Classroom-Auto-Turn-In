@@ -4,6 +4,7 @@ const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConf
 const {collectAssignmentDueEvidenceDom}=require('../engine/classroom-discovery');
 const {resolveAppsScriptBridgeFrame}=require('../engine/apps-script-frame');
 const {run:runRosterDiscoveryCompletenessCheck}=require('./roster-discovery-completeness-check');
+const {run:runRosterBatchingCheck}=require('./roster-batching-check');
 
 const before=normalizeRosterSnapshot({discoveredAt:'2026-09-21T00:00:00Z',classes:[{courseId:'COURSE1',courseDisplayName:'History',studentsHeadingFound:true,students:[{name:'Ada Student',email:'ada@school.org',studentId:'S1'}],discoveredStudentRows:1}]});
 const after=normalizeRosterSnapshot({discoveredAt:'2026-09-22T00:00:00Z',classes:[{courseId:'COURSE1',courseDisplayName:'History',studentsHeadingFound:true,students:[{name:'Ada Student',email:'ADA@school.org',studentId:'S1'},{name:'Ben Student',email:'ben@school.org',studentId:'S2'},{name:'No Email',studentId:'S3'}],discoveredStudentRows:3}]});
@@ -112,6 +113,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
 
 (async()=>{
   await runRosterDiscoveryCompletenessCheck();
+  await runRosterBatchingCheck();
   const mainFrame={url:()=> 'https://script.google.com/a/macros/example.org/s/DEPLOYMENT/exec',evaluate:async()=>false};
   const appFrame={url:()=> 'https://abc-script.googleusercontent.com/userCodeAppPanel',evaluate:async()=>true};
   const fakePage={mainFrame:()=>mainFrame,frames:()=>[mainFrame,appFrame],waitForTimeout:async()=>{}};
