@@ -300,9 +300,13 @@ function rosterUnresolvedCount(course={}){
   const explicit=Array.isArray(course.unresolved)?course.unresolved.length:0;
   return explicit+Math.max(0,Number(course.discoveredStudentRows||0)-Number(course.students?.length||0)-explicit);
 }
-function rosterMappingOptions(current=''){
-  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6'];
-  const choices=current&&!standard.includes(current)?[current,...standard]:standard;
+function rosterPeriodNumber(value){const match=String(value||'').trim().match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
+function rosterMappingOptions(current='',authoritative=[]){
+  const live=[...new Set((Array.isArray(authoritative)?authoritative:[]).map(value=>String(value||'').trim()).filter(value=>/^Period\s+[1-6](?:\b|\s|$)/i.test(value)))];
+  const represented=new Set(live.map(rosterPeriodNumber).filter(Boolean));
+  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6'].filter(value=>!represented.has(rosterPeriodNumber(value)));
+  const choices=[...live,...standard];
+  if(current&&!choices.includes(current))choices.unshift(current);
   return `<option value="">Choose period…</option>`+choices.map(value=>`<option value="${escapeHtml(value)}" ${value===current?'selected':''}>${escapeHtml(value)}</option>`).join('');
 }
 function renderRosters(state=latestRosterState||{}){
@@ -319,11 +323,11 @@ function renderRosters(state=latestRosterState||{}){
   $('#rosterDiff').innerHTML=state.lastDiscoveryAt
     ? `<b>Latest comparison:</b> ${Number(diff.added||0)} added · ${Number(diff.removed||0)} removed · ${Number(diff.changed||0)} changed · ${Number(diff.unresolved||0)} unresolved. <span class="muted">No operational roster was changed.</span>`
     : 'Run roster discovery to create the first snapshot.';
-  const mappings=state.mappings?.classMappings||{};
+  const mappings=state.mappings?.classMappings||{},operationalPeriods=Array.isArray(state?.operations?.classPeriods)?state.operations.classPeriods:[];
   $('#rosterClassList').innerHTML=classes.length?classes.map(course=>{
     const mapped=mappings[course.courseId]?.classPeriod||'';
     const ready=Array.isArray(course.students)?course.students.length:0,review=rosterUnresolvedCount(course);
-    return `<div class="roster-class-card" data-course-id="${escapeHtml(course.courseId)}"><div class="roster-class-copy"><strong>${escapeHtml(course.courseDisplayName||'Classroom')}</strong><span>${ready} verified ${ready===1?'student':'students'}${review?` · ${review} need${review===1?'s':''} identity review`:''}</span></div><label class="field roster-map-field">School period<select class="roster-map-select" data-course-id="${escapeHtml(course.courseId)}">${rosterMappingOptions(mapped)}</select></label></div>`;
+    return `<div class="roster-class-card" data-course-id="${escapeHtml(course.courseId)}"><div class="roster-class-copy"><strong>${escapeHtml(course.courseDisplayName||'Classroom')}</strong><span>${ready} verified ${ready===1?'student':'students'}${review?` · ${review} need${review===1?'s':''} identity review`:''}</span></div><label class="field roster-map-field">School period<select class="roster-map-select" data-course-id="${escapeHtml(course.courseId)}">${rosterMappingOptions(mapped,operationalPeriods)}</select></label></div>`;
   }).join(''):'<div class="empty-state">No Classroom roster snapshot has been saved yet.</div>';
   const pendingRecovery=state?.pendingWrite?.status==='PENDING';
   $$('.roster-map-select').forEach(select=>{select.disabled=pendingRecovery;select.onchange=()=>{markDirty('rosters');renderRosterPreviewFromControls();const live=$('#rosterLiveComparison');if(live)live.innerHTML='<div class="notice compact"><b>Comparison needs refresh.</b> Save the period mapping, then compare rosters again.</div>';const apply=$('#applyOperationsRoster');if(apply)apply.disabled=true;};});
@@ -349,7 +353,7 @@ function renderRosterPreviewFromControls(){
     if(!mapping){unmapped++;blocked+=verified+needsReview;continue}
     if(duplicatePeriods.has(String(mapping.classPeriod||'').toLowerCase())){duplicateMapped++;blocked+=verified+needsReview;continue}
     ready+=verified;review+=needsReview;blocked+=needsReview;
-    const complete=course.studentsHeadingFound===true&&!course.discoveryError&&needsReview===0&&Number(course.discoveredStudentRows||0)===verified;
+    const complete=course.studentsHeadingFound===true&&course.scrollComplete===true&&!course.discoveryError&&needsReview===0&&Number(course.discoveredStudentRows||0)===verified;
     if(!complete)removalHoldClasses++;
   }
   const el=$('#rosterOperationsPreview');if(!el)return;
@@ -374,7 +378,7 @@ function renderLiveRosterComparison(state=latestRosterState||{}){
   (plan.add||[]).forEach(x=>push('ADD',x,'can be applied after confirmation'));
   (plan.updateName||[]).forEach(x=>push('NAME',x,`${x.before?.studentName||''} → ${x.after?.studentName||''}`));
   (plan.deactivate||[]).forEach(x=>push('REVIEW REMOVE',x,'never applied automatically'));
-  (plan.held||[]).forEach(x=>push('HELD',x,x.reason==='SOURCE_ROSTER_NOT_AUTHORITATIVE'?'source roster is incomplete':'class mapping is ambiguous'));
+  (plan.held||[]).forEach(x=>push('HELD',x,x.reason==='SOURCE_ROSTER_NOT_AUTHORITATIVE'?'source roster is incomplete':x.reason==='CLASS_PERIOD_LABEL_MISMATCH'?`choose the existing class label: ${(x.suggestedClassPeriods||[]).join(', ')}`:'class mapping is ambiguous'));
   const writeText=safeCount?`${safeCount} safe change${safeCount===1?' is':'s are'} eligible for a separate teacher confirmation. `:'No safe additions or name updates are waiting. ';
   el.innerHTML=`<div class="roster-operation-counts"><div><span>Already correct</span><strong>${Number(c.unchanged||0)}</strong></div><div><span>To add</span><strong>${Number(c.add||0)}</strong></div><div><span>Name updates</span><strong>${Number(c.updateName||0)}</strong></div><div><span>Removal review</span><strong>${Number(c.deactivate||0)}</strong></div><div><span>Held safely</span><strong>${Number(c.held||0)+Number(c.blocked||0)}</strong></div></div><div class="notice compact"><b>Fresh live comparison.</b> ${Number(ops.count||0)} active operations membership${Number(ops.count||0)===1?'':'s'} read ${ops.lastReadAt?relativeTime(ops.lastReadAt):''}. ${writeText}Removals remain review-only.</div>${rows.length?`<div class="roster-change-list">${rows.join('')}</div>`:'<div class="empty-state">The mapped roster is already aligned with the active operations roster.</div>'}`;
 }
