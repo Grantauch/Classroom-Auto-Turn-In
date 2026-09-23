@@ -379,13 +379,13 @@ function renderLiveRosterComparison(state=latestRosterState||{}){
   el.innerHTML=`<div class="roster-operation-counts"><div><span>Already correct</span><strong>${Number(c.unchanged||0)}</strong></div><div><span>To add</span><strong>${Number(c.add||0)}</strong></div><div><span>Name updates</span><strong>${Number(c.updateName||0)}</strong></div><div><span>Removal review</span><strong>${Number(c.deactivate||0)}</strong></div><div><span>Held safely</span><strong>${Number(c.held||0)+Number(c.blocked||0)}</strong></div></div><div class="notice compact"><b>Fresh live comparison.</b> ${Number(ops.count||0)} active operations membership${Number(ops.count||0)===1?'':'s'} read ${ops.lastReadAt?relativeTime(ops.lastReadAt):''}. ${writeText}Removals remain review-only.</div>${rows.length?`<div class="roster-change-list">${rows.join('')}</div>`:'<div class="empty-state">The mapped roster is already aligned with the active operations roster.</div>'}`;
 }
 async function compareOperationsRoster(){
-  if(dirty.rosters)throw new Error('Save the period mapping before comparing rosters.');
+  if(dirty.has('rosters'))throw new Error('Save the period mapping before comparing rosters.');
   const state=await cati.readOperationsRoster();renderRosters(state);clearDirty('rosters');const c=state?.syncPlan?.counts||{};
   toast(`Roster comparison complete: ${Number(c.unchanged||0)} correct, ${Number(c.add||0)} add, ${Number(c.updateName||0)} name update, ${Number(c.deactivate||0)} removal review, ${Number(c.held||0)+Number(c.blocked||0)} held safely. Nothing was changed live.`);return state;
 }
 async function applyOperationsRoster(){
   const pendingRecovery=latestRosterState?.pendingWrite?.status==='PENDING';
-  if(dirty.rosters&&!pendingRecovery)throw new Error('Save the period mapping and compare rosters again before applying changes.');
+  if(dirty.has('rosters')&&!pendingRecovery)throw new Error('Save the period mapping and compare rosters again before applying changes.');
   const outcome=await cati.applySafeRosterChanges();
   if(outcome?.cancelled)return outcome;
   const state=outcome?.state||await cati.getRosterState();renderRosters(state);clearDirty('rosters');
