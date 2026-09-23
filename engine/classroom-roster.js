@@ -8,6 +8,8 @@ function validEmail(value){const email=normalizeEmail(value);return /^[^\s@]+@[^
 function validCourseId(value){const id=clean(value,300);return /^[-_A-Za-z0-9]+$/.test(id)?id:''}
 function validStudentId(value){const id=clean(value,300);return /^[-_A-Za-z0-9]+$/.test(id)?id:''}
 function normalizeName(value){return clean(value,160).replace(/^(?:email|message)\s+(?:student\s+)?/i,'').trim()}
+function periodNumber(value){const match=clean(value,120).match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
+function isGenericPeriod(value){return /^Period\s+[1-6]$/i.test(clean(value,120))}
 function membershipKey(courseId,email){const c=validCourseId(courseId),e=validEmail(email);return c&&e?`${c}::${e}`:''}
 
 function normalizeStudent(value={}){
@@ -38,6 +40,7 @@ function normalizeClassroom(value={}){
     courseId,courseDisplayName,students,unresolved:unresolved.slice(0,MAX_STUDENTS_PER_CLASS),
     discoveredStudentRows:Math.max(Number(value.discoveredStudentRows)||0,students.length+unresolved.length),
     studentsHeadingFound:value.studentsHeadingFound===true,
+    scrollComplete:value.scrollComplete===true,
     discoveryError:clean(value.discoveryError,500)
   };
 }
@@ -78,13 +81,13 @@ function normalizeMappings(value={}){
 
 function mappingConflicts(mappings={}){
   const map=normalizeMappings(mappings).classMappings,byPeriod=new Map();
-  for(const [courseId,{classPeriod}] of Object.entries(map)){const key=classPeriod.toLowerCase(),items=byPeriod.get(key)||[];items.push(courseId);byPeriod.set(key,items);}
+  for(const [courseId,{classPeriod}] of Object.entries(map)){const number=periodNumber(classPeriod),key=number?`period-${number}`:classPeriod.toLowerCase(),items=byPeriod.get(key)||[];items.push(courseId);byPeriod.set(key,items);}
   return [...byPeriod.entries()].filter(([,courseIds])=>courseIds.length>1).map(([periodKey,courseIds])=>({classPeriod:map[courseIds[0]].classPeriod,periodKey,courseIds}));
 }
 
 function classRosterIsAuthoritative(course={}){
   const students=Array.isArray(course.students)?course.students:[],unresolved=Array.isArray(course.unresolved)?course.unresolved:[];
-  return course.studentsHeadingFound===true&&!course.discoveryError&&unresolved.length===0&&Number(course.discoveredStudentRows||0)===students.length;
+  return course.studentsHeadingFound===true&&course.scrollComplete===true&&!course.discoveryError&&unresolved.length===0&&Number(course.discoveredStudentRows||0)===students.length;
 }
 
 function buildOperationsRosterCandidate(snapshot={},mappings={}){
@@ -119,10 +122,22 @@ function normalizeOperationsRoster(rows=[]){
 function operationsMembershipKey(row={}){return `${validEmail(row.studentEmail||row.email)}::${clean(row.classPeriod,120).toLowerCase()}`}
 function planOperationsRosterSync(candidate={},currentRows=[]){
   const ready=Array.isArray(candidate.ready)?candidate.ready:[],summaries=Array.isArray(candidate.classSummaries)?candidate.classSummaries:[];
-  const current=normalizeOperationsRoster(currentRows).filter(x=>x.active),nextByKey=new Map(),currentByKey=new Map();
-  for(const row of ready){const key=operationsMembershipKey(row);if(key&&!nextByKey.has(key))nextByKey.set(key,row)}
-  for(const row of current){const key=operationsMembershipKey(row);if(key&&!currentByKey.has(key))currentByKey.set(key,row)}
-  const add=[],updateName=[],unchanged=[],deactivate=[],held=[];
+  const current=normalizeOperationsRoster(currentRows).filter(x=>x.active),nextByKey=new Map(),currentByKey=new Map(),held=[];
+  const labelsByPeriod=new Map();
+  for(const row of current){
+    const number=periodNumber(row.classPeriod);
+    if(number){const labels=labelsByPeriod.get(number)||new Set();labels.add(row.classPeriod);labelsByPeriod.set(number,labels);}
+    const key=operationsMembershipKey(row);if(key&&!currentByKey.has(key))currentByKey.set(key,row);
+  }
+  for(const row of ready){
+    const number=periodNumber(row.classPeriod),labels=[...(labelsByPeriod.get(number)||new Set())];
+    if(isGenericPeriod(row.classPeriod)&&labels.some(label=>label.toLowerCase()!==row.classPeriod.toLowerCase())){
+      held.push({...row,reason:labels.length===1?'CLASS_PERIOD_LABEL_MISMATCH':'SOURCE_CLASS_MAPPING_AMBIGUOUS',suggestedClassPeriods:labels});
+      continue;
+    }
+    const key=operationsMembershipKey(row);if(key&&!nextByKey.has(key))nextByKey.set(key,row);
+  }
+  const add=[],updateName=[],unchanged=[],deactivate=[];
   for(const [key,next] of nextByKey){const prior=currentByKey.get(key);if(!prior)add.push(next);else if(prior.studentName!==next.studentName)updateName.push({before:prior,after:next});else unchanged.push(next)}
   for(const [key,prior] of currentByKey){
     if(nextByKey.has(key))continue;
@@ -189,7 +204,7 @@ function collectClassroomPeopleDom(expectedCourseId){
 }
 
 module.exports={
-  ROSTER_SCHEMA_VERSION,MAX_CLASSROOMS,MAX_STUDENTS_PER_CLASS,clean,normalizeEmail,validEmail,validCourseId,validStudentId,normalizeStudent,
+  ROSTER_SCHEMA_VERSION,MAX_CLASSROOMS,MAX_STUDENTS_PER_CLASS,clean,normalizeEmail,validEmail,validCourseId,validStudentId,normalizeStudent,periodNumber,isGenericPeriod,
   normalizeClassroom,normalizeRosterSnapshot,membershipKey,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,
   buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync,collectClassroomPeopleDom
 };
