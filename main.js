@@ -11,6 +11,7 @@ const {createRosterApplyHandler}=require('./main-services/roster-confirmation');
 const {createGradingRequestHandler}=require('./main-services/grading-confirmation');
 const {createSchedulerService}=require('./main-services/scheduler-service');
 const {createMachineService}=require('./main-services/machine-service');
+const {createIpcErrorReporter}=require('./main-services/ipc-error-reporter');
 const {buildSetupExport,parseSetupImport}=require('./main-services/setup-transfer');
 const {runPackagedSelfTest}=require('./main-services/packaged-self-test');
 const {parseCsv,toCsv}=require('./main-services/plan-csv');
@@ -71,12 +72,7 @@ function compactError(err){
   return String(err?.message||err||'Unknown error').replace(/\s+/g,' ').trim().slice(0,2000);
 }
 
-function userSafeError(operation,err){
-  const info=publicError(err,operation);
-  const technical=String(operation||'').startsWith('roster:')?'Sensitive roster error detail redacted at IPC boundary.':info.technical;
-  appLog(`[${info.code}] ${operation} failed: ${technical}`);
-  return info;
-}
+const userSafeError=createIpcErrorReporter({publicError,appLog});
 function handleIpc(channel,handler){
   ipcMain.handle(channel,async(event,...args)=>{
     try{return await handler(event,...args)}
