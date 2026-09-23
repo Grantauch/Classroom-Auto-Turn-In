@@ -180,7 +180,7 @@ const htmlSource=fs.readFileSync(path.join(root,'renderer/index.html'),'utf8');
 for(const required of ['Naming & safety options','Add or correct a plan manually','More status details','Finish & turn on','Help & support'])if(!htmlSource.includes(required))throw new Error(`Commercial Teacher UI element missing: ${required}`);
 if(htmlSource.includes('id="saveSchedule"'))throw new Error('Teacher UI still exposes a save-without-install schedule button');
 if(htmlSource.includes('planWeekOf'))throw new Error('Retired plan-week-start mode is still exposed in Teacher Edition');
-if(!htmlSource.includes('v0.9.26'))throw new Error('Teacher Edition sidebar version is stale');
+if(!htmlSource.includes('v0.9.27'))throw new Error('Teacher Edition sidebar version is stale');
 if(htmlSource.indexOf('id="wizPlanRegex"')>htmlSource.indexOf('id="wizScanDrive"'))throw new Error('Custom Drive naming rule is still inaccessible before the required Drive scan');
 if(!htmlSource.includes('must be on and signed in'))throw new Error('Teacher UI does not explain that the computer must be on and signed in');
 if(!mainSource.includes('mainWindow.setMenu(null)')||!mainSource.includes('autoHideMenuBar:true'))throw new Error('Generic Electron application menu is still exposed');
