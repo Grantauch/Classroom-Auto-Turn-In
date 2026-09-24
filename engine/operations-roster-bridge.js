@@ -53,7 +53,7 @@ function estimatePendingRecoveryBytes(add,updateName){
 function validateWriteRows(addRows=[],updateNameRows=[],expected={}){
   const add=normalizeAddRows(addRows),updateName=normalizeNameRows(updateNameRows);
   if(!add.length&&!updateName.length)throw new Error('There are no safe roster additions or name updates to apply.');
-  const membershipOk=row=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.studentEmail)&&row.studentName&&/^Period\s+[1-6](?:\b|\s|$)/i.test(row.classPeriod);
+  const membershipOk=row=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.studentEmail)&&row.studentName&&/^Period\s+[1-8](?:\b|\s|$)/i.test(row.classPeriod);
   if(!add.every(membershipOk)||!updateName.every(row=>membershipOk(row)&&row.beforeName))throw new Error('The approved roster batch contains an invalid membership. Compare rosters again.');
   const addKeys=new Set(),updateKeys=new Set();
   for(const row of add){const key=`${row.studentEmail}::${row.classPeriod.toLowerCase()}`;if(addKeys.has(key))throw new Error(`The approved roster batch contains duplicate additions for ${row.studentEmail} / ${row.classPeriod}. Compare rosters again.`);addKeys.add(key)}

@@ -150,10 +150,10 @@ function closeConfirm(result){const layer=$('#confirmModal');layer.classList.add
 $('#confirmCancel').onclick=()=>closeConfirm(false);$('#confirmOk').onclick=()=>closeConfirm(true);
 
 function trapFocus(layer,e){
-  if(e.key==='Escape'){if(layer.id==='confirmModal')closeConfirm(false);else if(layer.id==='wizard')hideWizard();return;}
+  if(e.key==='Escape'){if(layer.id==='confirmModal')closeConfirm(false);else if(layer.id==='wizard')hideWizard();else if(layer.id==='welcome')hideWelcome();return;}
   if(e.key!=='Tab')return;const nodes=[...layer.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex]:not([tabindex="-1"])')].filter(x=>x.offsetParent!==null);if(!nodes.length)return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
 }
-$('#wizard').addEventListener('keydown',e=>trapFocus($('#wizard'),e));$('#confirmModal').addEventListener('keydown',e=>trapFocus($('#confirmModal'),e));
+$('#wizard').addEventListener('keydown',e=>trapFocus($('#wizard'),e));$('#welcome').addEventListener('keydown',e=>trapFocus($('#welcome'),e));$('#confirmModal').addEventListener('keydown',e=>trapFocus($('#confirmModal'),e));
 
 function literalPattern(s){
   let out='',space=false;for(const ch of s){if(/\s/.test(ch)){if(!space)out+='\\s+';space=true;continue}space=false;out+=/[\\^$.*+?()[\]{}|\-]/.test(ch)?`\\${ch}`:ch;}return out;
@@ -207,9 +207,11 @@ async function loadDashboard(){
   else{$('#autoState').textContent='Automatic turn-in is off';$('#nextCheck').textContent=sh.exists?`Checks are scheduled, but submission is paused${sh.nextRun?` · next check ${fmtDate(sh.nextRun)}`:''}.`:'Automatic checks are not scheduled yet.';}
   if(d.nextPlan){$('#nextPlan').classList.remove('empty');$('#nextPlan').innerHTML=`<b>Week ${Number(d.nextPlan.week)}</b><span>Ready in approved Drive folder</span><span class="plan-title">${escapeHtml(d.nextPlan.title)}</span>`;badge($('#nextBadge'),'good','Plan ready');}
   else{$('#nextPlan').className='next-plan empty';$('#nextPlan').textContent='No pending weekly plan found.';badge($('#nextBadge'),'neutral','Clear');}
+  const turnInOptional=!cfg.setupComplete&&readFocus()!=='turnin';
+  if(turnInOptional&&!live){$('#autoDot').classList.remove('on','bad');$('#autoState').textContent='Lesson-plan turn-in is not set up';$('#nextCheck').textContent='Optional. Open Setup whenever you want GoClassroom to turn in weekly plans for you.';}
   const labels={classroom:'Classroom chosen',topic:'Lesson-plan topic chosen',drive:'Drive folder chosen',plans:'Lesson plans found',dryTest:'Safety Check passed',history:'Saved history healthy',live:manualOnly?'Manual submission ready':'Automatic submissions on',schedule:manualOnly?'No automatic schedule on this PC':'Automatic schedule ready'},ready=d.readiness||{},box=$('#readiness');box.innerHTML='';let count=0;
   for(const k of Object.keys(labels)){const ok=!!ready[k];if(ok)count++;const row=document.createElement('div');row.className=`ready-item ${ok?'ok':''}`;row.innerHTML=`<span>${labels[k]}</span><i>${ok?'✓':'–'}</i>`;box.appendChild(row)}
-  const total=Object.keys(labels).length;$('#readyCount').textContent=`${count}/${total}`;const rp=$('#readinessPanel');if(count===total){$('#readinessTitle').textContent='Everything is ready';badge($('#readyCount'),'good',`${count}/${total}`);rp.open=false;}else{$('#readinessTitle').textContent=`${total-count} setup item${total-count===1?'':'s'} need attention`;badge($('#readyCount'),'warn',`${count}/${total}`);rp.open=true;}
+  const total=Object.keys(labels).length;$('#readyCount').textContent=`${count}/${total}`;const rp=$('#readinessPanel');if(count===total){$('#readinessTitle').textContent='Everything is ready';badge($('#readyCount'),'good',`${count}/${total}`);rp.open=false;}else if(turnInOptional){$('#readinessTitle').textContent='Lesson-plan turn-in (optional)';badge($('#readyCount'),'neutral','Not set up');rp.open=false;}else{$('#readinessTitle').textContent=`${total-count} setup item${total-count===1?'':'s'} need attention`;badge($('#readyCount'),'warn',`${count}/${total}`);rp.open=true;}
   const diag=d.diagnostics||{},last=diag.lastOutcome||null;badge($('#diagOutcome'),last?.status==='SUCCESS'?'good':last?.status==='FAILED'||last?.status==='BLOCKED'?'bad':'neutral',last?outcomeLabel(last.status):'No checks yet');
   $('#diagTask').textContent=sh.exists?(sh.healthy?'Ready':'Needs attention'):'Not set up';$('#diagNext').textContent=sh.nextRun?fmtDate(sh.nextRun):'None scheduled';$('#diagLastResult').textContent=last?`${outcomeLabel(last.status)}${last.message?` · ${friendlyMessage(last.message)}`:''}`:'No checks yet';$('#diagLastSuccess').textContent=diag.lastSuccess?.finishedAt?fmtDate(diag.lastSuccess.finishedAt):'Never';$('#diagLastFailure').textContent=diag.lastFailure?.finishedAt?`${fmtDate(diag.lastFailure.finishedAt)} · ${outcomeLabel(diag.lastFailure.status)}`:'None';$('#diagLock').textContent=d.lock?.startedAt?`Running since ${fmtDate(d.lock.startedAt)}`:'None';const blockers=diag.currentBlockers||[];$('#diagBlockers').innerHTML=blockers.length?`<b>Needs attention:</b> ${blockers.map(b=>escapeHtml(friendlyMessage(b.message||b.type))).join(' · ')}`:'Nothing needs attention.';
   const ai=d.ai||{},aic=ai.settings||{},pending=Number(ai.pendingCount||0);applyAiVisibility(ai);$('#aiHomeStatus').textContent=aic.enabled?(pending?`${pending} AI draft${pending===1?' is':'s are'} waiting for review.`:'AI missing-plan recovery is on.'):'Optional AI recovery is set up but currently off.';$('#aiHomeDrafts').innerHTML=pending?`<b>${pending} draft${pending===1?'':'s'} waiting.</b> Nothing is uploaded or submitted until you approve it.`:'No drafts are waiting for review.';
@@ -300,17 +302,36 @@ function rosterUnresolvedCount(course={}){
   const explicit=Array.isArray(course.unresolved)?course.unresolved.length:0;
   return explicit+Math.max(0,Number(course.discoveredStudentRows||0)-Number(course.students?.length||0)-explicit);
 }
-function rosterPeriodNumber(value){const match=String(value||'').trim().match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
+function rosterPeriodNumber(value){const match=String(value||'').trim().match(/^Period\s+([1-8])(?:\b|\s|$)/i);return match?Number(match[1]):0}
 function rosterMappingOptions(current='',authoritative=[]){
-  const live=[...new Set((Array.isArray(authoritative)?authoritative:[]).map(value=>String(value||'').trim()).filter(value=>/^Period\s+[1-6](?:\b|\s|$)/i.test(value)))];
+  const live=[...new Set((Array.isArray(authoritative)?authoritative:[]).map(value=>String(value||'').trim()).filter(value=>/^Period\s+[1-8](?:\b|\s|$)/i.test(value)))];
   const represented=new Set(live.map(rosterPeriodNumber).filter(Boolean));
-  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6'].filter(value=>!represented.has(rosterPeriodNumber(value)));
+  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6','Period 7','Period 8'].filter(value=>!represented.has(rosterPeriodNumber(value)));
   const choices=[...live,...standard];
   if(current&&!choices.includes(current))choices.unshift(current);
   return `<option value="">Choose period…</option>`+choices.map(value=>`<option value="${escapeHtml(value)}" ${value===current?'selected':''}>${escapeHtml(value)}</option>`).join('');
 }
+// Home card: where this teacher is in the Hall Pass roster steps.
+function renderHomeRoster(state){
+  if(!$('#homeRosterTitle'))return;
+  const bridge=state?.bridge||{},classes=Array.isArray(state?.snapshot?.classes)?state.snapshot.classes:[],mapped=Object.keys(state?.mappings?.classMappings||{}).length,last=state?.lastWrite?.appliedAt;
+  let title='Send your Classroom rosters to Hall Pass',text='Step 1: paste your Hall Pass link on the Rosters page.';
+  if(bridge.url&&!classes.length){title='Hall Pass link saved';text='Step 2: click Find my rosters to read your Google Classroom classes.';}
+  else if(bridge.url&&classes.length&&!mapped){title=`${classes.length} Classroom${classes.length===1?'':'s'} found`;text='Step 3: map each class to its school period, then compare with Hall Pass.';}
+  else if(bridge.url&&mapped&&!last){title=`${mapped} class${mapped===1?'':'es'} mapped`;text='Step 4: compare rosters and apply the safe changes.';}
+  else if(bridge.url&&last){title='Hall Pass rosters are synced';text=`Last update ${relativeTime(last)}. Run Find my rosters again whenever your classes change.`;}
+  $('#homeRosterTitle').textContent=title;$('#homeRosterText').textContent=text;
+}
+function renderRosterBridge(bridge){
+  if(!bridge||!$('#rosterBridgeUrl'))return;
+  const urlField=$('#rosterBridgeUrl'),domainField=$('#rosterBridgeDomain');
+  if(document.activeElement!==urlField)urlField.value=bridge.url||'';
+  if(document.activeElement!==domainField)domainField.value=bridge.studentEmailDomain||'';
+  badge($('#rosterBridgeBadge'),bridge.url?'good':'neutral',bridge.url?(bridge.isDefault?'Mr. Auch\'s Hall Pass':'Your Hall Pass'):'Not set');
+}
 function renderRosters(state=latestRosterState||{}){
   latestRosterState=state||{};
+  renderRosterBridge(state.bridge);renderHomeRoster(state);
   const classes=Array.isArray(state?.snapshot?.classes)?state.snapshot.classes:[];
   const verified=classes.reduce((n,c)=>n+(Array.isArray(c.students)?c.students.length:0),0);
   const unresolved=classes.reduce((n,c)=>n+rosterUnresolvedCount(c),0);
@@ -407,6 +428,11 @@ async function saveRosterMappings(){
   const state=await cati.saveRosterMappings(mappings);renderRosters(state);clearDirty('rosters');toast('Period mappings saved locally. No Hall Pass or Check-In roster was changed.');return state;
 }
 $('#findClassroomRosters').onclick=()=>withBusy($('#findClassroomRosters'),'Reading Classroom…',async()=>{const state=await cati.discoverClassroomRosters();renderRosters(state);clearDirty('rosters');const classes=state?.snapshot?.classes?.length||0,verified=state?.snapshot?.classes?.reduce((n,c)=>n+(c.students?.length||0),0)||0,review=state?.snapshot?.classes?.reduce((n,c)=>n+rosterUnresolvedCount(c),0)||0;toast(`Roster preview saved: ${classes} class${classes===1?'':'es'}, ${verified} verified student identit${verified===1?'y':'ies'}${review?`, ${review} needing review`:''}. Nothing was synced live.`);return state}).catch(e=>toast(e.message,true));
+async function saveRosterBridge(){
+  const state=await cati.saveRosterBridge({url:$('#rosterBridgeUrl').value,studentEmailDomain:$('#rosterBridgeDomain').value});
+  renderRosters(state);toast('Hall Pass link saved. Compare rosters again before applying changes.');return state;
+}
+$('#saveRosterBridge').onclick=()=>withBusy($('#saveRosterBridge'),'Saving…',saveRosterBridge).catch(e=>toast(e.message,true));
 $('#saveRosterMappings').onclick=()=>withBusy($('#saveRosterMappings'),'Saving…',saveRosterMappings).catch(e=>toast(e.message,true));
 $('#compareOperationsRoster').onclick=()=>withBusy($('#compareOperationsRoster'),'Comparing…',compareOperationsRoster).catch(e=>toast(e.message,true));
 $('#applyOperationsRoster').onclick=()=>withBusy($('#applyOperationsRoster'),'Applying…',applyOperationsRoster).catch(e=>{toast(e.message,true);loadRosters();});
@@ -580,13 +606,23 @@ function meaningForProblem(msg){const s=friendlyMessage(msg||'');if(/sign in/i.t
 async function loadHelpSummary(){const d=latestDashboard||await cati.getDashboard();latestDashboard=d;const diag=d.diagnostics||{},block=(diag.currentBlockers||[])[0],failure=diag.unresolvedFailure||null,last=block?.message||failure?.message||'',supportCode=block?.supportCode||failure?.supportCode||'';const code=$('#helpCode');if(!last){$('#helpLastProblem').textContent='No current problems';$('#helpMeaning').textContent='Auto Turn-In is not reporting a current problem.';$('#helpAction').textContent='No action is needed right now.';code.textContent='';code.classList.add('hidden');return}const [title,action]=meaningForProblem(last);$('#helpLastProblem').textContent=title;$('#helpMeaning').textContent=friendlyMessage(last);$('#helpAction').textContent=action;if(supportCode){code.textContent=`Support code: ${supportCode}`;code.classList.remove('hidden')}else{code.textContent='';code.classList.add('hidden')}}
 $('#refreshLogs').onclick=()=>withBusy($('#refreshLogs'),'Refreshing…',async()=>{await loadLogs();await loadHelpSummary()});$('#openLogs').onclick=()=>cati.openLogs();$('#cleanupLogs').onclick=()=>withBusy($('#cleanupLogs'),'Cleaning…',async()=>{const r=await cati.cleanupDiagnostics();toast(`Removed ${r.removed} old support file${r.removed===1?'':'s'}.`);await loadLogs()});
 $('#runDiagnostics').onclick=()=>withBusy($('#runDiagnostics'),'Checking…',async()=>{await Promise.all([checkEnvironment([]),loadDashboard(),loadLogs()]);await loadHelpSummary();toast('App health checked.');});
-$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.28 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${blockerEvidence(x)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
+$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.29 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${blockerEvidence(x)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
 
 cati.onAiDraftReady(d=>{toast(`Week ${d.week} AI lesson-plan draft is ready for review.`);loadDashboard();if($('#ai')?.classList.contains('active'))loadAi()});
 
 cati.onStatus(s=>{running=s.running;$('#runTest').disabled=running;renderMode(!cfg.dryRun)});
 $('#refreshDash').onclick=()=>withBusy($('#refreshDash'),'Refreshing…',loadDashboard).catch(e=>toast(e.message,true));
 
+// First-run welcome: a teacher picks where to start instead of being sent
+// straight into lesson-plan setup. Existing, fully set-up installs never see it.
+const FOCUS_KEY='goclassroom.focus';
+function readFocus(){try{return localStorage.getItem(FOCUS_KEY)||''}catch{return ''}}
+function writeFocus(value){try{localStorage.setItem(FOCUS_KEY,value)}catch{/* Without storage the welcome simply shows again next launch. */}}
+function showWelcome(){previousFocus=document.activeElement;$('#welcome').classList.remove('hidden');$('#welcome').setAttribute('aria-hidden','false');setTimeout(()=>$('.welcome-card')?.focus(),0)}
+function hideWelcome(){$('#welcome').classList.add('hidden');$('#welcome').setAttribute('aria-hidden','true');previousFocus?.focus?.();}
+$$('[data-welcome]').forEach(b=>b.onclick=async()=>{const choice=b.dataset.welcome;writeFocus(choice);hideWelcome();if(choice==='turnin'){showWizard(true);}else{await go(choice==='grading'?'grading':'rosters');}await loadDashboard().catch(()=>{});});
+$('#welcomeLater').onclick=()=>{writeFocus('later');hideWelcome();loadDashboard().catch(()=>{});};
+function startupGuide(){if(cfg.setupComplete)return;const focus=readFocus();if(!focus)showWelcome();else if(focus==='turnin')showWizard(false);}
 // Guided setup wizard
 function showWizard(force=false){if(force||!cfg.setupComplete){previousFocus=document.activeElement;$('#wizard').classList.remove('hidden');$('#wizard').setAttribute('aria-hidden','false');$('#wizardSteps').classList.remove('hidden');$('#wizardComplete').classList.add('hidden');$('#wizardFoot').classList.remove('hidden');wizardStep=1;renderWizard();setTimeout(()=>$('.wizard-card')?.focus(),0)}}
 function hideWizard(){$('#wizard').classList.add('hidden');$('#wizard').setAttribute('aria-hidden','true');previousFocus?.focus?.();}
@@ -621,5 +657,5 @@ $('#unsavedSave').onclick=async()=>{const section=dirtyForPage();if(!section)ret
 $('#unsavedDiscard').onclick=async()=>{const section=dirtyForPage();if(!section)return;clearDirty(section);await reloadSection(activePage());};
 
 (async()=>{
-  const d=await loadDashboard();await loadSetup();await loadPlans();if(applyAiVisibility(d.ai||{}))await loadAi();await loadAutomation();await loadLogs();await hydrateWizard();cfg=await cati.getConfig();showWizard(false);
+  const d=await loadDashboard();await loadSetup();await loadPlans();if(applyAiVisibility(d.ai||{}))await loadAi();await loadAutomation();await loadLogs();await hydrateWizard();cfg=await cati.getConfig();await loadRosters();startupGuide();
 })().catch(e=>toast(e?.message||'CATI_UI|AT-START-101|Auto Turn-In could not finish opening. Close and reopen the app. If it happens again, open Help & support.',true));

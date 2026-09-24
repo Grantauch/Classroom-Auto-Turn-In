@@ -63,6 +63,7 @@ Support codes are short labels shown with important problems. A teacher should n
 | AT-ROS-104 | The encrypted local roster preview could not be opened or saved safely. | Restart GoClassroom; if it repeats, run roster discovery again on this Windows account. |
 | AT-ROS-105 | The current Hall Pass / Check-In roster could not be read safely. | Confirm the teacher Google account can open the operations dashboard, then compare rosters again. Nothing was changed. |
 | AT-ROS-106 | An approved GoClassroom roster update could not be verified safely. | If a batch is pending, retry that same approved batch before scanning, remapping, or comparing again. |
+| AT-ROS-107 | The Hall Pass link could not be saved. | Paste the teacher's own Hall Pass web app link ending in /exec. Finish any pending approved batch first. |
 
 Unknown problems use a general support code and are still shown in plain English. Technical details remain in the local support files rather than on teacher screens.
 
@@ -136,6 +137,7 @@ These codes are used only if the normal typed main-process error cannot cross th
 | `AT-ROS-103` | `roster:save-mappings` | The class-to-period mapping could not be saved. No Hall Pass or Check-In roster was changed. |
 | `AT-ROS-105` | `roster:read-operations` | GoClassroom could not safely read the current Hall Pass / Check-In roster. Nothing was synchronized. |
 | `AT-ROS-106` | `roster:apply-safe` | GoClassroom could not verify the approved roster update. Retry the same approved batch before changing the roster preview. |
+| `AT-ROS-107` | `roster:save-bridge` | The Hall Pass link could not be saved. No Hall Pass or Check-In roster was changed. |
 | `AT-SUP-198` | `diagnostics:cleanup` | Old support files could not be cleaned up. This does not affect automatic turn-in. |
 | `AT-SUP-196` | `logs:open` | Windows could not open the Auto Turn-In support folder. |
 | `AT-PC-105` | `machine:get` | Auto Turn-In could not read this computer's local role. Restart the app and try again. |

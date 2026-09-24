@@ -137,6 +137,9 @@ function backgroundRun(extraArgs = []) {
     };
 
     await step('first launch opens the guided setup', async () => {
+      // First run asks what the teacher wants; lesson-plan turn-in opens the guided setup.
+      await win.locator('#welcome:not(.hidden)').waitFor({ timeout: 30000 });
+      await win.click('[data-welcome="turnin"]');
       await win.locator('#wizard:not(.hidden)').waitFor({ timeout: 30000 });
       await waitText('#wizStepLabel', /Step 1 of 5/);
     });

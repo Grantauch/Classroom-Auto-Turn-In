@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path');
 const root=path.join(__dirname,'..'),pkg=require('../package.json');
 function fail(message){console.error(`RELEASE BLOCKER: ${message}`);process.exit(1)}
-if(pkg.version!=='0.9.28')fail(`package version is ${pkg.version}, expected 0.9.28.`);
+if(pkg.version!=='0.9.29')fail(`package version is ${pkg.version}, expected 0.9.29.`);
 const lockPath=path.join(root,'package-lock.json');
 if(!fs.existsSync(lockPath))fail('package-lock.json is missing. Run PREPARE-RC-LOCKFILE.bat once on an internet-connected Windows computer, retain the generated lockfile, then rerun the release checks.');
 let lock;try{lock=JSON.parse(fs.readFileSync(lockPath,'utf8'))}catch{fail('package-lock.json cannot be read as valid JSON. Regenerate it with PREPARE-RC-LOCKFILE.bat.')}

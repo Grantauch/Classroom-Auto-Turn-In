@@ -491,5 +491,6 @@ handleIpc('roster:get-state',()=>rosterIntegration.state());
 handleIpc('roster:discover',()=>rosterIntegration.discover());handleIpc('roster:read-operations',()=>rosterIntegration.readOperationsRoster());
 handleIpc('roster:apply-safe',()=>applyApprovedRosterChanges());
 handleIpc('roster:save-mappings',(_e,v)=>rosterIntegration.saveMappings(v));
+handleIpc('roster:save-bridge',(_e,v)=>rosterIntegration.saveBridgeSettings(v));
 handleIpc('diagnostics:cleanup',()=>{const cfg=loadConfig();return cleanupDiagnostics(cfg.diagnosticRetentionDays||45)});
 handleIpc('logs:open',()=>{const dir=path.join(dataDir(),'logs');fs.mkdirSync(dir,{recursive:true});return shell.openPath(dir)});

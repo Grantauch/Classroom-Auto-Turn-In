@@ -1,7 +1,7 @@
 const crypto=require('crypto');
 const {lastPayload}=require('../engine/protocol');
 const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync}=require('../engine/classroom-roster');
-const {validateWriteRequest,validateRecoveryDecision,selectRecoverySafeWriteBatch}=require('../engine/operations-roster-bridge');
+const {validateBridge,validateWriteRequest,validateRecoveryDecision,selectRecoverySafeWriteBatch}=require('../engine/operations-roster-bridge');
 
 const DEFAULT_OPERATIONS_BRIDGE={
   schemaVersion:1,
@@ -17,7 +17,8 @@ function emptyOperationsState(){return {schemaVersion:1,lastReadAt:'',serverNow:
 function emptyPendingWrite(){return {schemaVersion:1,status:'NONE',createdAt:'',request:null}}
 function emptyLastWrite(){return {schemaVersion:1,appliedAt:'',result:null}}
 function normalizeBridgeSettings(value={}){
-  const url=String(value.url||DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim(),studentEmailDomain=String(value.studentEmailDomain||DEFAULT_OPERATIONS_BRIDGE.studentEmailDomain||'').trim().toLowerCase();
+  const has=key=>Object.prototype.hasOwnProperty.call(value||{},key);
+  const url=String(has('url')?value.url:DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim(),studentEmailDomain=String((has('studentEmailDomain')?value.studentEmailDomain:DEFAULT_OPERATIONS_BRIDGE.studentEmailDomain)||'').trim().toLowerCase();
   return {schemaVersion:1,url,contract,writeContract,studentEmailDomain};
 }
 function encodeBridgeArg(value){return Buffer.from(JSON.stringify(value),'utf8').toString('base64url')}
@@ -37,7 +38,22 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   }
   function loadState(){const raw=recoverableSecureRead('roster-sync.secure.json',emptyState(),'Cached Classroom roster');return {...emptyState(),...raw,snapshot:normalizeRosterSnapshot(raw?.snapshot||{}),lastDiff:raw?.lastDiff||emptyState().lastDiff,issues:Array.isArray(raw?.issues)?raw.issues:[]}}
   function loadMappings(){return normalizeMappings(readJson('roster-mappings.json',{schemaVersion:1,classMappings:{}}))}
-  function loadBridgeSettings(){return normalizeBridgeSettings(readJson('roster-bridge.json',DEFAULT_OPERATIONS_BRIDGE))}
+  // Installs that already used roster sync before the Hall Pass link was
+  // configurable keep the original link. A brand-new teacher starts blank and
+  // pastes their own, so nothing points at another teacher's Hall Pass.
+  function hasEarlierRosterUse(){
+    const missing={__missing:true};
+    const seen=name=>{try{const value=secureData.read(name,missing);return value!==missing&&!value?.__missing}catch{return true}};
+    const mappings=readJson('roster-mappings.json',null);
+    return Boolean(mappings&&Object.keys(mappings.classMappings||{}).length)||seen('roster-sync.secure.json')||seen('operations-roster.secure.json')||seen('roster-write-last.secure.json')||seen('roster-write-pending.secure.json');
+  }
+  function loadBridgeSettings(){
+    const saved=readJson('roster-bridge.json',null);
+    if(saved)return normalizeBridgeSettings(saved);
+    if(hasEarlierRosterUse())return normalizeBridgeSettings(DEFAULT_OPERATIONS_BRIDGE);
+    return {schemaVersion:1,url:'',contract:DEFAULT_OPERATIONS_BRIDGE.contract,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,studentEmailDomain:''};
+  }
+  function assertBridgeLinked(bridge=loadBridgeSettings()){if(!bridge.url)throw new Error('Paste your own Hall Pass link at the top of the Rosters page first. Nothing was synchronized.');return bridge}
   function loadOperationsState(){const raw=recoverableSecureRead('operations-roster.secure.json',emptyOperationsState(),'Cached Hall Pass roster comparison');return {...emptyOperationsState(),...raw,roster:normalizeOperationsRoster(raw?.roster||[])}}
   // A pending write is the one encrypted record that is never disposable: if it
   // cannot be read, GoClassroom must stop rather than risk creating a second batch.
@@ -55,11 +71,29 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     if(conflicts.length)throw new Error(`Each school period can be mapped to only one Classroom. ${conflicts.map(x=>x.classPeriod).join(', ')} ${conflicts.length===1?'is':'are'} mapped more than once.`);
     invalidateOperationsComparison();writeJson('roster-mappings.json',mappings);return publicState();
   }
+  function publicBridge(){const bridge=loadBridgeSettings();return {url:bridge.url,studentEmailDomain:bridge.studentEmailDomain,isDefault:bridge.url===DEFAULT_OPERATIONS_BRIDGE.url}}
+  // Each teacher's GoClassroom talks to their own Hall Pass copy. Switching
+  // targets is refused while an approved batch still needs recovery, and it
+  // discards the old comparison so nothing planned against one Hall Pass can
+  // be written to another.
+  function saveBridgeSettings(value={}){
+    ensureAutomationIdle();assertNoPendingWrite();
+    const rawUrl=String(value.url||'').trim();
+    let parsed=null;try{parsed=new URL(rawUrl)}catch{parsed=null}
+    if(!parsed||!/\/exec$/.test(parsed.pathname))throw new Error('Paste the Hall Pass web app link that ends in /exec. Nothing was changed.');
+    parsed.search='';parsed.hash='';
+    const studentEmailDomain=String(value.studentEmailDomain||'').trim().toLowerCase().replace(/^@/,'');
+    const bridge=validateBridge({url:parsed.toString(),contract:DEFAULT_OPERATIONS_BRIDGE.contract,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,studentEmailDomain});
+    invalidateOperationsComparison();
+    writeJson('roster-bridge.json',{schemaVersion:1,...bridge});
+    appLog('Hall Pass link updated for roster sync. Compare rosters again before applying anything.');
+    return publicState();
+  }
   function publicState(){
     const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState(),pending=loadPendingWrite(),lastWrite=loadLastWrite();
     const syncPlan=operations.lastReadAt?planOperationsRosterSync(preview,operations.roster):null;
     const classPeriods=[...new Set(operations.roster.map(row=>String(row.classPeriod||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    return {...state,mappings,preview,operations:{lastReadAt:operations.lastReadAt,serverNow:operations.serverNow,count:operations.roster.length,revision:operations.revision,writeReady:Boolean(operations.revision&&operations.writeContract),classPeriods},syncPlan,pendingWrite:publicPending(pending),lastWrite:{appliedAt:lastWrite.appliedAt||'',counts:lastWrite.result?.counts||null}};
+    return {...state,mappings,preview,operations:{lastReadAt:operations.lastReadAt,serverNow:operations.serverNow,count:operations.roster.length,revision:operations.revision,writeReady:Boolean(operations.revision&&operations.writeContract),classPeriods},syncPlan,bridge:publicBridge(),pendingWrite:publicPending(pending),lastWrite:{appliedAt:lastWrite.appliedAt||'',counts:lastWrite.result?.counts||null}};
   }
   async function discover(){
     ensureAutomationIdle();assertNoPendingWrite();
@@ -79,7 +113,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   async function readOperationsRoster(options={}){
     ensureAutomationIdle();if(options.allowPending!==true){assertNoPendingWrite();assertFreshClassroomSnapshot();}
     if(typeof runNodeScript!=='function')throw new Error('The Hall Pass / Check-In roster bridge is not available in this build.');
-    const bridge=loadBridgeSettings(),arg=encodeBridgeArg(bridge);
+    const bridge=assertBridgeLinked(),arg=encodeBridgeArg(bridge);
     const execute=()=>runNodeScript('read-operations-roster.js',[arg],false,{timeoutMs:4*60*1000});
     const out=typeof runExclusiveBrowser==='function'?await runExclusiveBrowser('Hall Pass roster comparison',execute):await execute();
     const payload=lastPayload(out,'operations-roster');
@@ -151,7 +185,7 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
   async function applySafeChanges(reviewedRequest=null,recoveryDecision=null){
     ensureAutomationIdle();
     if(typeof runNodeScript!=='function')throw new Error('The Hall Pass / Check-In roster write bridge is not available in this build.');
-    const bridge=loadBridgeSettings(),request=createWriteRequest(reviewedRequest),recovery=validateRecoveryDecision(recoveryDecision),arg=encodeBridgeArg({bridge,request,recovery});
+    const bridge=assertBridgeLinked(),request=createWriteRequest(reviewedRequest),recovery=validateRecoveryDecision(recoveryDecision),arg=encodeBridgeArg({bridge,request,recovery});
     const execute=()=>runNodeScript('apply-operations-roster.js',[arg],false,{timeoutMs:5*60*1000});
     let payload;
     try{
@@ -196,6 +230,6 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       return {result:payload,state:publicState(),refreshNeeded:true,verified:false,verificationNeeded:true};
     }
   }
-  return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
+  return {loadState,loadMappings,loadBridgeSettings,saveBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
 }
 module.exports={DEFAULT_OPERATIONS_BRIDGE,ROSTER_WRITE_CONFIRMATION,ROSTER_SOURCE_MAX_AGE_MS,normalizeBridgeSettings,createRosterService};

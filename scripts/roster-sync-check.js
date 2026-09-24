@@ -265,3 +265,55 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   assert.throws(()=>critical.publicState(),/corrupt pending write/i,'An unreadable approved pending write must remain fail-closed.');
   console.log('GoClassroom encrypted-cache recovery checks passed: disposable roster snapshots can be refreshed, while pending approved writes remain fail-closed.');
 }
+
+(async()=>{
+  // Each teacher points GoClassroom at their own Hall Pass copy.
+  const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
+  const {normalizeMappings,buildOperationsRosterCandidate}=require('../engine/classroom-roster');
+  const {validateWriteRequest}=require('../engine/operations-roster-bridge');
+  const plain=new Map(),secure=new Map(),logs=[];
+  const localData={readJson:(name,fallback)=>plain.has(name)?JSON.parse(JSON.stringify(plain.get(name))):fallback,writeJson:(name,value)=>{plain.set(name,JSON.parse(JSON.stringify(value)));return value},appLog:message=>logs.push(String(message))};
+  const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
+  const service=createRosterService({localData,secureData,ensureAutomationIdle:()=>{},compactError:error=>String(error.message||error)});
+  const fresh=service.publicState();
+  assert.equal(fresh.bridge.url,'','A brand-new install starts with no Hall Pass link.');
+  assert.equal(fresh.bridge.studentEmailDomain,'');
+  assert.throws(()=>service.validateSafeChanges(),/./,'Nothing can be planned without a link.');
+  secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:'2026-09-20T12:00:00.000Z',snapshot:{schemaVersion:1,classes:[]},lastDiff:{},issues:[]});
+  const before=service.publicState();
+  assert.equal(before.bridge.url,DEFAULT_OPERATIONS_BRIDGE.url,'An install that already used roster sync keeps the original Hall Pass link.');
+  assert.equal(before.bridge.isDefault,true);
+  secure.set('operations-roster.secure.json',{schemaVersion:1,lastReadAt:'2026-09-24T12:00:00.000Z',revision:'r'.repeat(30),writeContract:'2026-09-22-roster-write-v1',roster:[]});
+  const other='https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec?mode=teacher#top';
+  const saved=service.saveBridgeSettings({url:other,studentEmailDomain:'@Students.Lakeview.Example.org'});
+  assert.equal(saved.bridge.url,'https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec','The saved link is the bare /exec URL.');
+  assert.equal(saved.bridge.studentEmailDomain,'students.lakeview.example.org');
+  assert.equal(saved.bridge.isDefault,false);
+  assert.equal(saved.operations.lastReadAt,'','Changing Hall Pass targets must discard the old comparison.');
+  assert.equal(plain.get('roster-bridge.json').contract,DEFAULT_OPERATIONS_BRIDGE.contract);
+  const blank=service.saveBridgeSettings({url:other,studentEmailDomain:''});
+  assert.equal(blank.bridge.studentEmailDomain,'','A deliberately blank student email ending must not fall back to Mt. Morris.');
+  for(const bad of ['https://evil.example.com/macros/s/x/exec','https://script.google.com/macros/s/x/dev','not a link','']){
+    assert.throws(()=>service.saveBridgeSettings({url:bad}),/Nothing was changed|not valid/i,`Rejects ${bad||'blank'} link`);
+  }
+  assert.throws(()=>service.saveBridgeSettings({url:other,studentEmailDomain:'not a domain'}),/not valid/i);
+  secure.set('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:'2026-09-24T12:00:00.000Z',request:{requestId:'pending-request-1',add:[],updateName:[]}});
+  assert.throws(()=>service.saveBridgeSettings({url:DEFAULT_OPERATIONS_BRIDGE.url}),/needs recovery/i,'A pending approved batch pins the Hall Pass target.');
+  assert.equal(plain.get('roster-bridge.json').url,'https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec');
+  // Period 7 and 8 classes map and validate.
+  const mappings=normalizeMappings({classMappings:{c7:{classPeriod:'Period 7'},c8:{classPeriod:'Period 8 — Chemistry'},c9:{classPeriod:'Period 9'}}});
+  assert.deepEqual(Object.keys(mappings.classMappings).sort(),['c7','c8']);
+  const preview=buildOperationsRosterCandidate({classes:[{courseId:'c8',courseDisplayName:'Chem',students:[{studentEmail:'sam@students.lakeview.example.org',studentName:'Sam Lee'}]}]},mappings);
+  assert.ok(JSON.stringify(preview).includes('Period 8'),'A Period 8 mapping produces memberships.');
+  validateWriteRequest({requestId:'req-period-8',confirmation:'APPLY SAFE ROSTER CHANGES',baseRevision:'r'.repeat(30),add:[{studentEmail:'sam@students.lakeview.example.org',studentName:'Sam Lee',classPeriod:'Period 8'}],updateName:[]},{studentEmailDomain:'students.lakeview.example.org'});
+  // Reading a Hall Pass roster with no link stops before any browser opens.
+  {
+    const plain2=new Map(),secure2=new Map();let launched=false;
+    const svc=createRosterService({localData:{readJson:(n,f)=>plain2.has(n)?plain2.get(n):f,writeJson:(n,v)=>{plain2.set(n,v);return v},appLog:()=>{}},secureData:{read:(n,f)=>secure2.has(n)?secure2.get(n):f,write:(n,v)=>{secure2.set(n,v);return v}},ensureAutomationIdle:()=>{},compactError:e=>String(e.message||e),runExclusiveBrowser:async(_l,fn)=>fn(),runNodeScript:async()=>{launched=true;return ''}});
+    secure2.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot:{schemaVersion:1,classes:[]},lastDiff:{},issues:[]});
+    plain2.set('roster-bridge.json',{schemaVersion:1,url:'',contract:DEFAULT_OPERATIONS_BRIDGE.contract,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,studentEmailDomain:''});
+    await assert.rejects(()=>svc.readOperationsRoster(),/Paste your own Hall Pass link/);
+    assert.equal(launched,false,'No browser may open without a Hall Pass link.');
+  }
+  console.log('GoClassroom Hall Pass link checks passed: fresh installs start blank, earlier installs keep their link, each teacher can target their own Hall Pass, targets cannot switch mid-recovery, and Periods 7-8 map.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
