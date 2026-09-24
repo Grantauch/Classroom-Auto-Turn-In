@@ -1,8 +1,8 @@
-# v0.9.27 GoClassroom Roster Safety Repair Release Candidate Status
+# v0.9.28 GoClassroom Live Roster Pilot Release Candidate Status
 
 ## Current status
 
-v0.9.27 preserves the v0.9.25 live roster comparison foundation and hardens the deliberately limited write path from GoClassroom into the Hall Pass / Check-In Version 29 roster bridge.
+v0.9.28 preserves the v0.9.27 roster-write safety foundation, repairs live Classroom People-page discovery, and prevents harmless `Last, First` / `First Last` formatting differences from becoming live name updates.
 
 This is a **source preview / release candidate**, not a field-validated production installer. No real roster change should be applied until the Windows package gate and a controlled teacher test have passed.
 
@@ -22,7 +22,8 @@ This is a **source preview / release candidate**, not a field-validated producti
 - Retrying uses the same request ID so the Version 29 server can replay/recover the idempotent batch instead of creating duplicate memberships.
 - A successful response must verify the same request ID, write contract, previous revision, and a new revision.
 - After success, GoClassroom clears the pending request and re-reads the live operations roster. If that follow-up read fails, the completed write remains recorded and the UI requires a fresh comparison.
-- Removal candidates remain visible as **review-only** even when Classroom evidence is complete. v0.9.27 never removes a student automatically.
+- Removal candidates remain visible as **review-only** even when Classroom evidence is complete. v0.9.28 never removes a student automatically.
+- Name comparison is email-and-period anchored and token-order tolerant. The live pilot reduced a false 105-name-update proposal to 9 materially different names while retaining 96 already-correct memberships.
 
 ## Automated evidence completed in this source workspace
 
@@ -34,13 +35,16 @@ This is a **source preview / release candidate**, not a field-validated producti
 - Approved-write response validation proving request ID and before/after revisions are checked.
 - Service simulation proving additions and name corrections are the only sent writes and removal candidates remain review-only.
 - Simulated uncertain browser failure proving the encrypted pending request survives and the retry uses the identical request ID.
-- Core `scripts/check.js` source gate passes for v0.9.27.
+- Core `scripts/check.js` source gate passes for v0.9.28.
+- Three consecutive read-only Classroom scans produced the same five class counts and 114 verified identities with zero unresolved rows.
+- The production Hall Pass / Check-In bridge returned 125 active memberships, the expected read/write contracts, and a stable revision token without changing any record.
+- Five class-to-period mappings were proven uniquely from the Classroom hour labels and the live operations period labels.
 
 ## Still required before replacing an installed copy
 
 - Restore pinned dependencies with `npm ci` and run the full deep/release-ready suite.
 - Run DOM, browser, and offline E2E gates.
-- Build the v0.9.27 unsigned per-user NSIS installer on the Windows release environment.
+- Build the v0.9.28 unsigned per-user NSIS installer on the Windows release environment.
 - Run packaged self-test and Defender scan.
 - Verify an in-place upgrade from the currently installed GoClassroom preserves teacher data, browser profile, and scheduled-task definitions.
 - Perform a controlled live test using a synthetic/test membership first: compare, add, name-correct, simulate/recover a retry if practical, and verify no removal occurs.
@@ -48,4 +52,4 @@ This is a **source preview / release candidate**, not a field-validated producti
 
 ## Release boundary
 
-The source is ready for continued engineering and controlled packaging. It is **not yet certified for automatic production roster maintenance** and it should not be described as commercially complete until the Windows and live-classroom gates above are closed.
+The source is ready for controlled packaging and a teacher-observed write pilot. It is **not yet certified for automatic production roster maintenance** and it should not be described as commercially complete until the Windows gate and controlled addition/name-correction write are closed.

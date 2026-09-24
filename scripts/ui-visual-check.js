@@ -5,7 +5,7 @@ const {detectInstalledBrowser}=require('../engine/browser');
 (async()=>{
   const browserInfo=detectInstalledBrowser();
   if(!browserInfo.detected)throw new Error('Chrome or Edge is required for GoClassroom visual QA.');
-  const output=path.resolve(process.argv[2]||path.join(__dirname,'..','validation-evidence-v0.9.26'));
+  const output=path.resolve(process.argv[2]||path.join(__dirname,'..','validation-evidence-v0.9.28'));
   fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,executablePath:browserInfo.path});
   try{
@@ -25,14 +25,14 @@ const {detectInstalledBrowser}=require('../engine/browser');
     const bannerBackground=await page.locator('.space-banner').evaluate(node=>getComputedStyle(node).backgroundImage);
     if(!/hero-banner-space/.test(bannerBackground))throw new Error('GoClassroom space banner did not render.');
     if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1))throw new Error('Home screen has unintended horizontal overflow at 1280 px.');
-    await page.screenshot({path:path.join(output,'goclassroom-v0.9.26-home.png'),fullPage:true});
+    await page.screenshot({path:path.join(output,'goclassroom-v0.9.28-home.png'),fullPage:true});
     await page.locator('[data-page="grading"]').click();
     await page.waitForSelector('#grading.active');
     await page.waitForTimeout(300);
     const classes=await page.locator('#gradingClassroomSelect option').count();
     if(classes!==6)throw new Error(`Expected six grading Classroom choices, found ${classes}.`);
     if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1))throw new Error('Draft grading screen has unintended horizontal overflow at 1280 px.');
-    await page.screenshot({path:path.join(output,'goclassroom-v0.9.26-draft-grading.png'),fullPage:true});
+    await page.screenshot({path:path.join(output,'goclassroom-v0.9.28-draft-grading.png'),fullPage:true});
     console.log(`GoClassroom visual QA passed in ${browserInfo.label}: logo/banner loaded, six-class selector rendered, and no 1280px horizontal overflow.`);
   }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exit(1)});

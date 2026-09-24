@@ -1,8 +1,8 @@
-# GoClassroom v0.9.26 Release Candidate — Field Validation
+# GoClassroom v0.9.28 Release Candidate — Field Validation
 
 This is the final validation ledger before v1.0.0. A check is only marked PASS when it was actually observed on the Windows/district-Google environment.
 
-## v0.9.26 approved roster sync
+## v0.9.28 approved roster sync
 
 - [ ] Run **Discover Classroom rosters** and compare the class/student counts with the real Google Classroom rosters.
 - [ ] Map each intended class to the correct Period 1–6; confirm duplicate/conflicting mappings are rejected.
@@ -23,7 +23,7 @@ This is the final validation ledger before v1.0.0. A check is only marked PASS w
 - [ ] Confirm common numeric dates such as `9/21` no longer trigger `AT-CLS-110`.
 - [ ] If both the card and detail page truly omit a date, confirm GoClassroom stops with `AT-CLS-110`, includes the affected week, and submits nothing.
 
-## v0.9.22 GoClassroom additions retained in v0.9.26
+## v0.9.22 GoClassroom additions retained in v0.9.28
 
 - [ ] Add at least five teaching Classrooms through the dedicated Draft grading picker.
 - [ ] Switch classes and confirm assignment discovery changes to the selected class only.

@@ -1,10 +1,10 @@
-# Privacy — GoClassroom v0.9.26
+# Privacy — GoClassroom v0.9.28
 
 ## Roster discovery and comparison
 
 When the teacher chooses **Find my rosters**, GoClassroom may read student names and school email addresses that Google Classroom exposes in classes the teacher teaches. The Classroom roster snapshot is stored only on that Windows account in an OS-encrypted cache using Electron secure storage. If Windows secure storage is unavailable, GoClassroom does not persist the roster snapshot. Class-to-period mappings are stored separately and do not contain student roster data. GoClassroom never guesses a missing student email address.
 
-When the teacher chooses **Compare rosters**, GoClassroom opens the configured Hall Pass / Check-In Apps Script service using the teacher's existing local Google session and requests a read-only active-membership snapshot. That response contains student email, student name, class/period, and active status only; it does not include PINs, pass history, attendance/check-in history, access overrides, or workbook row numbers. The returned snapshot is also stored through the same OS-encrypted local storage. v0.9.26 computes the comparison locally. Only after a fresh revision-bound comparison and native teacher confirmation may GoClassroom send the approved addition/name-correction rows to the operations service. Removal candidates are never sent as automatic write actions. The exact pending request is stored with OS-backed encryption until completion/recovery.
+When the teacher chooses **Compare rosters**, GoClassroom opens the configured Hall Pass / Check-In Apps Script service using the teacher's existing local Google session and requests a read-only active-membership snapshot. That response contains student email, student name, class/period, and active status only; it does not include PINs, pass history, attendance/check-in history, access overrides, or workbook row numbers. The returned snapshot is also stored through the same OS-encrypted local storage. v0.9.28 computes the comparison locally. Only after a fresh revision-bound comparison and native teacher confirmation may GoClassroom send the approved addition/name-correction rows to the operations service. Removal candidates are never sent as automatic write actions. The exact pending request is stored with OS-backed encryption until completion/recovery.
 
 ## Normal Auto Turn-In
 

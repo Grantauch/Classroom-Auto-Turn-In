@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path');
 
 const SKIP_DIRS=new Set(['node_modules','dist','.build-tools','.git']);
-const SKIP_FILES=new Set(['SOURCE-MANIFEST-SHA256.txt']);
+const SKIP_FILES=new Set(['SOURCE-MANIFEST-SHA256.txt','.git']);
 
 function sourceFiles(root){
   const files=[];

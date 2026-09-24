@@ -1,6 +1,6 @@
 {
   "name": "classroom-auto-turn-in",
-  "version": "0.9.27",
+  "version": "0.9.28",
   "description": "Teacher-friendly GoClassroom preview with safe lesson-plan turn-in, multi-Classroom local draft grading, and optional private grading review copies.",
   "main": "main.js",
   "author": "Classroom Auto Turn-In",

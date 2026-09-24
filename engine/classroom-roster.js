@@ -8,6 +8,16 @@ function validEmail(value){const email=normalizeEmail(value);return /^[^\s@]+@[^
 function validCourseId(value){const id=clean(value,300);return /^[-_A-Za-z0-9]+$/.test(id)?id:''}
 function validStudentId(value){const id=clean(value,300);return /^[-_A-Za-z0-9]+$/.test(id)?id:''}
 function normalizeName(value){return clean(value,160).replace(/^(?:email|message)\s+(?:student\s+)?/i,'').trim()}
+function canonicalNameTokens(value){
+  return normalizeName(value)
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[\u2018\u2019'`-]/g,'').replace(/[^a-z0-9]+/g,' ')
+    .trim().split(' ').filter(Boolean).sort();
+}
+function equivalentStudentName(a,b){
+  const left=canonicalNameTokens(a),right=canonicalNameTokens(b);
+  return Boolean(left.length&&left.length===right.length&&left.every((token,index)=>token===right[index]));
+}
 function periodNumber(value){const match=clean(value,120).match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
 function isGenericPeriod(value){return /^Period\s+[1-6]$/i.test(clean(value,120))}
 function membershipKey(courseId,email){const c=validCourseId(courseId),e=validEmail(email);return c&&e?`${c}::${e}`:''}
@@ -138,7 +148,7 @@ function planOperationsRosterSync(candidate={},currentRows=[]){
     const key=operationsMembershipKey(row);if(key&&!nextByKey.has(key))nextByKey.set(key,row);
   }
   const add=[],updateName=[],unchanged=[],deactivate=[];
-  for(const [key,next] of nextByKey){const prior=currentByKey.get(key);if(!prior)add.push(next);else if(prior.studentName!==next.studentName)updateName.push({before:prior,after:next});else unchanged.push(next)}
+  for(const [key,next] of nextByKey){const prior=currentByKey.get(key);if(!prior)add.push(next);else if(!equivalentStudentName(prior.studentName,next.studentName))updateName.push({before:prior,after:next});else unchanged.push(next)}
   for(const [key,prior] of currentByKey){
     if(nextByKey.has(key))continue;
     const sources=summaries.filter(x=>String(x.classPeriod||'').toLowerCase()===prior.classPeriod.toLowerCase());
@@ -204,7 +214,7 @@ function collectClassroomPeopleDom(expectedCourseId){
 }
 
 module.exports={
-  ROSTER_SCHEMA_VERSION,MAX_CLASSROOMS,MAX_STUDENTS_PER_CLASS,clean,normalizeEmail,validEmail,validCourseId,validStudentId,normalizeStudent,periodNumber,isGenericPeriod,
+  ROSTER_SCHEMA_VERSION,MAX_CLASSROOMS,MAX_STUDENTS_PER_CLASS,clean,normalizeEmail,validEmail,validCourseId,validStudentId,normalizeName,canonicalNameTokens,equivalentStudentName,normalizeStudent,periodNumber,isGenericPeriod,
   normalizeClassroom,normalizeRosterSnapshot,membershipKey,diffRosterSnapshots,normalizeMappings,mappingConflicts,classRosterIsAuthoritative,
   buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync,collectClassroomPeopleDom
 };

@@ -1,8 +1,15 @@
-# GoClassroom v0.9.27 — Roster Safety Repair Preview
+# GoClassroom v0.9.28 — Live Roster Pilot Preview
 
-v0.9.27 advances the v0.9.25 read-only live roster comparison into a deliberately narrow teacher-approved sync path with the Hall Pass / Check-In Version 29 bridge.
+v0.9.28 repairs live roster discovery against the current Google Classroom People pages and makes the read-only Hall Pass comparison usable for a controlled write pilot.
 
-## Hardened in v0.9.27
+## Hardened in v0.9.28
+
+- Uses the current `/r/<course>/sort-name` People route and verifies the expected course page before reading identities.
+- Recovers verified student email identity from the read-only student Options menu when Classroom does not expose a mail link.
+- Requires complete, stable roster traversal evidence before a class can authorize any removal review.
+- Treats `Last, First` and `First Last` forms with the same normalized name tokens as already correct instead of proposing a live rewrite.
+- Keeps materially different names visible for teacher review.
+- Ignores a Git worktree's private `.git` pointer file when verifying release-source manifests.
 
 - **Apply safe changes** action after a fresh live roster comparison.
 - Native Cancel-by-default teacher confirmation before any roster write.
@@ -18,10 +25,10 @@ v0.9.27 advances the v0.9.25 read-only live roster comparison into a deliberatel
 
 ## Safety boundary
 
-GoClassroom v0.9.27 does not automatically remove students. Even when a Classroom roster is complete enough to identify a likely removal, the item is labeled **REVIEW REMOVE** and is not included in the server request.
+GoClassroom v0.9.28 does not automatically remove students. Even when a Classroom roster is complete enough to identify a likely removal, the item is labeled **REVIEW REMOVE** and is not included in the server request.
 
 The Hall Pass / Check-In server remains authoritative. It validates the teacher, contract, base roster revision, request ID, batch size, membership identity, and previous name; rejects stale/conflicting data; audits accepted changes; and supports replay/recovery of the same request ID. New memberships may receive missing PIN material, but this sync path does not email PINs.
 
 ## Release status
 
-The source-level roster gates pass. Windows packaging, packaged-app validation, and a controlled live roster test are still required before this build replaces the installed teacher copy or is described as production-ready.
+The source-level roster gates and repeated live read-only discovery/bridge gates pass. Windows packaging, packaged-app validation, and a teacher-observed controlled addition/name-correction test are still required before this build is described as production-ready 1.0.
