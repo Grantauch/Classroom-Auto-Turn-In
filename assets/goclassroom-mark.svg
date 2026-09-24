@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="GoClassroom">
+  <defs>
+    <linearGradient id="gc-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5E6BFF"/>
+      <stop offset="1" stop-color="#2E2A9E"/>
+    </linearGradient>
+    <linearGradient id="gc-shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".18"/>
+      <stop offset=".5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="gc-shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DCE2FF"/>
+    </linearGradient>
+    <linearGradient id="gc-visor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23295E"/>
+      <stop offset="1" stop-color="#11153A"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="60" fill="url(#gc-bg)"/>
+  <rect x="8" y="8" width="240" height="240" rx="60" fill="url(#gc-shine)"/>
+  <circle cx="54" cy="58" r="4" fill="#FFFFFF" opacity=".8"/>
+  <circle cx="206" cy="76" r="3" fill="#FFFFFF" opacity=".6"/>
+  <circle cx="196" cy="214" r="3.5" fill="#FFFFFF" opacity=".6"/>
+  <circle cx="44" cy="190" r="2.5" fill="#FFFFFF" opacity=".5"/>
+  <path d="M128 76V52" stroke="#C9D1FB" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="128" cy="46" r="13" fill="#FFD166"/>
+  <rect x="30" y="118" width="22" height="50" rx="11" fill="#8B97FF"/>
+  <rect x="204" y="118" width="22" height="50" rx="11" fill="#8B97FF"/>
+  <rect x="44" y="72" width="168" height="140" rx="58" fill="url(#gc-shell)"/>
+  <rect x="66" y="98" width="124" height="90" rx="40" fill="url(#gc-visor)"/>
+  <rect x="93" y="120" width="20" height="32" rx="10" fill="#6FE7FA"/>
+  <rect x="143" y="120" width="20" height="32" rx="10" fill="#6FE7FA"/>
+  <path d="M112 166c10 8 22 8 32 0" fill="none" stroke="#6FE7FA" stroke-width="7" stroke-linecap="round"/>
+</svg>

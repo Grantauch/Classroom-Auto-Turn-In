@@ -8,50 +8,62 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- Interface icons adapted from Lucide (ISC License, lucide.dev). -->
 <svg class="svg-sprite" aria-hidden="true">
-  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.7 12 3l9 7.7v9.1a1.2 1.2 0 0 1-1.2 1.2h-5.3v-6.2h-5V21H4.2A1.2 1.2 0 0 1 3 19.8z"/></symbol>
-  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.3"/><path d="M3.5 19c.4-4 2.2-6 5.5-6s5.1 2 5.5 6M14 14c3.3-.5 5.4 1.1 6 4"/></symbol>
-  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 2.8h8l4 4V21H6z"/><path d="M14 2.8v4h4M9 12h6M9 15.5h6"/></symbol>
-  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
-  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.2 13.5a7.6 7.6 0 0 0 0-3l2-1.4-2-3.4-2.3 1a8 8 0 0 0-2.6-1.5L14 2.7h-4l-.3 2.5a8 8 0 0 0-2.6 1.5l-2.3-1-2 3.4 2 1.4a7.6 7.6 0 0 0 0 3l-2 1.4 2 3.4 2.3-1a8 8 0 0 0 2.6 1.5l.3 2.5h4l.3-2.5a8 8 0 0 0 2.6-1.5l2.3 1 2-3.4z"/></symbol>
-  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/></symbol>
-  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9a2.7 2.7 0 1 1 4.4 2.1c-1 .8-2 1.3-2 2.9M12 17.5h.01"/></symbol>
-  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.2 8.4A7 7 0 0 1 18.8 7M17.8 15.6A7 7 0 0 1 5.2 17"/></symbol>
-  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6h7l2 2h9v11H3z"/></symbol>
-  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.2 4.2L19 7"/></symbol>
-  <symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 3 22 20H2z"/><path d="M12 9v5M12 17.5h.01"/></symbol>
-  <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7z"/></symbol>
-  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v5.5c0 5-3.2 8.3-8 9.5-4.8-1.2-8-4.5-8-9.5V6z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></symbol>
-  <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v7H4V6h7"/></symbol>
-  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="1"/><path d="M16 8V5H5v11h3"/></symbol>
-  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></symbol>
-  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
-  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.13a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.13 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-warning" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5z"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-grade" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
 </svg>
 
 <div class="app-shell">
   <aside class="sidebar" aria-label="Main navigation">
     <div class="brand">
-      <img class="brand-logo" src="../assets/goclassroom-logo-horizontal.svg" alt="GoClassroom">
+      <img class="brand-logo" src="../assets/goclassroom-mark.svg" alt="">
+      <div class="brand-copy"><strong>GoClassroom</strong><span>Teacher Edition</span></div>
     </div>
     <nav>
       <button class="nav active" data-page="dashboard" aria-current="page" data-tip="Home"><svg><use href="#i-home"/></svg><span class="nav-label">Home</span></button>
-      <button class="nav" data-page="rosters" data-tip="Classroom rosters"><svg><use href="#i-users"/></svg><span class="nav-label">Rosters &amp; Hall Pass</span></button>
+      <span class="nav-section">Your classes</span>
+      <button class="nav" data-page="rosters" data-tip="Rosters &amp; Hall Pass"><svg><use href="#i-users"/></svg><span class="nav-label">Rosters &amp; Hall Pass</span></button>
+      <button class="nav" data-page="grading" data-tip="Draft grading"><svg><use href="#i-grade"/></svg><span class="nav-label">Draft grading</span></button>
+      <span class="nav-section">Lesson-plan turn-in</span>
+      <button class="nav" data-page="setup" data-tip="Turn-in setup"><svg><use href="#i-gear"/></svg><span class="nav-label">Turn-in setup</span></button>
       <button class="nav" data-page="plans" data-tip="Lesson plans"><svg><use href="#i-doc"/></svg><span class="nav-label">Lesson plans</span></button>
       <button class="nav" data-page="automation" data-tip="Automatic turn-in"><svg><use href="#i-clock"/></svg><span class="nav-label">Automatic turn-in</span></button>
-      <button class="nav" data-page="setup" data-tip="Setup"><svg><use href="#i-gear"/></svg><span class="nav-label">Setup</span></button>
       <button id="aiNav" class="nav hidden" data-page="ai" data-tip="AI recovery"><svg><use href="#i-spark"/></svg><span class="nav-label">AI recovery</span></button>
-      <button class="nav" data-page="grading" data-tip="Draft grading"><svg><use href="#i-check"/></svg><span class="nav-label">Draft grading</span></button>
-      <button class="nav" data-page="logs" data-tip="Help & support"><svg><use href="#i-help"/></svg><span class="nav-label">Help & support</span></button>
     </nav>
-        <div class="sidebar-foot"><b>GoClassroom Preview · v0.9.30</b><span>Teacher-controlled automation and draft grading</span></div>
+    <div class="sidebar-foot">
+      <button class="nav" data-page="logs" data-tip="Help &amp; support"><svg><use href="#i-help"/></svg><span class="nav-label">Help &amp; support</span></button>
+      <div class="sidebar-version"><b>Preview · v0.9.31</b><span>Your Google sign-in stays on this PC</span></div>
+    </div>
   </aside>
 
   <main>
     <section id="dashboard" class="page active" aria-labelledby="homeTitle">
-      <div class="page-head">
-        <div><span class="page-kicker">MISSION CONTROL</span><h1 id="homeTitle">Home</h1><p>Hall Pass rosters, lesson-plan turn-in, and draft grading, organized around the way teachers actually work.</p></div>
-        <button id="refreshDash" class="btn secondary" data-tip="Refresh the latest Classroom Auto Turn-In status."><svg><use href="#i-refresh"/></svg><span>Refresh</span></button>
+      <div class="space-banner">
+        <div class="space-banner-copy"><span class="banner-kicker">GoClassroom</span><h1 id="homeTitle">Welcome back</h1><p>Rosters, draft grading, and lesson-plan turn-in in one place.</p></div>
+        <img class="space-banner-bot" src="../assets/gobot.svg" alt="">
+        <button id="refreshDash" class="btn banner-btn" data-tip="Refresh the latest status."><svg><use href="#i-refresh"/></svg><span>Refresh</span></button>
       </div>
 
       <div id="attentionCard" class="attention-card hidden" role="alert">
@@ -60,18 +72,31 @@
         <button id="attentionAction" class="btn warning">Fix this</button>
       </div>
 
-      <div class="space-banner" aria-hidden="true"><img src="../assets/goclassroom-logo-horizontal.svg" alt=""><span>Go further in education.</span></div>
-
-      <div id="homeRosterCard" class="panel home-roster-card">
-        <div class="panel-title"><div><span class="section-kicker">HALL PASS ROSTERS</span><h2 id="homeRosterTitle">Send your Classroom rosters to Hall Pass</h2><p class="muted" id="homeRosterText">Paste your Hall Pass link, find your rosters, and map each class to its period.</p></div><button class="btn secondary" data-go="rosters"><svg><use href="#i-users"/></svg><span>Open rosters</span></button></div>
+      <div class="home-cards">
+        <div id="homeRosterCard" class="panel home-card home-roster-card">
+          <div class="home-card-icon roster"><svg><use href="#i-users"/></svg></div>
+          <span class="section-kicker">ROSTERS &amp; HALL PASS</span>
+          <h2 id="homeRosterTitle">Send your Classroom rosters to Hall Pass</h2>
+          <p class="muted" id="homeRosterText">Paste your Hall Pass link, find your rosters, and map each class to its period.</p>
+          <button class="btn secondary" data-go="rosters"><span>Open rosters</span><svg><use href="#i-arrow"/></svg></button>
+        </div>
+        <div class="panel home-card">
+          <div class="home-card-icon grade"><svg><use href="#i-grade"/></svg></div>
+          <span class="section-kicker">DRAFT GRADING</span>
+          <h2>Grade an assignment</h2>
+          <p class="muted">Draft scores for student work on this computer. You always make the final call.</p>
+          <button class="btn secondary" data-go="grading"><span>Open grading</span><svg><use href="#i-arrow"/></svg></button>
+        </div>
+        <div class="panel home-card hero-card">
+          <div class="home-card-icon turnin hero-status-icon" id="heroStatusIcon"><svg><use href="#i-clock"/></svg></div>
+          <span class="section-kicker eyebrow">AUTOMATIC TURN-IN</span>
+          <div class="status-line"><span id="autoDot" class="dot"></span><strong id="autoState">Loading…</strong></div>
+          <p class="muted" id="nextCheck">Checking your schedule…</p>
+          <div class="hero-actions"><button class="btn secondary hero-btn" data-go="automation"><span>Manage schedule</span><svg><use href="#i-arrow"/></svg></button></div>
+        </div>
       </div>
 
-      <div class="hero-card">
-        <div class="hero-status-icon" id="heroStatusIcon"><svg><use href="#i-clock"/></svg></div>
-        <div class="hero-copy"><span class="eyebrow">AUTOMATIC TURN-IN</span><div class="status-line"><span id="autoDot" class="dot"></span><strong id="autoState">Loading…</strong></div><p id="nextCheck">Checking your schedule…</p></div>
-        <div class="hero-actions"><button class="btn hero-btn" data-go="automation"><svg><use href="#i-clock"/></svg><span>Manage schedule</span></button></div>
-      </div>
-
+      <h2 class="section-title">Lesson-plan turn-in</h2>
       <div class="metrics">
         <div class="metric"><div class="metric-icon"><svg><use href="#i-home"/></svg></div><div><span>Lesson-plan Classroom</span><strong id="dashCourse">Not selected</strong></div></div>
         <div class="metric"><div class="metric-icon"><svg><use href="#i-folder"/></svg></div><div><span>Plans found</span><strong id="dashPlans">0</strong></div></div>
@@ -109,67 +134,100 @@
       </details>
     </section>
 
-    <section id="plans" class="page" aria-labelledby="plansTitle">
-      <div class="page-head"><div><span class="page-kicker">YOUR WEEKLY FILES</span><h1 id="plansTitle">Lesson plans</h1><p>Files in your approved Drive folder are discovered automatically.</p></div><button id="syncDrivePlans" class="btn primary" data-tip="Check the approved Drive folder right now for new weekly plans."><svg><use href="#i-refresh"/></svg><span>Check folder now</span></button></div>
-      <div class="source-card"><div class="source-icon"><svg><use href="#i-folder"/></svg></div><div class="grow"><span class="section-kicker">APPROVED PLAN FOLDER</span><strong id="plansDriveFolder">No Drive folder selected</strong><small>New weekly files in this folder are picked up automatically.</small></div><span id="driveSyncStatus" class="status-badge neutral">Not checked yet</span></div>
-      <div class="panel">
-        <div class="panel-title"><div><span class="section-kicker">RECENT & UPCOMING</span><h2>Plans Auto Turn-In knows about</h2></div></div>
-        <div id="plansOverview" class="plans-overview"></div>
-        <div id="plansEmpty" class="empty-state"><div class="empty-icon"><svg><use href="#i-folder"/></svg></div><h3>No matching plans found yet</h3><p>Choose your Drive folder in Setup, then check it again.</p><button class="btn secondary" data-go="setup">Open setup</button></div>
+    <section id="rosters" class="page" aria-labelledby="rostersTitle">
+      <div class="page-head"><div><h1 id="rostersTitle">Rosters &amp; Hall Pass</h1><p>Bring your Google Classroom students into your own Hall Pass in three steps. GoClassroom only adds students and fixes names, and only after you confirm.</p></div></div>
+
+      <div class="panel step-panel roster-bridge-panel">
+        <div class="panel-title"><div class="step-heading"><span class="step-chip">1</span><div><h2>Connect your Hall Pass</h2><p class="muted">Paste the student link from your Hall Pass setup window. It starts with https://script.google.com and ends in <b>/exec</b>.</p></div></div><span id="rosterBridgeBadge" class="status-badge neutral">Not set</span></div>
+        <div class="roster-bridge-fields">
+          <label class="field">Hall Pass link<input id="rosterBridgeUrl" type="url" placeholder="https://script.google.com/a/macros/yourschool.org/s/…/exec" autocomplete="off"></label>
+          <label class="field"><span>Student email ending <small class="muted">(optional)</small></span><input id="rosterBridgeDomain" placeholder="students.yourschool.org" autocomplete="off"></label>
+        </div>
+        <div class="form-actions"><button id="saveRosterBridge" class="btn primary" type="button"><svg><use href="#i-link"/></svg><span>Save Hall Pass link</span></button></div>
       </div>
-      <details class="panel"><summary><div><span class="section-kicker">OPTIONAL</span><h2>Add or correct a plan manually</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
-        <p class="muted">Most teachers never need this. Plans found in the approved Drive folder cannot be edited here.</p>
-        <div class="actions toolbar"><button id="importPlans" class="btn secondary"><span>Import a saved list</span></button><button id="exportPlans" class="btn secondary"><span>Save a copy</span></button><button id="addPlan" class="btn secondary"><span>Add manual week</span></button></div>
-        <div class="table-wrap"><table><thead><tr><th>Week</th><th>Document title</th><th>Google Drive link</th><th>Added by</th><th></th></tr></thead><tbody id="plansBody"></tbody></table></div>
-        <div class="form-actions"><button id="savePlans" class="btn primary">Save manual changes</button><span id="plansSaved" class="saved"></span></div>
+
+      <div class="panel step-panel roster-preview-panel">
+        <div class="panel-title"><div class="step-heading"><span class="step-chip">2</span><div><h2>Find your classes and match each to its period</h2><p class="muted">A browser window opens when you click Find my rosters. If Google asks, sign in with your school account and GoClassroom keeps going by itself.</p></div></div><div class="actions"><span id="rosterDiscoveryBadge" class="status-badge neutral">Not scanned</span><button id="findClassroomRosters" class="btn primary"><svg><use href="#i-refresh"/></svg><span>Find my rosters</span></button></div></div>
+        <div class="metrics roster-metrics">
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-home"/></svg></div><div><span>Teaching classes</span><strong id="rosterClassCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-users"/></svg></div><div><span>Verified identities</span><strong id="rosterVerifiedCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-warning"/></svg></div><div><span>Need identity review</span><strong id="rosterReviewCount">0</strong></div></div>
+        <div class="metric"><div class="metric-icon"><svg><use href="#i-refresh"/></svg></div><div><span>Last roster read</span><strong id="rosterLastDiscovery">Never</strong></div></div>
+      </div>
+        <div id="rosterDiff" class="notice compact">Run roster discovery to create the first snapshot.</div>
+        <div id="rosterClassList" class="roster-class-list"><div class="empty-state">No Classroom roster snapshot has been saved yet.</div></div>
+        <div class="form-actions"><button id="saveRosterMappings" class="btn secondary" type="button"><svg><use href="#i-check"/></svg><span>Save period mapping</span></button></div>
+        <details class="inline-details"><summary>What would be sent to Hall Pass <span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><div id="rosterOperationsPreview" class="roster-operation-summary"><div class="empty-state">Choose period mappings to see how many memberships are ready.</div></div></details>
+      </div>
+
+      <div class="panel step-panel">
+        <div class="panel-title"><div class="step-heading"><span class="step-chip">3</span><div><h2>Compare and add students</h2><p class="muted">GoClassroom reads your Hall Pass roster, shows exactly what would change, and adds students only after you confirm.</p></div></div><div class="actions"><button id="compareOperationsRoster" class="btn secondary" type="button"><svg><use href="#i-refresh"/></svg><span>Compare rosters</span></button><button id="applyOperationsRoster" class="btn primary" type="button" disabled><svg><use href="#i-check"/></svg><span>Apply safe changes</span></button></div></div>
+        <div id="rosterLiveComparison" class="roster-operation-summary"><div class="empty-state">Save your period mappings, then compare against the current operations roster.</div></div>
+        <div class="notice compact roster-safety"><b>Safe roster sync.</b> GoClassroom never removes students, emails PINs, or changes pass or attendance history.</div>
+      </div>
+    </section>
+
+    <section id="grading" class="page" aria-labelledby="gradingTitle">
+      <div class="page-head"><div><h1 id="gradingTitle">Draft grading</h1><p>Pick a class and an assignment. GoClassroom drafts scores on this computer, and you decide what becomes a hidden Classroom draft.</p></div><button id="refreshGrading" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Check Ollama</span></button></div>
+      <div class="mode-card"><div class="mode-icon"><svg><use href="#i-shield"/></svg></div><div class="grow"><span class="eyebrow dark">DRAFT-ONLY SAFETY</span><h2 id="gradingModeTitle">OFF</h2><p id="gradingModeDesc">Local grading is off. Classroom reading and draft-score writing stay disabled until you turn them on.</p></div><label class="switch" data-tip="This enables local grading. Classroom draft-score writing has a separate opt-in and never returns work to students."><input id="gradingEnabled" type="checkbox" aria-label="Local draft grading"><span aria-hidden="true"></span></label></div>
+      <div class="panel classroom-grading-panel">
+        <div class="panel-title"><div><span class="section-kicker">YOUR CLASSES</span><h2>Grade an assignment</h2><p class="muted">Your lesson plan class is kept separate from the classes you grade.</p></div><span id="gradingClassroomBadge" class="status-badge neutral">No class selected</span></div>
+        <div class="notice compact"><b>Drafts only.</b> GoClassroom never clicks <b>Return</b>, and grades already in Classroom are never changed.</div>
+        <div class="form-grid grading-classroom-grid">
+          <div class="wide classroom-picker-actions"><button id="findTeachingClassrooms" class="btn" type="button" data-tip="Opens Classroom once, saves every class you teach, and reads their assignments."><svg><use href="#i-refresh"/></svg><span>Find my classes</span></button><button id="addGradingClassroom" class="btn secondary" type="button" data-tip="Pick one class by hand instead."><svg><use href="#i-home"/></svg><span>Add one class</span></button><span id="gradingClassroomCourse" class="muted">Your lesson plan setup will not change.</span></div>
+          <label class="wide field">Class<select id="gradingClassroomSelect"><option value="">No classes yet</option></select></label>
+          <label class="wide field">Assignment<select id="gradingClassroomAssignment"><option value="">Find assignments first</option></select></label>
+          <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh assignments</span></button><button id="removeGradingClassroom" class="btn text-btn" type="button">Remove this class</button></div>
+          <label class="wide field">Rubric <small class="muted">Optional. Leave blank and GoClassroom grades from the directions, out of the points Classroom already shows.</small><textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric, or leave this blank."></textarea></label>
+          <label class="wide field">Directions <small class="muted">Optional. Leave blank to use the directions in Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only needed if the Classroom directions are unclear."></textarea></label>
+          <label class="field">Students per run <small class="muted">Up to 60. Set it to your class size to grade everyone in one pass.</small><input id="gradingBatchSize" type="number" min="1" max="60" value="5"></label>
+          <label class="check wide"><input id="gradingClassroomWriteEnabled" type="checkbox"><span>Let GoClassroom put confident scores into Classroom as hidden drafts</span></label>
+          <label class="check wide"><input id="gradingWriteDraftsThisRun" type="checkbox"><span>Save drafts on this run. Leave off to preview only.</span></label>
+        </div>
+        <div class="form-actions"><button id="runClassroomGrading" class="btn primary"><svg><use href="#i-play"/></svg><span>Grade this assignment</span></button></div>
+        <div id="gradingClassroomResultPanel" class="grading-classroom-results hidden"></div>
+      </div>
+      <div class="ai-layout">
+        <div class="panel">
+          <div class="panel-title"><div><span class="section-kicker">OLLAMA</span><h2>Local model</h2><p class="muted">GoClassroom connects only to Ollama at 127.0.0.1 on this computer.</p></div><span id="gradingOllamaBadge" class="status-badge neutral">Checking…</span></div>
+          <label class="field">Grading model<select id="gradingModel"></select></label>
+          <div id="gradingOllamaStatus" class="notice compact">Checking local Ollama models…</div>
+          <div class="form-actions"><button id="saveGradingSettings" class="btn secondary"><svg><use href="#i-check"/></svg><span>Save local grading settings</span></button></div>
+        </div>
+        <div class="panel security-card">
+          <div class="panel-title"><div><span class="section-kicker">PRIVACY BOUNDARY</span><h2>Local by default</h2></div></div>
+          <p>The assignment, rubric, and student response are sent only to Ollama on this PC. GoClassroom does not send grading requests to Groq, Gemini, OpenRouter, or OpenAI.</p>
+          <div class="notice compact"><b>Default:</b> student work is not retained. If you enable private review copies below, GoClassroom saves only the evidence used and its validated grading record to your chosen folder.</div>
+        </div>
+      </div>
+      <div class="panel review-copy-panel">
+        <div class="panel-title"><div><span class="section-kicker">OPTIONAL GRADING COACH</span><h2>Private grading review copies</h2><p class="muted">Save the exact evidence GoClassroom graded and the validated result so you can review its performance later.</p></div><span class="status-badge neutral" id="gradingReviewBadge">Off</span></div>
+        <div class="notice compact warning-soft"><b>Contains student data:</b> choose a private folder, such as a restricted Google Drive for desktop folder. GoClassroom never shares it or changes its Drive permissions.</div>
+        <label class="check review-copy-toggle"><input id="gradingReviewExportEnabled" type="checkbox"><span>Save a private review copy after each Classroom grading run</span></label>
+        <div class="review-folder-row"><div><span class="section-kicker">REVIEW FOLDER</span><strong id="gradingReviewFolder">No folder selected</strong></div><div class="actions"><button id="chooseGradingReviewFolder" class="btn secondary" type="button"><svg><use href="#i-folder"/></svg><span>Choose folder</span></button><button id="openGradingReviewFolder" class="btn text-btn" type="button">Open folder</button></div></div>
+      </div>
+      <details class="panel"><summary><div><span class="section-kicker">TRY IT OUT</span><h2>Test the grader on sample work</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+        <p class="muted">Paste one real or sample assignment. GoClassroom checks the model's scoring and point math before calling the result safe.</p>
+        <div class="form-grid grading-form-grid">
+          <label class="wide field">Assignment question or directions<textarea id="gradingQuestion" rows="5" maxlength="20000" placeholder="What should the student answer or do?"></textarea></label>
+          <label class="wide field">Rubric<textarea id="gradingRubric" rows="7" maxlength="30000" placeholder="List the criteria and possible points."></textarea></label>
+          <label class="wide field">Student submission<textarea id="gradingStudentWork" rows="9" maxlength="60000" placeholder="Paste the student response or extracted work here."></textarea></label>
+        </div>
+        <div class="form-actions"><button id="runLocalGrade" class="btn primary"><svg><use href="#i-play"/></svg><span>Create draft grade</span></button></div>
+        <div id="gradingResultPanel" class="panel hidden">
+        <div class="panel-title"><div><span class="section-kicker">RESULT</span><h2 id="gradingResultTitle">Draft grade</h2><p id="gradingResultSummary" class="muted"></p></div><span id="gradingResultBadge" class="status-badge neutral">Waiting</span></div>
+        <div id="gradingResultBody" class="grading-result"></div>
+      </div>
       </details>
     </section>
 
-    <section id="automation" class="page" aria-labelledby="automationTitle">
-      <div class="page-head"><div><span class="page-kicker">SCHEDULE</span><h1 id="automationTitle">Automatic turn-in</h1><p>Choose when Auto Turn-In checks and whether it may submit verified plans.</p></div></div>
-      <div class="mode-card">
-        <div class="mode-icon"><svg><use href="#i-clock"/></svg></div><div class="grow"><span class="eyebrow dark">AUTOMATIC TURN-IN</span><h2 id="modeTitle">OFF</h2><p id="modeDesc">Automatic submitting is off. You can still run a Safety Check.</p></div>
-        <label class="switch" data-tip="Turn automatic submissions on or off. Turning it on requires a passed Safety Check."><input id="liveToggle" type="checkbox" aria-label="Automatic turn-in"><span aria-hidden="true"></span></label>
-      </div>
-      <div class="panel computer-card">
-        <div class="panel-title"><div><span class="section-kicker">THIS COMPUTER</span><h2>Choose this computer's job</h2><p class="muted">You can install Auto Turn-In on more than one Windows PC without making them all run at the same time.</p></div><span id="machineBadge" class="status-badge info">Loading</span></div>
-        <div class="machine-layout">
-          <label class="field">Computer name <button class="help-tip" type="button" aria-label="About computer name" data-tip="Use a simple name you will recognize, such as Home PC or Classroom PC.">i</button><input id="machineName" maxlength="60" placeholder="Home PC"></label>
-          <label class="field">Role on this computer <button class="help-tip" type="button" aria-label="About computer role" data-tip="Main runs at your normal time. Backup waits until the main computer and its retries have had time to finish. Manual only never runs on a schedule.">i</button><select id="machineRole"><option value="primary">Main computer</option><option value="backup">Backup computer</option><option value="manual">Manual only</option></select></label>
-        </div>
-        <div id="machineRoleHelp" class="notice compact">Main computer runs at your normal scheduled time.</div>
-        <div class="form-actions"><button id="saveMachine" class="btn secondary"><svg><use href="#i-check"/></svg><span>Save this computer</span></button></div>
-      </div>
-      <div class="panel schedule-card">
-        <div class="panel-title"><div><span class="section-kicker">WHEN TO CHECK</span><h2>Weekly schedule</h2></div><div id="scheduleStatus" class="schedule-status"><svg><use href="#i-clock"/></svg><span id="scheduleHealthText">Checking schedule…</span></div></div>
-        <input id="scheduleEnabled" type="hidden">
-        <div class="schedule-layout">
-          <label class="field">Check time <button class="help-tip" type="button" aria-label="About check time" data-tip="This is the daily check. If a temporary connection problem prevents it from finishing, Auto Turn-In can retry automatically.">i</button><input id="scheduleTime" type="time" value="06:30"></label>
-          <div class="days"><span>Check days</span><div id="scheduleDays"><label><input type="checkbox" value="MON" checked><span>Mon</span></label><label><input type="checkbox" value="TUE" checked><span>Tue</span></label><label><input type="checkbox" value="WED" checked><span>Wed</span></label><label><input type="checkbox" value="THU" checked><span>Thu</span></label><label><input type="checkbox" value="FRI" checked><span>Fri</span></label></div></div>
-        </div>
-        <div id="nextSchedulePreview" class="schedule-preview">This computer must be on and signed in when the check runs.</div>
-        <details class="inline-details"><summary>How automatic retries work <span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p>A successful check ends immediately. If a temporary internet or Google problem prevents the check from finishing, Auto Turn-In can retry up to two times. Setup, sign-in, duplicate, and safety problems do not retry.</p></details>
-        <div class="form-actions"><button id="installSchedule" class="btn primary"><svg><use href="#i-check"/></svg><span>Save schedule</span></button><button id="removeSchedule" class="btn danger"><svg><use href="#i-pause"/></svg><span>Pause automatic checks</span></button></div>
-      </div>
-      <div class="run-grid">
-        <button id="runTest" class="run-card" data-tip="Checks the selected Classroom, Drive folder, weekly assignment, and Turn in controls without attaching or submitting anything."><div class="run-icon"><svg><use href="#i-shield"/></svg></div><div><span>SAFETY CHECK</span><strong>Check my setup now</strong><small>Nothing will be attached or submitted.</small></div></button>
-        <button id="runLive" class="run-card live"><div class="run-icon"><svg><use href="#i-play"/></svg></div><div><span>CHECK NOW</span><strong>Turn in anything due now</strong><small>Uses the same safety rules as an automatic check.</small></div></button>
-      </div>
-      <div id="runStatus" class="notice" role="status" aria-live="polite">Ready.</div>
-    </section>
-
     <section id="setup" class="page" aria-labelledby="setupTitle">
-      <div class="page-head"><div><span class="page-kicker">ONE-TIME SETUP</span><h1 id="setupTitle">Setup</h1><p>Tell Auto Turn-In where your recurring assignment and weekly plans live.</p></div><button id="openWizard" class="btn primary"><svg><use href="#i-shield"/></svg><span>Run guided setup</span></button></div>
+      <div class="page-head"><div><h1 id="setupTitle">Turn-in setup</h1><p>Tell GoClassroom where your weekly lesson-plan assignment and plan files live. You only do this once.</p></div><button id="openWizard" class="btn primary"><svg><use href="#i-shield"/></svg><span>Run guided setup</span></button></div>
       <div class="panel env-card"><div class="status-leading"><div class="status-icon"><svg><use href="#i-check"/></svg></div><div><span class="section-kicker">COMPUTER READINESS</span><h2>This PC</h2><p id="environmentLabel">Checking automatically…</p></div></div><button id="checkEnvironment" class="btn secondary" data-tip="Recheck whether Chrome or Edge is ready and whether Auto Turn-In can remember your Google sign-in on this computer."><svg><use href="#i-refresh"/></svg><span>Check again</span></button></div>
       <div class="setup-stack">
         <div class="panel step"><div class="step-num">1</div><div class="grow"><h2>Google Classroom</h2><p id="courseLabel">No Classroom selected.</p><small>Choose the Classroom that receives your weekly plans.</small></div><button id="selectCourse" class="btn primary"><svg><use href="#i-external"/></svg><span>Choose Classroom</span></button></div>
         <div class="panel step"><div class="step-num">2</div><div class="grow"><h2>Lesson-plan topic</h2><p>Auto Turn-In only scans this topic for recurring assignments.</p><select id="topicSelect"><option>Lesson Plans - Teaching Staff Only</option></select></div><button id="discoverTopics" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Find topics</span></button></div>
         <div class="panel step"><div class="step-num">3</div><div class="grow"><h2>Google Drive plan folder</h2><p id="driveFolderLabel">No Drive folder selected.</p><small>Choose the folder that contains your weekly lesson-plan files.</small></div><div class="stack-actions"><button id="selectDriveFolder" class="btn primary"><svg><use href="#i-folder"/></svg><span>Choose folder</span></button><button id="scanDriveFolder" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Check folder</span></button></div></div>
-      </div>
-      <div class="panel transfer-card">
-        <div class="panel-title"><div><span class="section-kicker">ANOTHER WINDOWS PC</span><h2>Copy this setup to another computer</h2><p class="muted">The setup file includes your Classroom, topic, Drive folder, naming rules, and schedule time. It never includes your Google sign-in, AI secret, submission history, or permission to submit automatically.</p></div></div>
-        <div class="actions toolbar"><button id="exportSetup" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Save setup copy</span></button><button id="importSetup" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Use setup from another PC</span></button></div>
-        <div class="notice compact">After importing on another PC, sign into Google there, check the Drive folder, run a new Safety Check, then choose whether that PC is Main, Backup, or Manual only.</div>
       </div>
       <details class="panel"><summary><div><span class="section-kicker">SPECIAL OPTIONS</span><h2>Naming & safety options</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
         <p class="muted">Only change these if your school uses unusual assignment or file names.</p>
@@ -185,43 +243,64 @@
           <div class="form-actions"><button id="saveSetup" class="btn primary"><svg><use href="#i-check"/></svg><span>Save settings</span></button></div>
         </div>
       </details>
+      <details class="panel transfer-card"><summary><div><span class="section-kicker">ANOTHER WINDOWS PC</span><h2>Use this setup on another computer</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+        <p class="muted">The setup file includes your Classroom, topic, Drive folder, naming rules, and schedule time. It never includes your Google sign-in, AI secret, submission history, or permission to submit automatically.</p>
+        <div class="actions toolbar"><button id="exportSetup" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Save setup copy</span></button><button id="importSetup" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Use setup from another PC</span></button></div>
+        <div class="notice compact">After importing on another PC, sign into Google there, check the Drive folder, run a new Safety Check, then choose whether that PC is Main, Backup, or Manual only.</div>
+      </details>
     </section>
 
-    <section id="rosters" class="page" aria-labelledby="rostersTitle">
-      <div class="page-head"><div><span class="page-kicker">GOCLASSROOM CORE</span><h1 id="rostersTitle">Classroom rosters</h1><p>Read the classes you teach and prepare a safe roster preview for Hall Pass, Check-In, and future GoClassroom modules. A browser window opens when you click Find my rosters; if Google asks, sign in with your school account and GoClassroom keeps going by itself.</p></div><button id="findClassroomRosters" class="btn primary"><svg><use href="#i-refresh"/></svg><span>Find my rosters</span></button></div>
-      <div class="panel roster-bridge-panel">
-        <div class="panel-title"><div><span class="section-kicker">YOUR HALL PASS</span><h2>Which Hall Pass should your rosters go to?</h2><p class="muted">Paste the student link from your own Hall Pass (Teacher view → Settings → classroom setup). It ends in <b>/exec</b>. Changing it clears the last comparison so nothing is written to the wrong Hall Pass.</p></div><span id="rosterBridgeBadge" class="status-badge neutral">Not set</span></div>
-        <div class="roster-bridge-fields">
-          <label class="field">Hall Pass link<input id="rosterBridgeUrl" type="url" placeholder="https://script.google.com/a/macros/yourschool.org/s/…/exec" autocomplete="off"></label>
-          <label class="field">Student email ending<input id="rosterBridgeDomain" placeholder="students.yourschool.org" autocomplete="off"></label>
+    <section id="automation" class="page" aria-labelledby="automationTitle">
+      <div class="page-head"><div><h1 id="automationTitle">Automatic turn-in</h1><p>Choose when GoClassroom checks for due lesson plans and whether it may turn them in for you.</p></div></div>
+      <div class="mode-card">
+        <div class="mode-icon"><svg><use href="#i-clock"/></svg></div><div class="grow"><span class="eyebrow dark">AUTOMATIC TURN-IN</span><h2 id="modeTitle">OFF</h2><p id="modeDesc">Automatic submitting is off. You can still run a Safety Check.</p></div>
+        <label class="switch" data-tip="Turn automatic submissions on or off. Turning it on requires a passed Safety Check."><input id="liveToggle" type="checkbox" aria-label="Automatic turn-in"><span aria-hidden="true"></span></label>
+      </div>
+      <div class="run-grid">
+        <button id="runTest" class="run-card" data-tip="Checks the selected Classroom, Drive folder, weekly assignment, and Turn in controls without attaching or submitting anything."><div class="run-icon"><svg><use href="#i-shield"/></svg></div><div><span>SAFETY CHECK</span><strong>Check my setup now</strong><small>Nothing will be attached or submitted.</small></div></button>
+        <button id="runLive" class="run-card live"><div class="run-icon"><svg><use href="#i-play"/></svg></div><div><span>CHECK NOW</span><strong>Turn in anything due now</strong><small>Uses the same safety rules as an automatic check.</small></div></button>
+      </div>
+      <div id="runStatus" class="notice" role="status" aria-live="polite">Ready.</div>
+      <div class="panel schedule-card">
+        <div class="panel-title"><div><span class="section-kicker">WHEN TO CHECK</span><h2>Weekly schedule</h2></div><div id="scheduleStatus" class="schedule-status"><svg><use href="#i-clock"/></svg><span id="scheduleHealthText">Checking schedule…</span></div></div>
+        <input id="scheduleEnabled" type="hidden">
+        <div class="schedule-layout">
+          <label class="field">Check time <button class="help-tip" type="button" aria-label="About check time" data-tip="This is the daily check. If a temporary connection problem prevents it from finishing, Auto Turn-In can retry automatically.">i</button><input id="scheduleTime" type="time" value="06:30"></label>
+          <div class="days"><span>Check days</span><div id="scheduleDays"><label><input type="checkbox" value="MON" checked><span>Mon</span></label><label><input type="checkbox" value="TUE" checked><span>Tue</span></label><label><input type="checkbox" value="WED" checked><span>Wed</span></label><label><input type="checkbox" value="THU" checked><span>Thu</span></label><label><input type="checkbox" value="FRI" checked><span>Fri</span></label></div></div>
         </div>
-        <div class="form-actions"><button id="saveRosterBridge" class="btn secondary" type="button"><svg><use href="#i-check"/></svg><span>Save Hall Pass link</span></button></div>
+        <div id="nextSchedulePreview" class="schedule-preview">This computer must be on and signed in when the check runs.</div>
+        <details class="inline-details"><summary>How automatic retries work <span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p>A successful check ends immediately. If a temporary internet or Google problem prevents the check from finishing, Auto Turn-In can retry up to two times. Setup, sign-in, duplicate, and safety problems do not retry.</p></details>
+        <div class="form-actions"><button id="installSchedule" class="btn primary"><svg><use href="#i-check"/></svg><span>Save schedule</span></button><button id="removeSchedule" class="btn danger"><svg><use href="#i-pause"/></svg><span>Pause automatic checks</span></button></div>
       </div>
-      <div class="notice roster-safety"><b>Safe roster sync.</b> After a fresh live comparison, GoClassroom can apply only verified additions and name corrections with your confirmation. It never removes students automatically, emails PINs, or changes pass/attendance history.</div>
-      <div class="metrics roster-metrics">
-        <div class="metric"><div class="metric-icon"><svg><use href="#i-home"/></svg></div><div><span>Teaching classes</span><strong id="rosterClassCount">0</strong></div></div>
-        <div class="metric"><div class="metric-icon"><svg><use href="#i-users"/></svg></div><div><span>Verified identities</span><strong id="rosterVerifiedCount">0</strong></div></div>
-        <div class="metric"><div class="metric-icon"><svg><use href="#i-warning"/></svg></div><div><span>Need identity review</span><strong id="rosterReviewCount">0</strong></div></div>
-        <div class="metric"><div class="metric-icon"><svg><use href="#i-refresh"/></svg></div><div><span>Last roster read</span><strong id="rosterLastDiscovery">Never</strong></div></div>
-      </div>
-      <div class="panel roster-preview-panel">
-        <div class="panel-title"><div><span class="section-kicker">SAFE SYNC PREVIEW</span><h2>Map each Classroom to its school period</h2><p class="muted">The period mapping is stored only on this computer. Student email addresses are accepted only when Classroom actually exposes them; GoClassroom never guesses an address from a name.</p></div><span id="rosterDiscoveryBadge" class="status-badge neutral">Not scanned</span></div>
-        <div id="rosterDiff" class="notice compact">Run roster discovery to create the first snapshot.</div>
-        <div id="rosterClassList" class="roster-class-list"><div class="empty-state">No Classroom roster snapshot has been saved yet.</div></div>
-        <div class="form-actions"><button id="saveRosterMappings" class="btn secondary" type="button"><svg><use href="#i-check"/></svg><span>Save period mapping</span></button></div>
-      </div>
+      <details class="panel computer-card"><summary><div><span class="section-kicker">THIS COMPUTER</span><h2>Using more than one computer?</h2></div><div class="actions"><span id="machineBadge" class="status-badge info">Loading</span><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></div></summary>
+        <p class="muted">You can install GoClassroom on more than one Windows PC without making them all run at the same time.</p>
+        <div class="machine-layout">
+          <label class="field">Computer name <button class="help-tip" type="button" aria-label="About computer name" data-tip="Use a simple name you will recognize, such as Home PC or Classroom PC.">i</button><input id="machineName" maxlength="60" placeholder="Home PC"></label>
+          <label class="field">Role on this computer <button class="help-tip" type="button" aria-label="About computer role" data-tip="Main runs at your normal time. Backup waits until the main computer and its retries have had time to finish. Manual only never runs on a schedule.">i</button><select id="machineRole"><option value="primary">Main computer</option><option value="backup">Backup computer</option><option value="manual">Manual only</option></select></label>
+        </div>
+        <div id="machineRoleHelp" class="notice compact">Main computer runs at your normal scheduled time.</div>
+        <div class="form-actions"><button id="saveMachine" class="btn secondary"><svg><use href="#i-check"/></svg><span>Save this computer</span></button></div>
+      </details>
+    </section>
+
+    <section id="plans" class="page" aria-labelledby="plansTitle">
+      <div class="page-head"><div><h1 id="plansTitle">Lesson plans</h1><p>Files in your approved Drive folder are discovered automatically.</p></div><button id="syncDrivePlans" class="btn primary" data-tip="Check the approved Drive folder right now for new weekly plans."><svg><use href="#i-refresh"/></svg><span>Check folder now</span></button></div>
+      <div class="source-card"><div class="source-icon"><svg><use href="#i-folder"/></svg></div><div class="grow"><span class="section-kicker">APPROVED PLAN FOLDER</span><strong id="plansDriveFolder">No Drive folder selected</strong><small>New weekly files in this folder are picked up automatically.</small></div><span id="driveSyncStatus" class="status-badge neutral">Not checked yet</span></div>
       <div class="panel">
-        <div class="panel-title"><div><span class="section-kicker">WHAT WOULD SYNC</span><h2>Operations roster preview</h2><p class="muted">This translates Classroom identities into the current Hall Pass / Check-In roster shape without writing it anywhere.</p></div></div>
-        <div id="rosterOperationsPreview" class="roster-operation-summary"><div class="empty-state">Choose period mappings to see how many memberships are ready.</div></div>
+        <div class="panel-title"><div><span class="section-kicker">RECENT & UPCOMING</span><h2>Plans Auto Turn-In knows about</h2></div></div>
+        <div id="plansOverview" class="plans-overview"></div>
+        <div id="plansEmpty" class="empty-state"><div class="empty-icon"><svg><use href="#i-folder"/></svg></div><h3>No matching plans found yet</h3><p>Choose your Drive folder in Setup, then check it again.</p><button class="btn secondary" data-go="setup">Open setup</button></div>
       </div>
-      <div class="panel">
-        <div class="panel-title"><div><span class="section-kicker">LIVE COMPARISON</span><h2>Compare with Hall Pass / Check-In</h2><p class="muted">GoClassroom reads the active operations roster, calculates changes locally, and can apply only additions and name corrections after a separate native confirmation.</p></div><div class="actions"><button id="compareOperationsRoster" class="btn secondary" type="button"><svg><use href="#i-refresh"/></svg><span>Compare rosters</span></button><button id="applyOperationsRoster" class="btn primary" type="button" disabled><svg><use href="#i-check"/></svg><span>Apply safe changes</span></button></div></div>
-        <div id="rosterLiveComparison" class="roster-operation-summary"><div class="empty-state">Save your period mappings, then compare against the current operations roster.</div></div>
-      </div>
+      <details class="panel"><summary><div><span class="section-kicker">OPTIONAL</span><h2>Add or correct a plan manually</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary>
+        <p class="muted">Most teachers never need this. Plans found in the approved Drive folder cannot be edited here.</p>
+        <div class="actions toolbar"><button id="importPlans" class="btn secondary"><span>Import a saved list</span></button><button id="exportPlans" class="btn secondary"><span>Save a copy</span></button><button id="addPlan" class="btn secondary"><span>Add manual week</span></button></div>
+        <div class="table-wrap"><table><thead><tr><th>Week</th><th>Document title</th><th>Google Drive link</th><th>Added by</th><th></th></tr></thead><tbody id="plansBody"></tbody></table></div>
+        <div class="form-actions"><button id="savePlans" class="btn primary">Save manual changes</button><span id="plansSaved" class="saved"></span></div>
+      </details>
     </section>
 
     <section id="ai" class="page" aria-labelledby="aiTitle">
-      <div class="page-head"><div><span class="page-kicker">OPTIONAL</span><h1 id="aiTitle">AI missing-plan recovery</h1><p>If a due plan is missing, AI can draft a local Word file and wait for your approval.</p></div><button id="openAiFolder" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open drafts folder</span></button></div>
+      <div class="page-head"><div><h1 id="aiTitle">AI missing-plan recovery</h1><p>If a due plan is missing, AI can draft a local Word file and wait for your approval.</p></div><button id="openAiFolder" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open drafts folder</span></button></div>
       <div class="mode-card"><div class="mode-icon"><svg><use href="#i-spark"/></svg></div><div class="grow"><span class="eyebrow dark">AI DRAFTING</span><h2 id="aiModeTitle">OFF</h2><p id="aiModeDesc">Missing plans will stop safely and notify you.</p></div><label class="switch" data-tip="AI recovery is optional. Normal Auto Turn-In works without it."><input id="aiEnabled" type="checkbox" aria-label="AI missing-plan recovery"><span aria-hidden="true"></span></label></div>
       <div class="ai-layout">
         <div class="panel">
@@ -248,68 +327,14 @@
       <details class="panel"><summary><div><span class="section-kicker">MORE OPTIONS</span><h2>AI writing options</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><div class="form-grid ai-advanced"><label>Writing model<select id="aiModel"><option value="openai/gpt-oss-20b">GPT-OSS 20B — free on Groq</option><option value="qwen/qwen3.8-27b">Qwen 3.8 27B — free on Groq</option><option value="openai/gpt-oss-120b">GPT-OSS 120B — free on Groq</option></select></label><label>How generated files are named<input id="aiFileNameTemplate" value="Week {week2} - Lesson Plans.docx"></label><label>Maximum missing plans to draft in one check<input id="aiMaxDrafts" type="number" min="1" max="3" value="1"></label><div class="wide notice compact"><b>Optional feature:</b> Normal Auto Turn-In does not need AI. <button id="disableAiFeature" class="btn text-btn" type="button">Stop using and hide AI recovery</button></div></div></details>
     </section>
 
-    <section id="grading" class="page" aria-labelledby="gradingTitle">
-      <div class="page-head"><div><span class="page-kicker">TEACHER GRADING DESK</span><h1 id="gradingTitle">Draft grading</h1><p>Move between every class you teach, preview rubric-based grading locally, and decide what becomes a hidden Classroom draft.</p></div><button id="refreshGrading" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Check Ollama</span></button></div>
-      <div class="mode-card"><div class="mode-icon"><svg><use href="#i-shield"/></svg></div><div class="grow"><span class="eyebrow dark">DRAFT-ONLY SAFETY</span><h2 id="gradingModeTitle">OFF</h2><p id="gradingModeDesc">Local grading is off. Classroom reading and draft-score writing stay disabled until you turn them on.</p></div><label class="switch" data-tip="This enables local grading. Classroom draft-score writing has a separate opt-in and never returns work to students."><input id="gradingEnabled" type="checkbox" aria-label="Local draft grading"><span aria-hidden="true"></span></label></div>
-      <div class="ai-layout">
-        <div class="panel">
-          <div class="panel-title"><div><span class="section-kicker">OLLAMA</span><h2>Local model</h2><p class="muted">GoClassroom connects only to Ollama at 127.0.0.1 on this computer.</p></div><span id="gradingOllamaBadge" class="status-badge neutral">Checking…</span></div>
-          <label class="field">Grading model<select id="gradingModel"></select></label>
-          <div id="gradingOllamaStatus" class="notice compact">Checking local Ollama models…</div>
-          <div class="form-actions"><button id="saveGradingSettings" class="btn secondary"><svg><use href="#i-check"/></svg><span>Save local grading settings</span></button></div>
-        </div>
-        <div class="panel security-card">
-          <div class="panel-title"><div><span class="section-kicker">PRIVACY BOUNDARY</span><h2>Local by default</h2></div></div>
-          <p>The assignment, rubric, and student response are sent only to Ollama on this PC. GoClassroom does not send grading requests to Groq, Gemini, OpenRouter, or OpenAI.</p>
-          <div class="notice compact"><b>Default:</b> student work is not retained. If you enable private review copies below, GoClassroom saves only the evidence used and its validated grading record to your chosen folder.</div>
-        </div>
-      </div>
-      <div class="panel classroom-grading-panel">
-        <div class="panel-title"><div><span class="section-kicker">YOUR CLASSES</span><h2>Grade an assignment</h2><p class="muted">Your lesson plan class is kept separate from the classes you grade.</p></div><span id="gradingClassroomBadge" class="status-badge neutral">No class selected</span></div>
-        <div class="notice compact"><b>Drafts only.</b> GoClassroom never clicks <b>Return</b>, and grades already in Classroom are never changed.</div>
-        <div class="form-grid grading-classroom-grid">
-          <div class="wide classroom-picker-actions"><button id="findTeachingClassrooms" class="btn" type="button" data-tip="Opens Classroom once, saves every class you teach, and reads their assignments."><svg><use href="#i-refresh"/></svg><span>Find my classes</span></button><button id="addGradingClassroom" class="btn secondary" type="button" data-tip="Pick one class by hand instead."><svg><use href="#i-home"/></svg><span>Add one class</span></button><span id="gradingClassroomCourse" class="muted">Your lesson plan setup will not change.</span></div>
-          <label class="wide field">Class<select id="gradingClassroomSelect"><option value="">No classes yet</option></select></label>
-          <label class="wide field">Assignment<select id="gradingClassroomAssignment"><option value="">Find assignments first</option></select></label>
-          <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh assignments</span></button><button id="removeGradingClassroom" class="btn text-btn" type="button">Remove this class</button></div>
-          <label class="wide field">Rubric <small class="muted">Optional. Leave blank and GoClassroom grades from the directions, out of the points Classroom already shows.</small><textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric, or leave this blank."></textarea></label>
-          <label class="wide field">Directions <small class="muted">Optional. Leave blank to use the directions in Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only needed if the Classroom directions are unclear."></textarea></label>
-          <label class="field">Students per run <small class="muted">Up to 60. Set it to your class size to grade everyone in one pass.</small><input id="gradingBatchSize" type="number" min="1" max="60" value="5"></label>
-          <label class="check wide"><input id="gradingClassroomWriteEnabled" type="checkbox"><span>Let GoClassroom put confident scores into Classroom as hidden drafts</span></label>
-          <label class="check wide"><input id="gradingWriteDraftsThisRun" type="checkbox"><span>Save drafts on this run. Leave off to preview only.</span></label>
-        </div>
-        <div class="form-actions"><button id="runClassroomGrading" class="btn primary"><svg><use href="#i-play"/></svg><span>Grade this assignment</span></button></div>
-        <div id="gradingClassroomResultPanel" class="grading-classroom-results hidden"></div>
-      </div>
-      <div class="panel review-copy-panel">
-        <div class="panel-title"><div><span class="section-kicker">OPTIONAL GRADING COACH</span><h2>Private grading review copies</h2><p class="muted">Save the exact evidence GoClassroom graded and the validated result so you can review its performance later.</p></div><span class="status-badge neutral" id="gradingReviewBadge">Off</span></div>
-        <div class="notice compact warning-soft"><b>Contains student data:</b> choose a private folder, such as a restricted Google Drive for desktop folder. GoClassroom never shares it or changes its Drive permissions.</div>
-        <label class="check review-copy-toggle"><input id="gradingReviewExportEnabled" type="checkbox"><span>Save a private review copy after each Classroom grading run</span></label>
-        <div class="review-folder-row"><div><span class="section-kicker">REVIEW FOLDER</span><strong id="gradingReviewFolder">No folder selected</strong></div><div class="actions"><button id="chooseGradingReviewFolder" class="btn secondary" type="button"><svg><use href="#i-folder"/></svg><span>Choose folder</span></button><button id="openGradingReviewFolder" class="btn text-btn" type="button">Open folder</button></div></div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><div><span class="section-kicker">TEST THE ENGINE</span><h2>Create a draft grade</h2><p class="muted">Paste one real or sample assignment. GoClassroom validates the model's structure and point math before calling the result safe.</p></div></div>
-        <div class="form-grid grading-form-grid">
-          <label class="wide field">Assignment question or directions<textarea id="gradingQuestion" rows="5" maxlength="20000" placeholder="What should the student answer or do?"></textarea></label>
-          <label class="wide field">Rubric<textarea id="gradingRubric" rows="7" maxlength="30000" placeholder="List the criteria and possible points."></textarea></label>
-          <label class="wide field">Student submission<textarea id="gradingStudentWork" rows="9" maxlength="60000" placeholder="Paste the student response or extracted work here."></textarea></label>
-        </div>
-        <div class="form-actions"><button id="runLocalGrade" class="btn primary"><svg><use href="#i-play"/></svg><span>Create draft grade</span></button></div>
-      </div>
-      <div id="gradingResultPanel" class="panel hidden">
-        <div class="panel-title"><div><span class="section-kicker">RESULT</span><h2 id="gradingResultTitle">Draft grade</h2><p id="gradingResultSummary" class="muted"></p></div><span id="gradingResultBadge" class="status-badge neutral">Waiting</span></div>
-        <div id="gradingResultBody" class="grading-result"></div>
-      </div>
-    </section>
-
     <section id="logs" class="page" aria-labelledby="helpTitle">
-      <div class="page-head"><div><span class="page-kicker">SUPPORT</span><h1 id="helpTitle">Help & support</h1><p>See what needs attention and the safest next step.</p></div><button id="runDiagnostics" class="btn primary"><svg><use href="#i-shield"/></svg><span>Check app health</span></button></div>
+      <div class="page-head"><div><h1 id="helpTitle">Help & support</h1><p>See what needs attention and the safest next step.</p></div><button id="runDiagnostics" class="btn primary"><svg><use href="#i-shield"/></svg><span>Check app health</span></button></div>
       <div class="support-grid">
         <div class="panel support-card"><div class="support-icon"><svg><use href="#i-warning"/></svg></div><span class="section-kicker">LAST PROBLEM</span><h2 id="helpLastProblem">No recent problems</h2><p id="helpMeaning">Auto Turn-In has not reported a current problem.</p><small id="helpCode" class="inline-support-code hidden"></small><div id="helpAction" class="help-action">If something changes, the recommended next step will appear here.</div></div>
         <div class="panel support-card"><div class="support-icon good"><svg><use href="#i-shield"/></svg></div><span class="section-kicker">QUICK SUPPORT</span><h2>Copy a support summary</h2><p>Copies the useful status information you can send to someone helping you.</p><button id="copyDiagnostics" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Copy support summary</span></button></div>
       </div>
       <details class="panel"><summary><div><span class="section-kicker">SUPPORT FILES</span><h2>Files for school technology support</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p class="muted">You normally do not need these. If someone is helping troubleshoot the app, they may ask you to open this folder.</p><div class="actions toolbar"><button id="refreshLogs" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh support status</span></button><button id="openLogs" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open support folder</span></button><button id="cleanupLogs" class="btn secondary"><span>Remove old support files</span></button></div><div id="logBox" class="notice compact">Support files are stored on this computer and are not shown inside the app.</div></details>
-      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>GoClassroom <small>preview name</small></h2><p>Teacher Edition v0.9.30 · Built on the Classroom Auto Turn-In compatibility identity so existing setup and schedules remain intact.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
+      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>GoClassroom <small>preview name</small></h2><p>Teacher Edition v0.9.31 · Built on the Classroom Auto Turn-In compatibility identity so existing setup and schedules remain intact.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
     </section>
   </main>
 </div>
@@ -319,11 +344,11 @@
 
 <div id="welcome" class="modal-layer hidden" aria-hidden="true">
   <div class="wizard-card welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle" tabindex="-1">
-    <div class="wizard-head"><div><span class="eyebrow dark">WELCOME</span><h2 id="welcomeTitle">What would you like GoClassroom to do?</h2><p>Pick where to start. You can use the others any time from the menu on the left.</p></div></div>
+    <div class="wizard-head welcome-head"><img class="welcome-bot" src="../assets/gobot.svg" alt=""><div><span class="eyebrow dark">WELCOME TO GOCLASSROOM</span><h2 id="welcomeTitle">What would you like GoClassroom to do?</h2><p>Pick where to start. You can use the others any time from the menu on the left.</p></div></div>
     <div class="welcome-options">
       <button class="welcome-option" type="button" data-welcome="rosters"><svg><use href="#i-users"/></svg><strong>Send my rosters to Hall Pass</strong><span>Read your Google Classroom classes and add your students to your own Hall Pass.</span></button>
       <button class="welcome-option" type="button" data-welcome="turnin"><svg><use href="#i-doc"/></svg><strong>Turn in weekly lesson plans</strong><span>Find your plan in Drive and attach it to the weekly Classroom assignment automatically.</span></button>
-      <button class="welcome-option" type="button" data-welcome="grading"><svg><use href="#i-check"/></svg><strong>Draft grading</strong><span>Draft scores for student work on this computer. You always make the final call.</span></button>
+      <button class="welcome-option" type="button" data-welcome="grading"><svg><use href="#i-grade"/></svg><strong>Draft grading</strong><span>Draft scores for student work on this computer. You always make the final call.</span></button>
     </div>
     <div class="wizard-foot"><button id="welcomeLater" class="btn secondary" type="button">I'll decide later</button></div>
   </div>

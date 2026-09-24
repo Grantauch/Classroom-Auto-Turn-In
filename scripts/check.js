@@ -182,7 +182,7 @@ const htmlSource=fs.readFileSync(path.join(root,'renderer/index.html'),'utf8');
 for(const required of ['Naming & safety options','Add or correct a plan manually','More status details','Finish & turn on','Help & support'])if(!htmlSource.includes(required))throw new Error(`Commercial Teacher UI element missing: ${required}`);
 if(htmlSource.includes('id="saveSchedule"'))throw new Error('Teacher UI still exposes a save-without-install schedule button');
 if(htmlSource.includes('planWeekOf'))throw new Error('Retired plan-week-start mode is still exposed in Teacher Edition');
-if(!htmlSource.includes('v0.9.30'))throw new Error('Teacher Edition sidebar version is stale');
+if(!htmlSource.includes('v0.9.31'))throw new Error('Teacher Edition sidebar version is stale');
 if(htmlSource.indexOf('id="wizPlanRegex"')>htmlSource.indexOf('id="wizScanDrive"'))throw new Error('Custom Drive naming rule is still inaccessible before the required Drive scan');
 if(!htmlSource.includes('must be on and signed in'))throw new Error('Teacher UI does not explain that the computer must be on and signed in');
 if(!mainSource.includes('mainWindow.setMenu(null)')||!mainSource.includes('autoHideMenuBar:true'))throw new Error('Generic Electron application menu is still exposed');
@@ -209,7 +209,7 @@ if(!actionSource.includes("querySelectorAll('[data-file-id],[data-doc-id],[data-
 const topicsSource=fs.readFileSync(path.join(root,'engine/discover-topics.js'),'utf8');
 if(!topicsSource.includes('accounts\\.google\\.com'))throw new Error('Topic discovery does not diagnose expired Google sign-in');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
-if(pkg.version!=='0.9.30')throw new Error('package.json version is not 0.9.30');
+if(pkg.version!=='0.9.31')throw new Error('package.json version is not 0.9.31');
 if(String(pkg.dependencies['playwright-core']).startsWith('^')||String(pkg.devDependencies.electron).startsWith('^')||String(pkg.devDependencies['electron-builder']).startsWith('^'))throw new Error('Top-level build/runtime dependencies are not pinned exactly');
 const portableNode=fs.readFileSync(path.join(root,'scripts/Get-PortableNode.ps1'),'utf8');
 if(!portableNode.includes("$version = 'v22.19.0'"))throw new Error('Portable Node build version is not pinned');
@@ -286,7 +286,7 @@ if(!rendererSource.includes('function applyAiVisibility')||!rendererSource.inclu
 if(!rendererSource.includes('optedIn:false,enabled:false'))throw new Error('Teacher cannot fully opt out and hide optional AI recovery');
 if(!mainSource.includes("coreIssueNames=new Set(['config.json','plans.json'])"))throw new Error('Optional AI data corruption can still leak into core Auto Turn-In blockers');
 if(!htmlSource.includes('Content-Security-Policy'))throw new Error('Renderer Content Security Policy is missing');
-if(!htmlSource.includes('v0.9.30'))throw new Error('Teacher Edition sidebar version is not v0.9.30');
+if(!htmlSource.includes('v0.9.31'))throw new Error('Teacher Edition sidebar version is not v0.9.31');
 
 const preloadText=fs.readFileSync(path.join(root,'preload.js'),'utf8');
 const errorCatalog=fs.readFileSync(path.join(root,'engine/user-errors.js'),'utf8');
@@ -301,4 +301,4 @@ if(!htmlSource.includes('Files for school technology support')||!rendererSource.
 
 if(!protocolSource.includes("const PREFIX='CATI_EVENT:'")||!runnerSource.includes("lastPayload(output,'run-result')"))throw new Error('Versioned child-process protocol is not wired end-to-end');
 try{fs.rmSync(testData,{recursive:true,force:true})}catch{/* best-effort fallback */}
-console.log('Project syntax, Trust/Reliability safety, Teacher Edition, multi-Classroom grading, approved roster sync, optional private review export, and v0.9.30 GoClassroom preview checks passed.');
+console.log('Project syntax, Trust/Reliability safety, Teacher Edition, multi-Classroom grading, approved roster sync, optional private review export, and v0.9.31 GoClassroom preview checks passed.');
