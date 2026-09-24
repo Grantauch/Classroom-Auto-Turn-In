@@ -266,7 +266,7 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   console.log('GoClassroom encrypted-cache recovery checks passed: disposable roster snapshots can be refreshed, while pending approved writes remain fail-closed.');
 }
 
-{
+(async()=>{
   // Each teacher points GoClassroom at their own Hall Pass copy.
   const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
   const {normalizeMappings,buildOperationsRosterCandidate}=require('../engine/classroom-roster');
@@ -275,8 +275,13 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const localData={readJson:(name,fallback)=>plain.has(name)?JSON.parse(JSON.stringify(plain.get(name))):fallback,writeJson:(name,value)=>{plain.set(name,JSON.parse(JSON.stringify(value)));return value},appLog:message=>logs.push(String(message))};
   const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
   const service=createRosterService({localData,secureData,ensureAutomationIdle:()=>{},compactError:error=>String(error.message||error)});
+  const fresh=service.publicState();
+  assert.equal(fresh.bridge.url,'','A brand-new install starts with no Hall Pass link.');
+  assert.equal(fresh.bridge.studentEmailDomain,'');
+  assert.throws(()=>service.validateSafeChanges(),/./,'Nothing can be planned without a link.');
+  secure.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:'2026-09-20T12:00:00.000Z',snapshot:{schemaVersion:1,classes:[]},lastDiff:{},issues:[]});
   const before=service.publicState();
-  assert.equal(before.bridge.url,DEFAULT_OPERATIONS_BRIDGE.url,'Existing installs keep the original Hall Pass link.');
+  assert.equal(before.bridge.url,DEFAULT_OPERATIONS_BRIDGE.url,'An install that already used roster sync keeps the original Hall Pass link.');
   assert.equal(before.bridge.isDefault,true);
   secure.set('operations-roster.secure.json',{schemaVersion:1,lastReadAt:'2026-09-24T12:00:00.000Z',revision:'r'.repeat(30),writeContract:'2026-09-22-roster-write-v1',roster:[]});
   const other='https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec?mode=teacher#top';
@@ -301,5 +306,14 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   const preview=buildOperationsRosterCandidate({classes:[{courseId:'c8',courseDisplayName:'Chem',students:[{studentEmail:'sam@students.lakeview.example.org',studentName:'Sam Lee'}]}]},mappings);
   assert.ok(JSON.stringify(preview).includes('Period 8'),'A Period 8 mapping produces memberships.');
   validateWriteRequest({requestId:'req-period-8',confirmation:'APPLY SAFE ROSTER CHANGES',baseRevision:'r'.repeat(30),add:[{studentEmail:'sam@students.lakeview.example.org',studentName:'Sam Lee',classPeriod:'Period 8'}],updateName:[]},{studentEmailDomain:'students.lakeview.example.org'});
-  console.log('GoClassroom Hall Pass link checks passed: each teacher can target their own Hall Pass, targets cannot switch mid-recovery, and Periods 7-8 map.');
-}
+  // Reading a Hall Pass roster with no link stops before any browser opens.
+  {
+    const plain2=new Map(),secure2=new Map();let launched=false;
+    const svc=createRosterService({localData:{readJson:(n,f)=>plain2.has(n)?plain2.get(n):f,writeJson:(n,v)=>{plain2.set(n,v);return v},appLog:()=>{}},secureData:{read:(n,f)=>secure2.has(n)?secure2.get(n):f,write:(n,v)=>{secure2.set(n,v);return v}},ensureAutomationIdle:()=>{},compactError:e=>String(e.message||e),runExclusiveBrowser:async(_l,fn)=>fn(),runNodeScript:async()=>{launched=true;return ''}});
+    secure2.set('roster-sync.secure.json',{schemaVersion:1,lastDiscoveryAt:new Date().toISOString(),snapshot:{schemaVersion:1,classes:[]},lastDiff:{},issues:[]});
+    plain2.set('roster-bridge.json',{schemaVersion:1,url:'',contract:DEFAULT_OPERATIONS_BRIDGE.contract,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,studentEmailDomain:''});
+    await assert.rejects(()=>svc.readOperationsRoster(),/Paste your own Hall Pass link/);
+    assert.equal(launched,false,'No browser may open without a Hall Pass link.');
+  }
+  console.log('GoClassroom Hall Pass link checks passed: fresh installs start blank, earlier installs keep their link, each teacher can target their own Hall Pass, targets cannot switch mid-recovery, and Periods 7-8 map.');
+})().catch(error=>{console.error(error);process.exitCode=1;});
