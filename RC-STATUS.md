@@ -1,4 +1,12 @@
-# v0.9.30 GoClassroom Multi-Teacher Roster Release Candidate Status
+# v0.9.31 GoClassroom Multi-Teacher Roster Release Candidate Status
+
+v0.9.31 is a visual and layout overhaul. Behavior, safety rules, and support codes are unchanged from v0.9.30.
+
+- **New look.** A calm light workspace with a deep-space sidebar, one indigo accent, a consistent outline icon set, and a redrawn robot mascot and space scene on Home and the welcome screen. New app and installer icon.
+- **Organized around a teacher's week.** The menu groups Rosters & Hall Pass and Draft grading under "Your classes", and Turn-in setup, Lesson plans, and Automatic turn-in under "Lesson-plan turn-in". Help & support sits at the bottom.
+- **Pages in the order teachers use them.** Rosters is three numbered steps (connect, find and map, compare and add). Draft grading leads with grading an assignment; model settings and the sample-work tester move lower. Automatic turn-in puts Check now above the schedule, with multi-computer options folded away. Rarely used setup options are collapsed.
+
+## Previous: v0.9.30
 
 v0.9.30 fixes Find my rosters on a brand-new computer and makes roster problems say exactly what is wrong:
 

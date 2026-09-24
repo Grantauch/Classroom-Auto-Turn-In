@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 240" role="img" aria-label="GoClassroom robot">
+  <defs>
+    <linearGradient id="bot-shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D9DFFF"/>
+    </linearGradient>
+    <linearGradient id="bot-visor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23295E"/>
+      <stop offset="1" stop-color="#11153A"/>
+    </linearGradient>
+    <radialGradient id="bot-glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#FFD166" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#FFD166" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- antenna -->
+  <circle cx="110" cy="14" r="14" fill="url(#bot-glow)"/>
+  <path d="M110 40V20" stroke="#B9C3F7" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="110" cy="15" r="7.5" fill="#FFD166"/>
+  <!-- arms (behind the body) -->
+  <path d="M70 176c-18 8-26 20-27 34" fill="none" stroke="#C9D1FB" stroke-width="15" stroke-linecap="round"/>
+  <circle cx="43" cy="212" r="10" fill="#FFFFFF"/>
+  <path d="M152 172c20-6 30-20 33-42" fill="none" stroke="#C9D1FB" stroke-width="15" stroke-linecap="round"/>
+  <circle cx="186" cy="124" r="11" fill="#FFFFFF"/>
+  <!-- body -->
+  <rect x="98" y="138" width="24" height="14" rx="5" fill="#AEB9F2"/>
+  <rect x="64" y="148" width="92" height="74" rx="32" fill="url(#bot-shell)"/>
+  <rect x="88" y="168" width="44" height="28" rx="11" fill="#E9EDFF"/>
+  <circle cx="110" cy="182" r="7" fill="#6C7BFF"/>
+  <circle cx="110" cy="182" r="3" fill="#C7CEFF"/>
+  <!-- ears -->
+  <rect x="26" y="72" width="18" height="40" rx="9" fill="#6C7BFF"/>
+  <rect x="176" y="72" width="18" height="40" rx="9" fill="#6C7BFF"/>
+  <!-- head -->
+  <rect x="38" y="36" width="144" height="112" rx="48" fill="url(#bot-shell)"/>
+  <rect x="56" y="56" width="108" height="72" rx="32" fill="url(#bot-visor)"/>
+  <path d="M72 66c10-4 60-4 76 0" fill="none" stroke="#FFFFFF" stroke-opacity=".12" stroke-width="6" stroke-linecap="round"/>
+  <!-- face -->
+  <rect x="81" y="78" width="16" height="25" rx="8" fill="#6FE7FA"/>
+  <rect x="123" y="78" width="16" height="25" rx="8" fill="#6FE7FA"/>
+  <circle cx="86" cy="84" r="3" fill="#FFFFFF"/>
+  <circle cx="128" cy="84" r="3" fill="#FFFFFF"/>
+  <path d="M97 111c8 7 18 7 26 0" fill="none" stroke="#6FE7FA" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="72" cy="112" r="6" fill="#FF8FB8" opacity=".55"/>
+  <circle cx="148" cy="112" r="6" fill="#FF8FB8" opacity=".55"/>
+</svg>

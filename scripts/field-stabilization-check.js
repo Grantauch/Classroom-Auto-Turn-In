@@ -2,7 +2,7 @@ const fs=require('fs');
 function src(file){return fs.readFileSync(file,'utf8')}
 function assert(ok,msg){if(!ok)throw new Error(msg)}
 const main=src('main.js'),lib=src('engine/lib.js'),submit=src('engine/submit-weekly.js'),actions=src('engine/classroom-actions.js'),runner=src('main-services/engine-runner.js'),appConfig=src('engine/app-config.js'),ui=src('renderer/app.js'),pkg=JSON.parse(src('package.json'));
-assert(pkg.version==='0.9.30','package version is not 0.9.30');
+assert(pkg.version==='0.9.31','package version is not 0.9.31');
 assert(!src('renderer/index.html').includes('Silent weekly automation'),'UI still claims scheduled operation is silent before v0.9.0');
 assert(main.includes("const autoSubmittedRecords=records.filter(r=>r.detected!==true)"),'dashboard does not separate Auto Turn-In submissions from already-completed detections');
 assert(main.includes('submittedCount:autoSubmittedRecords.length'),'dashboard submitted count still includes detected/manual completions');
@@ -25,4 +25,4 @@ assert(main.includes('6*60*60*1000'),'notification incident suppression window i
 assert(appConfig.includes("'browser-profile'"),'shared browser profile default is missing');
 assert(lib.includes('defaultProfileDirForDataRoot(ROOT)'),'engine profile default is not using the shared profile rule');
 assert(submit.includes('4*60*1000'),'nested trusted-Drive scan timeout is missing');
-console.log('v0.8.2 field-test stabilization regression checks passed under v0.9.30.');
+console.log('v0.8.2 field-test stabilization regression checks passed under v0.9.31.');

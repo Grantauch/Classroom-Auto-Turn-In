@@ -394,7 +394,7 @@ async function finishFirstRunSetup(time){
 }
 
 function createWindow(){
-  mainWindow=new BrowserWindow({width:1280,height:840,minWidth:820,minHeight:680,backgroundColor:'#f2f8fe',autoHideMenuBar:true,icon:path.join(__dirname,'assets','GoClassroom.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,webviewTag:false}});
+  mainWindow=new BrowserWindow({width:1280,height:840,minWidth:820,minHeight:680,backgroundColor:'#f4f5fa',autoHideMenuBar:true,icon:path.join(__dirname,'assets','GoClassroom.ico'),webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true,webviewTag:false}});
   mainWindow.setMenu(null);
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.setWindowOpenHandler(()=>({action:'deny'}));
