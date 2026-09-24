@@ -18,8 +18,8 @@ function equivalentStudentName(a,b){
   const left=canonicalNameTokens(a),right=canonicalNameTokens(b);
   return Boolean(left.length&&left.length===right.length&&left.every((token,index)=>token===right[index]));
 }
-function periodNumber(value){const match=clean(value,120).match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
-function isGenericPeriod(value){return /^Period\s+[1-6]$/i.test(clean(value,120))}
+function periodNumber(value){const match=clean(value,120).match(/^Period\s+([1-8])(?:\b|\s|$)/i);return match?Number(match[1]):0}
+function isGenericPeriod(value){return /^Period\s+[1-8]$/i.test(clean(value,120))}
 function membershipKey(courseId,email){const c=validCourseId(courseId),e=validEmail(email);return c&&e?`${c}::${e}`:''}
 
 function normalizeStudent(value={}){
@@ -84,7 +84,7 @@ function normalizeMappings(value={}){
   const classMappings={};
   for(const [courseId,raw] of Object.entries(source)){
     const id=validCourseId(courseId),classPeriod=clean(raw?.classPeriod||raw,120);
-    if(id&&/^Period\s+[1-6](?:\b|\s|$)/i.test(classPeriod))classMappings[id]={classPeriod};
+    if(id&&/^Period\s+[1-8](?:\b|\s|$)/i.test(classPeriod))classMappings[id]={classPeriod};
   }
   return {schemaVersion:1,classMappings};
 }
@@ -124,7 +124,7 @@ function normalizeOperationsRoster(rows=[]){
   const out=[];
   for(const raw of Array.isArray(rows)?rows:[]){
     const studentEmail=validEmail(raw?.studentEmail||raw?.email),studentName=normalizeName(raw?.studentName||raw?.name),classPeriod=clean(raw?.classPeriod,120);
-    if(!studentEmail||!studentName||!/^Period\s+[1-6](?:\b|\s|$)/i.test(classPeriod))continue;
+    if(!studentEmail||!studentName||!/^Period\s+[1-8](?:\b|\s|$)/i.test(classPeriod))continue;
     out.push({studentEmail,studentName,classPeriod,active:raw?.active!==false});
   }
   return out;

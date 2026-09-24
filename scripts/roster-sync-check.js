@@ -265,3 +265,41 @@ function makeHarness({failFirstApply=false,applyErrorMessage='simulated browser 
   assert.throws(()=>critical.publicState(),/corrupt pending write/i,'An unreadable approved pending write must remain fail-closed.');
   console.log('GoClassroom encrypted-cache recovery checks passed: disposable roster snapshots can be refreshed, while pending approved writes remain fail-closed.');
 }
+
+{
+  // Each teacher points GoClassroom at their own Hall Pass copy.
+  const {createRosterService,DEFAULT_OPERATIONS_BRIDGE}=require('../main-services/roster-service');
+  const {normalizeMappings,buildOperationsRosterCandidate}=require('../engine/classroom-roster');
+  const {validateWriteRequest}=require('../engine/operations-roster-bridge');
+  const plain=new Map(),secure=new Map(),logs=[];
+  const localData={readJson:(name,fallback)=>plain.has(name)?JSON.parse(JSON.stringify(plain.get(name))):fallback,writeJson:(name,value)=>{plain.set(name,JSON.parse(JSON.stringify(value)));return value},appLog:message=>logs.push(String(message))};
+  const secureData={read:(name,fallback)=>secure.has(name)?JSON.parse(JSON.stringify(secure.get(name))):fallback,write:(name,value)=>{secure.set(name,JSON.parse(JSON.stringify(value)));return value}};
+  const service=createRosterService({localData,secureData,ensureAutomationIdle:()=>{},compactError:error=>String(error.message||error)});
+  const before=service.publicState();
+  assert.equal(before.bridge.url,DEFAULT_OPERATIONS_BRIDGE.url,'Existing installs keep the original Hall Pass link.');
+  assert.equal(before.bridge.isDefault,true);
+  secure.set('operations-roster.secure.json',{schemaVersion:1,lastReadAt:'2026-09-24T12:00:00.000Z',revision:'r'.repeat(30),writeContract:'2026-09-22-roster-write-v1',roster:[]});
+  const other='https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec?mode=teacher#top';
+  const saved=service.saveBridgeSettings({url:other,studentEmailDomain:'@Students.Lakeview.Example.org'});
+  assert.equal(saved.bridge.url,'https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec','The saved link is the bare /exec URL.');
+  assert.equal(saved.bridge.studentEmailDomain,'students.lakeview.example.org');
+  assert.equal(saved.bridge.isDefault,false);
+  assert.equal(saved.operations.lastReadAt,'','Changing Hall Pass targets must discard the old comparison.');
+  assert.equal(plain.get('roster-bridge.json').contract,DEFAULT_OPERATIONS_BRIDGE.contract);
+  const blank=service.saveBridgeSettings({url:other,studentEmailDomain:''});
+  assert.equal(blank.bridge.studentEmailDomain,'','A deliberately blank student email ending must not fall back to Mt. Morris.');
+  for(const bad of ['https://evil.example.com/macros/s/x/exec','https://script.google.com/macros/s/x/dev','not a link','']){
+    assert.throws(()=>service.saveBridgeSettings({url:bad}),/Nothing was changed|not valid/i,`Rejects ${bad||'blank'} link`);
+  }
+  assert.throws(()=>service.saveBridgeSettings({url:other,studentEmailDomain:'not a domain'}),/not valid/i);
+  secure.set('roster-write-pending.secure.json',{schemaVersion:1,status:'PENDING',createdAt:'2026-09-24T12:00:00.000Z',request:{requestId:'pending-request-1',add:[],updateName:[]}});
+  assert.throws(()=>service.saveBridgeSettings({url:DEFAULT_OPERATIONS_BRIDGE.url}),/needs recovery/i,'A pending approved batch pins the Hall Pass target.');
+  assert.equal(plain.get('roster-bridge.json').url,'https://script.google.com/a/macros/lakeview.example.org/s/AKfycbxOTHERTEACHERdeployment123/exec');
+  // Period 7 and 8 classes map and validate.
+  const mappings=normalizeMappings({classMappings:{c7:{classPeriod:'Period 7'},c8:{classPeriod:'Period 8 — Chemistry'},c9:{classPeriod:'Period 9'}}});
+  assert.deepEqual(Object.keys(mappings.classMappings).sort(),['c7','c8']);
+  const preview=buildOperationsRosterCandidate({classes:[{courseId:'c8',courseDisplayName:'Chem',students:[{studentEmail:'sam@students.lakeview.example.org',studentName:'Sam Lee'}]}]},mappings);
+  assert.ok(JSON.stringify(preview).includes('Period 8'),'A Period 8 mapping produces memberships.');
+  validateWriteRequest({requestId:'req-period-8',confirmation:'APPLY SAFE ROSTER CHANGES',baseRevision:'r'.repeat(30),add:[{studentEmail:'sam@students.lakeview.example.org',studentName:'Sam Lee',classPeriod:'Period 8'}],updateName:[]},{studentEmailDomain:'students.lakeview.example.org'});
+  console.log('GoClassroom Hall Pass link checks passed: each teacher can target their own Hall Pass, targets cannot switch mid-recovery, and Periods 7-8 map.');
+}

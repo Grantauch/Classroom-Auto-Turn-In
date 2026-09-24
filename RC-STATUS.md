@@ -1,4 +1,13 @@
-# v0.9.28 GoClassroom Live Roster Pilot Release Candidate Status
+# v0.9.29 GoClassroom Multi-Teacher Roster Release Candidate Status
+
+v0.9.29 keeps every v0.9.28 roster-write safety rule and adds two things other teachers need:
+
+- **Your own Hall Pass.** The Rosters page has a "Which Hall Pass should your rosters go to?" box. Each teacher pastes the `/exec` link of their own Hall Pass copy and their student email ending. Changing the link discards the previous comparison, and it is refused while an approved batch still needs recovery, so nothing planned against one Hall Pass can be written to another. Existing installs keep the original link until the teacher changes it.
+- **Periods 1 through 8.** Class-to-period mapping, roster previews, and write validation accept Period 7 and Period 8 for schools with longer days.
+
+Status: source checks pass; Windows installer build, packaged self-test, and TheAtlas upgrade from v0.9.28 are pending.
+
+## Previous: v0.9.28 GoClassroom Live Roster Pilot Release Candidate Status
 
 ## Current status
 

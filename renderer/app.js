@@ -300,17 +300,25 @@ function rosterUnresolvedCount(course={}){
   const explicit=Array.isArray(course.unresolved)?course.unresolved.length:0;
   return explicit+Math.max(0,Number(course.discoveredStudentRows||0)-Number(course.students?.length||0)-explicit);
 }
-function rosterPeriodNumber(value){const match=String(value||'').trim().match(/^Period\s+([1-6])(?:\b|\s|$)/i);return match?Number(match[1]):0}
+function rosterPeriodNumber(value){const match=String(value||'').trim().match(/^Period\s+([1-8])(?:\b|\s|$)/i);return match?Number(match[1]):0}
 function rosterMappingOptions(current='',authoritative=[]){
-  const live=[...new Set((Array.isArray(authoritative)?authoritative:[]).map(value=>String(value||'').trim()).filter(value=>/^Period\s+[1-6](?:\b|\s|$)/i.test(value)))];
+  const live=[...new Set((Array.isArray(authoritative)?authoritative:[]).map(value=>String(value||'').trim()).filter(value=>/^Period\s+[1-8](?:\b|\s|$)/i.test(value)))];
   const represented=new Set(live.map(rosterPeriodNumber).filter(Boolean));
-  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6'].filter(value=>!represented.has(rosterPeriodNumber(value)));
+  const standard=['Period 1','Period 2','Period 3','Period 4','Period 5','Period 6','Period 7','Period 8'].filter(value=>!represented.has(rosterPeriodNumber(value)));
   const choices=[...live,...standard];
   if(current&&!choices.includes(current))choices.unshift(current);
   return `<option value="">Choose period…</option>`+choices.map(value=>`<option value="${escapeHtml(value)}" ${value===current?'selected':''}>${escapeHtml(value)}</option>`).join('');
 }
+function renderRosterBridge(bridge){
+  if(!bridge||!$('#rosterBridgeUrl'))return;
+  const urlField=$('#rosterBridgeUrl'),domainField=$('#rosterBridgeDomain');
+  if(document.activeElement!==urlField)urlField.value=bridge.url||'';
+  if(document.activeElement!==domainField)domainField.value=bridge.studentEmailDomain||'';
+  badge($('#rosterBridgeBadge'),bridge.url?'good':'neutral',bridge.url?(bridge.isDefault?'Mr. Auch\'s Hall Pass':'Your Hall Pass'):'Not set');
+}
 function renderRosters(state=latestRosterState||{}){
   latestRosterState=state||{};
+  renderRosterBridge(state.bridge);
   const classes=Array.isArray(state?.snapshot?.classes)?state.snapshot.classes:[];
   const verified=classes.reduce((n,c)=>n+(Array.isArray(c.students)?c.students.length:0),0);
   const unresolved=classes.reduce((n,c)=>n+rosterUnresolvedCount(c),0);
@@ -407,6 +415,11 @@ async function saveRosterMappings(){
   const state=await cati.saveRosterMappings(mappings);renderRosters(state);clearDirty('rosters');toast('Period mappings saved locally. No Hall Pass or Check-In roster was changed.');return state;
 }
 $('#findClassroomRosters').onclick=()=>withBusy($('#findClassroomRosters'),'Reading Classroom…',async()=>{const state=await cati.discoverClassroomRosters();renderRosters(state);clearDirty('rosters');const classes=state?.snapshot?.classes?.length||0,verified=state?.snapshot?.classes?.reduce((n,c)=>n+(c.students?.length||0),0)||0,review=state?.snapshot?.classes?.reduce((n,c)=>n+rosterUnresolvedCount(c),0)||0;toast(`Roster preview saved: ${classes} class${classes===1?'':'es'}, ${verified} verified student identit${verified===1?'y':'ies'}${review?`, ${review} needing review`:''}. Nothing was synced live.`);return state}).catch(e=>toast(e.message,true));
+async function saveRosterBridge(){
+  const state=await cati.saveRosterBridge({url:$('#rosterBridgeUrl').value,studentEmailDomain:$('#rosterBridgeDomain').value});
+  renderRosters(state);toast('Hall Pass link saved. Compare rosters again before applying changes.');return state;
+}
+$('#saveRosterBridge').onclick=()=>withBusy($('#saveRosterBridge'),'Saving…',saveRosterBridge).catch(e=>toast(e.message,true));
 $('#saveRosterMappings').onclick=()=>withBusy($('#saveRosterMappings'),'Saving…',saveRosterMappings).catch(e=>toast(e.message,true));
 $('#compareOperationsRoster').onclick=()=>withBusy($('#compareOperationsRoster'),'Comparing…',compareOperationsRoster).catch(e=>toast(e.message,true));
 $('#applyOperationsRoster').onclick=()=>withBusy($('#applyOperationsRoster'),'Applying…',applyOperationsRoster).catch(e=>{toast(e.message,true);loadRosters();});
@@ -580,7 +593,7 @@ function meaningForProblem(msg){const s=friendlyMessage(msg||'');if(/sign in/i.t
 async function loadHelpSummary(){const d=latestDashboard||await cati.getDashboard();latestDashboard=d;const diag=d.diagnostics||{},block=(diag.currentBlockers||[])[0],failure=diag.unresolvedFailure||null,last=block?.message||failure?.message||'',supportCode=block?.supportCode||failure?.supportCode||'';const code=$('#helpCode');if(!last){$('#helpLastProblem').textContent='No current problems';$('#helpMeaning').textContent='Auto Turn-In is not reporting a current problem.';$('#helpAction').textContent='No action is needed right now.';code.textContent='';code.classList.add('hidden');return}const [title,action]=meaningForProblem(last);$('#helpLastProblem').textContent=title;$('#helpMeaning').textContent=friendlyMessage(last);$('#helpAction').textContent=action;if(supportCode){code.textContent=`Support code: ${supportCode}`;code.classList.remove('hidden')}else{code.textContent='';code.classList.add('hidden')}}
 $('#refreshLogs').onclick=()=>withBusy($('#refreshLogs'),'Refreshing…',async()=>{await loadLogs();await loadHelpSummary()});$('#openLogs').onclick=()=>cati.openLogs();$('#cleanupLogs').onclick=()=>withBusy($('#cleanupLogs'),'Cleaning…',async()=>{const r=await cati.cleanupDiagnostics();toast(`Removed ${r.removed} old support file${r.removed===1?'':'s'}.`);await loadLogs()});
 $('#runDiagnostics').onclick=()=>withBusy($('#runDiagnostics'),'Checking…',async()=>{await Promise.all([checkEnvironment([]),loadDashboard(),loadLogs()]);await loadHelpSummary();toast('App health checked.');});
-$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.28 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${blockerEvidence(x)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
+$('#copyDiagnostics').onclick=async()=>{const d=latestDashboard||await cati.getDashboard(),sh=d.scheduler||{},diag=d.diagnostics||{},manualOnly=String(d.machine?.role||'primary')==='manual';const text=[`GoClassroom preview v0.9.29 (Classroom Auto Turn-In compatibility identity)`,`This computer: ${d.machine?.displayName||'This PC'} (${machineRoleLabel(d.machine?.role||'primary')})`,`Lesson-plan Classroom: ${d.config?.courseDisplayName||(d.config?.courseUrl?'Selected':'Not selected')}`,`Automatic turn-in: ${d.config?.dryRun?'Off':'On'}`,`Automatic schedule: ${manualOnly&&!sh.exists?'Manual only':(d.config?.dryRun&&!sh.exists?'Not scheduled — automatic turn-in off':(sh.healthy?'Ready':'Needs attention'))}`,`Next check: ${manualOnly&&!sh.exists?'None — manual only':(d.config?.dryRun&&!sh.exists?'None — automatic turn-in off':(sh.nextRun?fmtDate(sh.nextRun):'None scheduled'))}`,`Last check: ${diag.lastOutcome?outcomeLabel(diag.lastOutcome.status):'No checks yet'}${diag.lastOutcome?.supportCode?` (${diag.lastOutcome.supportCode})`:''}`,`Current issue: ${((diag.currentBlockers||[]).map(x=>`${friendlyMessage(x.message||x.type)}${blockerEvidence(x)}${x.supportCode?` (${x.supportCode})`:''}`).join(' | ')||(diag.unresolvedFailure?`${friendlyMessage(diag.unresolvedFailure.message)}${diag.unresolvedFailure.supportCode?` (${diag.unresolvedFailure.supportCode})`:''}`:'None'))}`].join('\n');try{await navigator.clipboard.writeText(text);toast('Support summary copied.')}catch{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Support summary copied.')}};
 
 cati.onAiDraftReady(d=>{toast(`Week ${d.week} AI lesson-plan draft is ready for review.`);loadDashboard();if($('#ai')?.classList.contains('active'))loadAi()});
 

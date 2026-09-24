@@ -1,7 +1,7 @@
 const crypto=require('crypto');
 const {lastPayload}=require('../engine/protocol');
 const {normalizeRosterSnapshot,diffRosterSnapshots,normalizeMappings,mappingConflicts,buildOperationsRosterCandidate,normalizeOperationsRoster,planOperationsRosterSync}=require('../engine/classroom-roster');
-const {validateWriteRequest,validateRecoveryDecision,selectRecoverySafeWriteBatch}=require('../engine/operations-roster-bridge');
+const {validateBridge,validateWriteRequest,validateRecoveryDecision,selectRecoverySafeWriteBatch}=require('../engine/operations-roster-bridge');
 
 const DEFAULT_OPERATIONS_BRIDGE={
   schemaVersion:1,
@@ -17,7 +17,7 @@ function emptyOperationsState(){return {schemaVersion:1,lastReadAt:'',serverNow:
 function emptyPendingWrite(){return {schemaVersion:1,status:'NONE',createdAt:'',request:null}}
 function emptyLastWrite(){return {schemaVersion:1,appliedAt:'',result:null}}
 function normalizeBridgeSettings(value={}){
-  const url=String(value.url||DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim(),studentEmailDomain=String(value.studentEmailDomain||DEFAULT_OPERATIONS_BRIDGE.studentEmailDomain||'').trim().toLowerCase();
+  const url=String(value.url||DEFAULT_OPERATIONS_BRIDGE.url).trim(),contract=String(value.contract||DEFAULT_OPERATIONS_BRIDGE.contract).trim(),writeContract=String(value.writeContract||DEFAULT_OPERATIONS_BRIDGE.writeContract).trim(),studentEmailDomain=String((Object.prototype.hasOwnProperty.call(value||{},'studentEmailDomain')?value.studentEmailDomain:DEFAULT_OPERATIONS_BRIDGE.studentEmailDomain)||'').trim().toLowerCase();
   return {schemaVersion:1,url,contract,writeContract,studentEmailDomain};
 }
 function encodeBridgeArg(value){return Buffer.from(JSON.stringify(value),'utf8').toString('base64url')}
@@ -55,11 +55,29 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
     if(conflicts.length)throw new Error(`Each school period can be mapped to only one Classroom. ${conflicts.map(x=>x.classPeriod).join(', ')} ${conflicts.length===1?'is':'are'} mapped more than once.`);
     invalidateOperationsComparison();writeJson('roster-mappings.json',mappings);return publicState();
   }
+  function publicBridge(){const bridge=loadBridgeSettings();return {url:bridge.url,studentEmailDomain:bridge.studentEmailDomain,isDefault:bridge.url===DEFAULT_OPERATIONS_BRIDGE.url}}
+  // Each teacher's GoClassroom talks to their own Hall Pass copy. Switching
+  // targets is refused while an approved batch still needs recovery, and it
+  // discards the old comparison so nothing planned against one Hall Pass can
+  // be written to another.
+  function saveBridgeSettings(value={}){
+    ensureAutomationIdle();assertNoPendingWrite();
+    const rawUrl=String(value.url||'').trim();
+    let parsed=null;try{parsed=new URL(rawUrl)}catch{parsed=null}
+    if(!parsed||!/\/exec$/.test(parsed.pathname))throw new Error('Paste the Hall Pass web app link that ends in /exec. Nothing was changed.');
+    parsed.search='';parsed.hash='';
+    const studentEmailDomain=String(value.studentEmailDomain||'').trim().toLowerCase().replace(/^@/,'');
+    const bridge=validateBridge({url:parsed.toString(),contract:DEFAULT_OPERATIONS_BRIDGE.contract,writeContract:DEFAULT_OPERATIONS_BRIDGE.writeContract,studentEmailDomain});
+    invalidateOperationsComparison();
+    writeJson('roster-bridge.json',{schemaVersion:1,...bridge});
+    appLog('Hall Pass link updated for roster sync. Compare rosters again before applying anything.');
+    return publicState();
+  }
   function publicState(){
     const state=loadState(),mappings=loadMappings(),preview=buildOperationsRosterCandidate(state.snapshot,mappings),operations=loadOperationsState(),pending=loadPendingWrite(),lastWrite=loadLastWrite();
     const syncPlan=operations.lastReadAt?planOperationsRosterSync(preview,operations.roster):null;
     const classPeriods=[...new Set(operations.roster.map(row=>String(row.classPeriod||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    return {...state,mappings,preview,operations:{lastReadAt:operations.lastReadAt,serverNow:operations.serverNow,count:operations.roster.length,revision:operations.revision,writeReady:Boolean(operations.revision&&operations.writeContract),classPeriods},syncPlan,pendingWrite:publicPending(pending),lastWrite:{appliedAt:lastWrite.appliedAt||'',counts:lastWrite.result?.counts||null}};
+    return {...state,mappings,preview,operations:{lastReadAt:operations.lastReadAt,serverNow:operations.serverNow,count:operations.roster.length,revision:operations.revision,writeReady:Boolean(operations.revision&&operations.writeContract),classPeriods},syncPlan,bridge:publicBridge(),pendingWrite:publicPending(pending),lastWrite:{appliedAt:lastWrite.appliedAt||'',counts:lastWrite.result?.counts||null}};
   }
   async function discover(){
     ensureAutomationIdle();assertNoPendingWrite();
@@ -196,6 +214,6 @@ function createRosterService({localData,secureData,ensureAutomationIdle,runNodeS
       return {result:payload,state:publicState(),refreshNeeded:true,verified:false,verificationNeeded:true};
     }
   }
-  return {loadState,loadMappings,loadBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
+  return {loadState,loadMappings,loadBridgeSettings,saveBridgeSettings,loadOperationsState,loadPendingWrite,saveMappings,publicState,discover,readOperationsRoster,validateSafeChanges,createWriteRequest,applySafeChanges};
 }
 module.exports={DEFAULT_OPERATIONS_BRIDGE,ROSTER_WRITE_CONFIRMATION,ROSTER_SOURCE_MAX_AGE_MS,normalizeBridgeSettings,createRosterService};

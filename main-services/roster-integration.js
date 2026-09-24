@@ -14,7 +14,8 @@ function createRosterIntegration({safeStorage,localData,ensureAutomationIdle,com
     readOperationsRoster:()=>getService().readOperationsRoster(),
     validateSafeChanges:()=>getService().validateSafeChanges(),
     applySafeChanges:(reviewedRequest,recoveryDecision)=>getService().applySafeChanges(reviewedRequest||null,recoveryDecision||null),
-    saveMappings:value=>getService().saveMappings(value||{})
+    saveMappings:value=>getService().saveMappings(value||{}),
+    saveBridgeSettings:value=>getService().saveBridgeSettings(value||{})
   };
 }
 module.exports={createRosterIntegration};
