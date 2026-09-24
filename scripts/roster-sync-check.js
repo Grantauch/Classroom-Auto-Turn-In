@@ -43,6 +43,12 @@ assert.ok(genericPlan.held.some(row=>row.reason==='CLASS_PERIOD_LABEL_MISMATCH')
 const discoverySource=fs.readFileSync(path.join(__dirname,'../engine/discover-classroom-rosters.js'),'utf8');
 assert.ok(discoverySource.includes('ROSTER_END_STABILITY_CONFIRMATIONS')&&discoverySource.includes('stableConfirmations>=ROSTER_END_STABILITY_CONFIRMATIONS'),'Roster discovery must require stable end evidence before declaring traversal complete.');
 assert.ok(!discoverySource.includes('moved.after===moved.before'),'A stalled scroll position before the known maximum must not be treated as completion.');
+assert.ok(discoverySource.includes('https://classroom.google.com/r/${encodeURIComponent(course.courseId)}/sort-name'),'Roster discovery must use the current Google Classroom People route.');
+assert.ok(!discoverySource.includes('https://classroom.google.com/c/${encodeURIComponent(course.courseId)}/r'),'Roster discovery must not use the retired People route.');
+assert.ok(discoverySource.includes('student-options-email')&&discoverySource.includes('[role="menuitem"][aria-label^="Email "]'),'Roster discovery must read only verified student email evidence from the read-only Options menu.');
+assert.ok(discoverySource.includes('Google Classroom did not open the expected People page'),'Unexpected People-page navigation must fail closed instead of producing an empty roster.');
+const {peopleCourseName}=require('../engine/discover-classroom-rosters');
+assert.equal(peopleCourseName('People in Hidden History 6th Hour - Classroom','H'),'Hidden History 6th Hour');
 const dueCollectorSource=String(collectAssignmentDueEvidenceDom);
 assert.ok(!dueCollectorSource.includes("div,span,p"),'Assignment due-date fallback must not scan ordinary assignment body text.');
 assert.equal(typeof collectClassroomPeopleDom,'function');const domSource=String(collectClassroomPeopleDom);assert.ok(/mailto:/.test(domSource));assert.ok(/Students\|Classmates/.test(domSource));assert.ok(!/firstName|lastName|guess/i.test(domSource),'Roster discovery must not guess student email addresses.');
