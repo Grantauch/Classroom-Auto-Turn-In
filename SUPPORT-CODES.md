@@ -138,6 +138,14 @@ These codes are used only if the normal typed main-process error cannot cross th
 | `AT-ROS-105` | `roster:read-operations` | GoClassroom could not safely read the current Hall Pass / Check-In roster. Nothing was synchronized. |
 | `AT-ROS-106` | `roster:apply-safe` | GoClassroom could not verify the approved roster update. Retry the same approved batch before changing the roster preview. |
 | `AT-ROS-107` | `roster:save-bridge` | The Hall Pass link could not be saved. No Hall Pass or Check-In roster was changed. |
+| `AT-ROS-108` | any roster action | GoClassroom opened Google Classroom but found no classes that you teach. Check the browser is signed in to your school account, not a personal Gmail. |
+| `AT-ROS-109` | any roster action | Google Classroom or Hall Pass took too long to load. Check the internet connection and try again. |
+| `AT-ROS-110` | any roster action | Sign in to your school Google account in the browser window GoClassroom opens; it continues by itself. |
+| `AT-ROS-111` | any roster action | The Hall Pass link has not been saved yet. Paste the student link at the top of the Rosters page and click Save Hall Pass link. |
+| `AT-ROS-112` | any roster action | The Hall Pass says this Google account is not its teacher. Sign in with the account that made the Hall Pass copy, or check the link. |
+| `AT-ROS-113` | any roster action | The Hall Pass is newer than this GoClassroom. Install the newest GoClassroom from the Hall Pass setup page. |
+| `AT-ROS-114` | any roster action | The Hall Pass teacher page did not open. Open the Hall Pass link in a browser, click Allow if Google asks, then try again. |
+| `AT-ROS-115` | any roster action | That is not a Hall Pass link. Copy the student link from the Hall Pass setup window; it ends in /exec. |
 | `AT-SUP-198` | `diagnostics:cleanup` | Old support files could not be cleaned up. This does not affect automatic turn-in. |
 | `AT-SUP-196` | `logs:open` | Windows could not open the Auto Turn-In support folder. |
 | `AT-PC-105` | `machine:get` | Auto Turn-In could not read this computer's local role. Restart the app and try again. |

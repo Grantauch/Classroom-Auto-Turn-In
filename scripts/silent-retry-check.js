@@ -50,5 +50,5 @@ assert(main.includes('No teacher notification is needed yet'),'transient first f
 assert(!html.includes('backup checks'),'teacher UI still describes unconditional backup checks');
 assert(!ui.includes('backup checks'),'renderer still describes unconditional backup checks');
 assert(html.includes('How automatic retries work'),'teacher UI does not explain true retry behavior');
-assert(html.includes('v0.9.29')&&ui.includes('v0.9.29'),'v0.9.29 UI version labels are missing');
-console.log('v0.9.29 silent-operation and conditional-retry checks passed.');
+assert(html.includes('v0.9.30')&&ui.includes('v0.9.30'),'v0.9.30 UI version labels are missing');
+console.log('v0.9.30 silent-operation and conditional-retry checks passed.');

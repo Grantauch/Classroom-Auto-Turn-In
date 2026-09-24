@@ -67,7 +67,19 @@ const cases=[
   ['This computer is set to manual only.','schedule:install','AT-SCH-107'],
   ['anything unexpected','machine:save','AT-PC-106'],
   ['anything unexpected','setup:export-portable','AT-SET-108'],
-  ['That file is not a valid Auto Turn-In setup file.','setup:import-portable','AT-SET-109']
+  ['That file is not a valid Auto Turn-In setup file.','setup:import-portable','AT-SET-109'],
+  ['Google sign-in did not finish in time for Find my rosters. Try again and sign in to your school Google account in the window that opens.','roster:discover','AT-ROS-110'],
+  ['The Google window was closed before sign-in finished.','roster:discover','AT-ROS-110'],
+  ['Sign in to the school Google account in GoClassroom before comparing rosters.','roster:read-operations','AT-ROS-110'],
+  ['GoClassroom opened Google Classroom but found no classes that you teach.','roster:discover','AT-ROS-108'],
+  ['page.waitFor: Timeout 25000ms exceeded.','roster:discover','AT-ROS-109'],
+  ['discover-classroom-rosters.js took too long to finish and was stopped safely.','roster:discover','AT-ROS-109'],
+  ['Paste your own Hall Pass link at the top of the Rosters page first. Nothing was synchronized.','roster:read-operations','AT-ROS-111'],
+  ['Paste the Hall Pass web app link that ends in /exec. Nothing was changed.','roster:save-bridge','AT-ROS-115'],
+  ['This view is limited to the teacher account. Sign in as the teacher and reload.','roster:read-operations','AT-ROS-112'],
+  ['Update GoClassroom before reading this roster. The roster sync contract has changed.','roster:read-operations','AT-ROS-113'],
+  ['The Hall Pass / Check-In application bridge did not become ready. Nothing was synchronized.','roster:read-operations','AT-ROS-114'],
+  ['something nobody expected','roster:discover','AT-ROS-102']
 ];
 for(const [raw,op,expected] of cases){
   const got=publicError(raw,op);

@@ -1,4 +1,12 @@
-# v0.9.29 GoClassroom Multi-Teacher Roster Release Candidate Status
+# v0.9.30 GoClassroom Multi-Teacher Roster Release Candidate Status
+
+v0.9.30 fixes Find my rosters on a brand-new computer and makes roster problems say exactly what is wrong:
+
+- **Signs in instead of failing.** If GoClassroom's browser is not signed in to Google yet, Find my rosters now waits in the open window for the teacher to sign in (up to five minutes) and then continues by itself.
+- **Finds taught classes more reliably.** If the Classroom "Teaching" list is not on the page, GoClassroom opens the side menu, and as a last resort checks each class's People page for teacher-only controls before using it.
+- **Specific roster support codes.** AT-ROS-108 (no classes you teach), AT-ROS-109 (took too long), AT-ROS-110 (sign in), AT-ROS-111 (Hall Pass link not saved yet), AT-ROS-112 (wrong Google account for this Hall Pass), AT-ROS-113 (GoClassroom older than Hall Pass), AT-ROS-114 (Hall Pass page did not open), and AT-ROS-115 (not a Hall Pass link), each with the one step to fix it.
+
+## Previous: v0.9.29
 
 v0.9.29 keeps every v0.9.28 roster-write safety rule and adds two things other teachers need:
 
