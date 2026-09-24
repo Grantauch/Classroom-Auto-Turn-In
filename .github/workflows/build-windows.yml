@@ -77,12 +77,13 @@ jobs:
             dist/SHA256SUMS.txt
           if-no-files-found: error
 
-  # A version tag also publishes the tested installer as a GitHub Release, so
+  # A version tag, or a manual run of this workflow on main, also publishes the
+  # tested installer as a GitHub Release (tagged v<package version>), so
   # teachers download it from one permanent link without a GitHub account:
   # https://github.com/Grantauch/Classroom-Auto-Turn-In/releases/latest/download/GoClassroom-Setup.exe
   publish-release:
     needs: build-windows
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -94,16 +95,21 @@ jobs:
           path: dist
 
       - name: Add a version-free copy for the permanent link
+        id: installer
         run: |
           set -euo pipefail
           installer=$(ls dist/Classroom-Auto-Turn-In-Setup-*.exe | head -n 1)
+          version=$(basename "$installer" | sed -E 's/^Classroom-Auto-Turn-In-Setup-([0-9][0-9.]*[0-9])-.*$/\1/')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           cp "$installer" dist/GoClassroom-Setup.exe
           ls -l dist
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: GoClassroom ${{ github.ref_name }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', steps.installer.outputs.version) }}
+          target_commitish: ${{ github.sha }}
+          name: GoClassroom v${{ steps.installer.outputs.version }}
           body: |
             Windows installer for GoClassroom. Download **GoClassroom-Setup.exe** and run it.
             Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info → Run anyway**.
