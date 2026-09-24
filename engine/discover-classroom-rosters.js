@@ -2,8 +2,10 @@ const {loadConfig,log}=require('./lib');
 const {assertGoogleSession}=require('./classroom-actions');
 const {emit,emitError}=require('./protocol');
 const {clean,validCourseId,collectClassroomPeopleDom,normalizeRosterSnapshot}=require('./classroom-roster');
+const {openClassroomHome,revealTeachingMenu,collectAllClassroomLinksDom,peoplePageShowsTeacher}=require('./classroom-home');
 
 const MAX_CLASSROOMS=40;
+const NO_TEACHING_CLASSES='GoClassroom opened Google Classroom but found no classes that you teach.';
 const ROSTER_END_STABILITY_CONFIRMATIONS=4;
 const ROSTER_END_STABILITY_WAIT_MS=400;
 
@@ -79,6 +81,9 @@ async function collectCourseRoster(page,course){
   }
   await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:25000});
   await page.waitForTimeout(1000);
+  // A class found without the "Teaching" heading is used only if its People
+  // page shows controls that only the class's teacher sees.
+  if(course.needsTeacherCheck&&!await peoplePageShowsTeacher(page))return null;
   const courseDisplayName=peopleCourseName(await page.title(),course.courseDisplayName);
   const capture=async()=>{
     const snapshot=await page.evaluate(collectClassroomPeopleDom,course.courseId).catch(()=>null);
@@ -142,19 +147,33 @@ async function main(){
   try{
     const page=context.pages()[0]||await context.newPage();
     emit('status',{message:'Opening Google Classroom to find your classes and student rosters.'});
-    await page.goto('https://classroom.google.com/h',{waitUntil:'domcontentloaded',timeout:45000});
-    await assertGoogleSession(page,'Classroom roster discovery');
-    await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:20000});
+    await openClassroomHome(page,{emit,where:'Find my rosters'});
     await page.waitForTimeout(1200);
-    const discovered=(await page.evaluate(collectTeachingClassroomsDom).catch(()=>[]))||[];
-    const courses=discovered.map(item=>({courseId:validCourseId(item.courseId),courseDisplayName:clean(item.courseDisplayName,500)})).filter(x=>x.courseId).slice(0,MAX_CLASSROOMS);
-    if(!courses.length)throw new Error('GoClassroom could not read the classes you teach from Google Classroom.');
+    let discovered=(await page.evaluate(collectTeachingClassroomsDom).catch(()=>[]))||[],needsTeacherCheck=false;
+    if(!discovered.length){
+      await revealTeachingMenu(page);
+      discovered=(await page.evaluate(collectTeachingClassroomsDom).catch(()=>[]))||[];
+    }
+    if(!discovered.length){
+      discovered=(await page.evaluate(collectAllClassroomLinksDom).catch(()=>[]))||[];
+      needsTeacherCheck=true;
+      log(`Roster discovery could not find the Teaching list; checking ${discovered.length} Classroom link(s) for teacher-only controls instead.`);
+    }
+    const courses=discovered.map(item=>({courseId:validCourseId(item.courseId),courseDisplayName:clean(item.courseDisplayName,500),needsTeacherCheck})).filter(x=>x.courseId).slice(0,MAX_CLASSROOMS);
+    if(!courses.length)throw new Error(NO_TEACHING_CLASSES);
     const classes=[];
     for(let i=0;i<courses.length;i++){
       const course=courses[i];emit('status',{message:`Reading roster ${i+1} of ${courses.length}: ${course.courseDisplayName}.`});
-      try{classes.push(await collectCourseRoster(page,course))}
-      catch(error){classes.push({...course,students:[],discoveredStudentRows:0,studentsHeadingFound:false,scrollComplete:false,discoveryError:clean(error?.message||error,500)});log(`Roster discovery for ${course.courseDisplayName} stopped safely: ${clean(error?.message||error,500)}`)}
+      try{
+        const roster=await collectCourseRoster(page,course);
+        if(roster){const {needsTeacherCheck:_ignored,...kept}=roster;classes.push(kept)}
+        else log(`Roster discovery skipped ${course.courseDisplayName}: you are not a teacher of that class.`);
+      }
+      catch(error){
+        if(course.needsTeacherCheck){log(`Roster discovery skipped ${course.courseDisplayName}: its People page could not be checked.`);continue;}
+        const {needsTeacherCheck:_ignored,...base}=course;classes.push({...base,students:[],discoveredStudentRows:0,studentsHeadingFound:false,scrollComplete:false,discoveryError:clean(error?.message||error,500)});log(`Roster discovery for ${course.courseDisplayName} stopped safely: ${clean(error?.message||error,500)}`)}
     }
+    if(!classes.length)throw new Error(NO_TEACHING_CLASSES);
     const snapshot=normalizeRosterSnapshot({source:'google-classroom-ui',discoveredAt:new Date().toISOString(),classes});
     emit('classroom-rosters',{snapshot,issues:classes.filter(c=>c.discoveryError).map(c=>({courseId:c.courseId,courseDisplayName:c.courseDisplayName,message:c.discoveryError}))});
   }finally{await context.close().catch(()=>{})}

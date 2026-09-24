@@ -46,6 +46,28 @@ const FALLBACK={
   'setup:import-portable':['AT-SET-109','Auto Turn-In could not use that setup file. Nothing unsafe was enabled.']
 };
 
+// Roster problems, each with its own code and the one thing to do about it.
+// These texts never include student names or emails.
+function classifyRoster(s){
+  if(/limited to the teacher account/.test(s))
+    return ['AT-ROS-112','Your Hall Pass says this Google account is not its teacher. Sign in to the GoClassroom browser window with the same school account that made your Hall Pass copy, or check that the Hall Pass link is yours. No roster was changed.'];
+  if(/sign[ -]?in|accounts\.google\.com|session expired|choose an account/.test(s))
+    return ['AT-ROS-110','GoClassroom needs you to sign in to your school Google account. Click the button again. When the browser window opens, sign in there and GoClassroom keeps going by itself. No roster was changed.'];
+  if(/found no classes that you teach|could not read the classes you teach/.test(s))
+    return ['AT-ROS-108','GoClassroom opened Google Classroom but found no classes that you teach. Make sure the browser window is signed in to your school account (not a personal Gmail) and that you are a teacher in at least one class, then click Find my rosters again.'];
+  if(/paste your own hall pass link/.test(s))
+    return ['AT-ROS-111','Paste your Hall Pass student link into the box at the top of the Rosters page and click Save Hall Pass link first. No roster was changed.'];
+  if(/web app link that ends in \/exec|bridge url is not valid/.test(s))
+    return ['AT-ROS-115','That is not a Hall Pass link. Copy the student link from your Hall Pass setup window. It starts with https://script.google.com and ends in /exec.'];
+  if(/update goclassroom before/.test(s))
+    return ['AT-ROS-113','Your Hall Pass is newer than this copy of GoClassroom. Download the newest GoClassroom from the Hall Pass setup page, install it, and try again. No roster was changed.'];
+  if(/application bridge did not become ready|more than one apps script application frame|bridge was ambiguous|returned an unexpected/.test(s))
+    return ['AT-ROS-114','GoClassroom could not open your Hall Pass teacher page. Open your Hall Pass link in a browser and make sure it loads (if Google asks, click Allow), then try again. No roster was changed.'];
+  if(/took too long|timeout [0-9]+ms exceeded|timed out|net::err_/.test(s))
+    return ['AT-ROS-109','Google Classroom or Hall Pass took too long to load, so GoClassroom stopped safely. Check the internet connection, then try again. No roster was changed.'];
+  return null;
+}
+
 function classify(err,operation=''){
   const raw=text(err),s=raw.toLowerCase(),week=weekOf(raw),w=week?`Week ${week}`:'This week';
   if(/failed to get ['\"]?localappdata|failed to get ['\"]?userdata|user data path|localappdata/.test(s))
@@ -58,6 +80,10 @@ function classify(err,operation=''){
     return ['AT-ROS-104','Windows could not securely open or save the local roster preview. No Hall Pass or Check-In roster was changed. Restart GoClassroom; if it repeats, run roster discovery again on this Windows account.'];
   if(operation==='roster:apply-safe'&&/previously approved roster batch|same approved batch|approved roster write|roster changed after goclassroom compared|compare rosters again/.test(s))
     return ['AT-ROS-106','The approved roster update could not be verified safely. If GoClassroom shows a pending batch, retry that same batch before scanning, remapping, or comparing again.'];
+  if(/^roster:/.test(operation)){
+    const roster=classifyRoster(s);
+    if(roster)return roster;
+  }
   if(/^ai:/.test(operation)&&/windows secure storage|(?:api|private) key.*decrypt|(?:api|private) key.*(?:read|opened?) safely|saved .*private key.*could not be (?:opened|decrypted)|saved ai connection file/.test(s))
     return ['AT-AI-201','Windows could not safely open a saved AI connection. Normal Auto Turn-In is unaffected. Remove that connection and enter its private key again if you want to use AI recovery.'];
   if(/^ai:/.test(operation)&&/ai returned|draft week mismatch|did not contain any course plans|lesson-plan draft.*could not be read safely|returned no lesson-plan text/.test(s)&&/ai|openai|groq|gemini|openrouter|draft/.test(s))

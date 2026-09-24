@@ -1,6 +1,6 @@
 const {launchTeacherContext}=require('./browser');
 const {loadConfig,log}=require('./lib');
-const {assertGoogleSession}=require('./classroom-actions');
+const {openClassroomHome}=require('./classroom-home');
 const {clean}=require('./classroom-grading');
 const {readCourseAssignments}=require('./classwork-assignments');
 const {emit,emitError}=require('./protocol');
@@ -45,9 +45,7 @@ function collectTeachingClassroomsDom(){
   try{
     const page=context.pages()[0]||await context.newPage();
     emit('status',{message:'Opening Google Classroom to find the classes you teach.'});
-    await page.goto('https://classroom.google.com/h',{waitUntil:'domcontentloaded',timeout:45000});
-    await assertGoogleSession(page,'Classroom grading');
-    await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:20000});
+    await openClassroomHome(page,{emit,where:'Find my classes'});
     await page.waitForTimeout(1200);
     const discovered=(await page.evaluate(collectTeachingClassroomsDom).catch(()=>[]))||[];
     const classrooms=discovered
