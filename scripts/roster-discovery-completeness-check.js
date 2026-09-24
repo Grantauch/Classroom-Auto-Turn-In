@@ -6,7 +6,8 @@ function makePage({batchAtMs=Infinity,expandScroll=true,scrollFailureAt=0,captur
   let now=0,scrollTop=0,scrollCalls=0,captureCalls=0;
   const page={
     goto:async()=>{},
-    url:()=> 'https://classroom.google.com/c/COURSE1/r',
+    url:()=> 'https://classroom.google.com/r/COURSE1/sort-name',
+    title:async()=> 'People in History - Classroom',
     locator:()=>({first:()=>({waitFor:async()=>{}})}),
     waitForTimeout:async ms=>{now+=ms;},
     evaluate:async fn=>{

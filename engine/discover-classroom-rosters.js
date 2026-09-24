@@ -35,13 +35,51 @@ function scrollRosterPageDom(){
   const before=root.scrollTop,max=Math.max(0,root.scrollHeight-root.clientHeight);root.scrollTop=Math.min(max,before+Math.max(500,root.clientHeight*0.85));return {before,after:root.scrollTop,max};
 }
 
+function peopleCourseName(title,fallback){
+  const match=String(title||'').match(/^People in (.+?) - Classroom$/i);
+  return clean(match?.[1]||fallback,500);
+}
+
+async function collectStudentMenuIdentities(page){
+  const rows=page.locator('[role="listitem"][data-student-id][data-by-student="true"]');
+  const count=Math.min(await rows.count(),500),out=[];
+  for(let i=0;i<count;i++){
+    const row=rows.nth(i),sourceStudentId=clean(await row.getAttribute('data-student-id').catch(()=>''),300);
+    let name=clean(await row.locator('input[type="checkbox"][aria-label]').first().getAttribute('aria-label').catch(()=>''),160);
+    const options=row.locator('button[aria-label^="Options for student "]').first();
+    if(!name){
+      const optionLabel=clean(await options.getAttribute('aria-label').catch(()=>''),220);
+      name=clean(optionLabel.replace(/^Options for student\s+/i,''),160);
+    }
+    let email='';
+    if(await options.count()){
+      try{
+        await options.click({timeout:3000});
+        const emailLabel=await page.locator('[role="menu"][aria-label^="Options for student "] [role="menuitem"][aria-label^="Email "]').first().getAttribute('aria-label',{timeout:2500}).catch(()=>'');
+        const emailMatch=String(emailLabel||'').match(/^Email\s+([^\s@]+@[^\s@]+\.[^\s@]+)\s*$/i);
+        if(emailMatch)email=clean(emailMatch[1],320).toLowerCase();
+      }finally{
+        await page.keyboard.press('Escape').catch(()=>{});
+        await page.waitForTimeout(40);
+      }
+    }
+    if(name||sourceStudentId)out.push({email,name,sourceStudentId,evidence:[email?'student-options-email':'student-row']});
+  }
+  return out;
+}
+
 async function collectCourseRoster(page,course){
   const byEmail=new Map();let maxRows=0,headingFound=false,scrollComplete=false,evaluationFailed=false;
-  const url=`https://classroom.google.com/c/${encodeURIComponent(course.courseId)}/r`;
+  const url=`https://classroom.google.com/r/${encodeURIComponent(course.courseId)}/sort-name`;
   await page.goto(url,{waitUntil:'domcontentloaded',timeout:45000});
   await assertGoogleSession(page,`People for ${course.courseDisplayName}`);
-  await page.locator('main,[role="main"]') .first().waitFor({state:'visible',timeout:25000}).catch(()=>{});
+  const actualUrl=new URL(page.url());
+  if(actualUrl.hostname!=='classroom.google.com'||!new RegExp(`^/r/${course.courseId}/`).test(actualUrl.pathname)||/404/i.test(await page.title())){
+    throw new Error('Google Classroom did not open the expected People page. Nothing was synchronized.');
+  }
+  await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:25000});
   await page.waitForTimeout(1000);
+  const courseDisplayName=peopleCourseName(await page.title(),course.courseDisplayName);
   const capture=async()=>{
     const snapshot=await page.evaluate(collectClassroomPeopleDom,course.courseId).catch(()=>null);
     if(!snapshot){evaluationFailed=true;return false;}
@@ -68,12 +106,34 @@ async function collectCourseRoster(page,course){
     if(evaluationFailed)break;
     if(stableConfirmations>=ROSTER_END_STABILITY_CONFIRMATIONS){scrollComplete=true;break;}
   }
+  const unresolved=[],resolvedStudentIds=new Set([...byEmail.values()].map(row=>String(row?.sourceStudentId||'')).filter(Boolean));
+  if(headingFound&&!evaluationFailed&&byEmail.size<maxRows){
+    const menuIdentities=await collectStudentMenuIdentities(page).catch(error=>{
+      evaluationFailed=true;
+      log(`Roster discovery could not read verified student email actions in ${courseDisplayName}: ${clean(error?.message||error,300)}`);
+      return [];
+    });
+    if(menuIdentities.length)maxRows=menuIdentities.length;
+    for(const row of menuIdentities){
+      if(row.email){
+        if(row.sourceStudentId){
+          for(const [existingEmail,existing] of byEmail){
+            if(String(existing?.sourceStudentId||'')===row.sourceStudentId&&existingEmail!==row.email)byEmail.delete(existingEmail);
+          }
+          resolvedStudentIds.add(row.sourceStudentId);
+        }
+        byEmail.set(row.email,row);
+      }else if((row.name||row.sourceStudentId)&&!resolvedStudentIds.has(row.sourceStudentId)){
+        unresolved.push(row);
+      }
+    }
+  }
   const students=[...byEmail.values()];
-  if(!headingFound)log(`Roster discovery could not confirm the Students heading in ${course.courseDisplayName}; no guessed roster changes will be allowed.`);
-  if(evaluationFailed)log(`Roster discovery could not confirm a complete scroll scan in ${course.courseDisplayName}; this class is not eligible to authorize removals.`);
-  else if(!scrollComplete)log(`Roster discovery reached its traversal limit in ${course.courseDisplayName}; this class is not eligible to authorize removals.`);
-  log(`Roster discovery read ${students.length} verified email identit${students.length===1?'y':'ies'} in ${course.courseDisplayName}${maxRows>students.length?` with at least ${maxRows-students.length} row(s) still needing identity review`:''}.`);
-  return {...course,students,discoveredStudentRows:maxRows,studentsHeadingFound:headingFound,scrollComplete};
+  if(!headingFound)log(`Roster discovery could not confirm the Students heading in ${courseDisplayName}; no guessed roster changes will be allowed.`);
+  if(evaluationFailed)log(`Roster discovery could not confirm a complete roster scan in ${courseDisplayName}; this class is not eligible to authorize removals.`);
+  else if(!scrollComplete)log(`Roster discovery reached its traversal limit in ${courseDisplayName}; this class is not eligible to authorize removals.`);
+  log(`Roster discovery read ${students.length} verified email identit${students.length===1?'y':'ies'} in ${courseDisplayName}${maxRows>students.length?` with at least ${maxRows-students.length} row(s) still needing identity review`:''}.`);
+  return {...course,courseDisplayName,students,unresolved,discoveredStudentRows:maxRows,studentsHeadingFound:headingFound,scrollComplete:scrollComplete&&!evaluationFailed};
 }
 
 async function main(){
@@ -102,4 +162,4 @@ async function main(){
 
 if(require.main===module)main().catch(error=>{emitError(error);process.exit(1)});
 
-module.exports={collectTeachingClassroomsDom,scrollRosterPageDom,collectCourseRoster};
+module.exports={collectTeachingClassroomsDom,scrollRosterPageDom,peopleCourseName,collectStudentMenuIdentities,collectCourseRoster};
