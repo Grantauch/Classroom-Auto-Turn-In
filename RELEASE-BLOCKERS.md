@@ -1,6 +1,6 @@
-# v0.9.26 GoClassroom Release Blockers
+# v0.9.28 GoClassroom Release Blockers
 
-v0.9.26 is a release candidate. Source/offline evidence, Windows package evidence, live Classroom evidence, and live Hall Pass / Check-In roster-sync evidence are tracked separately below.
+v0.9.28 is a controlled pilot release candidate. Source/offline evidence, Windows package evidence, live Classroom evidence, and live Hall Pass / Check-In roster-sync evidence are tracked separately below.
 
 ## Completed source/offline gates
 
@@ -25,20 +25,20 @@ v0.9.26 is a release candidate. Source/offline evidence, Windows package evidenc
 
 ## Windows distribution gate
 
-All items below must pass before calling a v0.9.26 Setup EXE verified:
+All items below must pass before calling a v0.9.28 Setup EXE verified:
 
 - [ ] `npm ci --no-audit --no-fund` from the committed lockfile on the Windows release-builder environment.
 - [ ] `npm run check:deep` with PowerShell available.
 - [ ] Chromium DOM fixtures and real-Chrome browser smoke checks.
 - [ ] Expanded offline Classroom/Drive end-to-end simulator.
 - [ ] Build unsigned NSIS installer with the pinned toolchain.
-- [ ] Packaged-app self-test with isolated user data and v0.9.26 resources.
-- [ ] Backed-up in-place upgrade from the existing teacher installation to v0.9.26; verify teacher data and production scheduled-task definition remain unchanged.
+- [ ] Packaged-app self-test with isolated user data and v0.9.28 resources.
+- [ ] Backed-up in-place upgrade from the existing teacher installation to v0.9.28; verify teacher data and production scheduled-task definition remain unchanged.
 - [ ] Microsoft Defender targeted installer scan: no threats found.
 - [ ] Clean current-user install/uninstall/data-preserving reinstall validation, followed by a second packaged-browser self-test.
-- [ ] Release hashes generated for every finished downloadable artifact in the v0.9.26 delivery manifest.
+- [ ] Release hashes generated for every finished downloadable artifact in the v0.9.28 delivery manifest.
 
-Historical v0.9.22 Windows evidence remains useful baseline evidence but does not verify the changed v0.9.26 package.
+Historical v0.9.22 and v0.9.27 Windows evidence remains useful baseline evidence but does not verify the changed v0.9.28 package.
 
 ## Live Google Classroom grading gate
 
@@ -53,11 +53,12 @@ Historical v0.9.22 Windows evidence remains useful baseline evidence but does no
 
 ## Live roster-sync gate
 
-Use controlled test memberships first. Do not test automatic removals because v0.9.26 deliberately has no automatic-removal path.
+Use controlled test memberships first. Do not test automatic removals because v0.9.28 deliberately has no automatic-removal path.
 
-- [ ] Discover the teacher's real Classroom rosters and verify class names/counts against Classroom.
-- [ ] Map each intended Classroom to the correct Period 1–6 value and confirm duplicate period mappings fail closed.
-- [ ] Read the live Hall Pass / Check-In roster and verify the comparison counts against the teacher dashboard/workbook.
+- [x] Discover the teacher's real Classroom rosters: three consecutive scans returned the same five classes and 114 verified identities with zero unresolved rows.
+- [x] Map each intended Classroom uniquely to the matching live Period 1, 3, 4, 5, and 6 label; duplicate-period rejection remains covered offline.
+- [x] Read the live Hall Pass / Check-In roster: 125 active memberships, expected contracts, and a revision token were verified read-only.
+- [x] Eliminate harmless name-order churn: 105 apparent name updates reduced to 9 materially different review items, with 96 matched memberships already correct.
 - [ ] Confirm the native approval dialog shows additions/name corrections and explicitly excludes removals.
 - [ ] Apply one controlled new membership and verify it appears in the live operations roster with preserved history.
 - [ ] Apply one controlled name correction and verify only that membership name changes.
@@ -73,4 +74,4 @@ Use controlled test memberships first. Do not test automatic removals because v0
 - [ ] Review score disagreements, false `SAFE_DRAFT` cases, and teacher-review rate.
 - [ ] Do not treat mechanical validation as proof of pedagogical correctness.
 
-Until the applicable Windows and live gates are complete, v0.9.26 must be described as a controlled-test release candidate, not a field-validated commercial release.
+Until the applicable Windows and controlled-write gates are complete, v0.9.28 must be described as a controlled-test release candidate, not a field-validated commercial release or 1.0.

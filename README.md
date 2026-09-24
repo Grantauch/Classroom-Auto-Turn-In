@@ -1,6 +1,6 @@
-# GoClassroom v0.9.27 — Roster Safety Repair Preview
+# GoClassroom v0.9.28 — Live Roster Pilot Preview
 
-GoClassroom is the umbrella product built on the existing Classroom Auto Turn-In (CATI) Windows identity. v0.9.27 preserves the stable app ID, install identity, saved setup, browser profile, scheduled-task names, v0.9.23 due-date repair, and v0.9.25 live roster comparison while adding a teacher-confirmed, revision-bound roster write path.
+GoClassroom is the umbrella product built on the existing Classroom Auto Turn-In (CATI) Windows identity. v0.9.28 preserves the stable app ID, install identity, saved setup, browser profile, scheduled-task names, v0.9.23 due-date repair, and v0.9.27 roster-write safety while repairing current Google Classroom People-page discovery and filtering harmless `Last, First` / `First Last` differences out of live name-write proposals.
 
 GoClassroom can discover teaching Classrooms locally, accept only evidence-backed student email identities, require explicit Classroom-to-period mappings, compare against the current Hall Pass / Check-In roster, and apply only additions and name corrections after native confirmation. Removal candidates remain review-only. Pending writes are encrypted and retried with the same idempotent request ID after uncertain failures.
 
@@ -75,7 +75,7 @@ npm run check:release-ready
 
 The end-to-end/browser checks remain separate because they require the packaged/browser environment.
 
-For a Windows installer build, extract this source package to a short local path such as `C:\CATI-Build\v0.9.27` before running `BUILD-SETUP-EXE.bat`. The pinned NSIS 3.0.4.1 toolchain still uses legacy Windows path handling and can fail when the source is nested under a very long folder path even though the source checks pass.
+For a Windows installer build, extract this source package to a short local path such as `C:\CATI-Build\v0.9.28` before running `BUILD-SETUP-EXE.bat`. The pinned NSIS 3.0.4.1 toolchain still uses legacy Windows path handling and can fail when the source is nested under a very long folder path even though the source checks pass.
 
 ## Important files
 

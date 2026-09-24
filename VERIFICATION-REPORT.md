@@ -1,12 +1,12 @@
-# GoClassroom v0.9.26 Approved Roster Sync Verification Report
+# GoClassroom v0.9.28 Live Roster Pilot Verification Report
 
-## v0.9.26 source status — September 22, 2026
+## v0.9.28 source and read-only live status — September 23, 2026
 
-v0.9.26 extends the v0.9.25 live roster comparison with a teacher-confirmed Version 29 write path. The desktop validates both read and write contracts plus the live roster revision, constructs only additions and name corrections, stores an exact pending request through OS-backed encryption, retries the same request ID after uncertain failures, verifies the returned request/revisions, and re-reads the live roster. Removal candidates remain review-only and are never constructed as write actions.
+v0.9.28 preserves the teacher-confirmed Version 29 write path and repairs the live Classroom roster reader. The desktop validates both read and write contracts plus the live roster revision, constructs only additions and materially different name corrections, stores an exact pending request through OS-backed encryption, retries the same request ID after uncertain failures, verifies the returned request/revisions, and re-reads the live roster. Removal candidates remain review-only and are never constructed as write actions.
 
 The core project check, roster bridge/service checks, architecture guard, UI integrity, teacher error-language checks, release-candidate freeze, Windows build-configuration regression, adversarial/fuzz suites, AI recovery, grading, multi-Classroom grading bridge, grading confirmation/locking/no-rubric checks, field stabilization, silent retry, migration, multi-PC, recovery audit, submission scope, distribution isolation, verified-build, and builder-bootstrap checks passed in this Linux container. The PowerShell scheduler check skipped because PowerShell is not installed here.
 
-The source/dependency lockfile gate passed. This source archive intentionally omits `node_modules`. An `npm ci --no-audit --no-fund` attempt in this Linux container could not finish because the sandbox could not resolve npm/GitHub package hosts (`EAI_AGAIN`), so the dependency-backed electron-builder schema/package run was not counted as passing here. A Windows release build must restore the pinned dependencies with `npm ci`, rerun `npm run check:deep` with PowerShell available, build the installer, and complete packaged-app validation before v0.9.26 may replace an installed copy.
+The source/dependency lockfile gate passed on the Windows release builder. Three consecutive live Classroom scans returned the same five class counts and 114 verified identities; the Hall Pass / Check-In bridge returned 125 active memberships plus the expected contracts and revision token read-only. A Windows release build must still complete the final package, installed self-test, upgrade-preservation, and artifact-hash gates before v0.9.28 may replace an installed copy.
 
 The Hall Pass source counterpart is tracked separately in the protected `the-desk` release lane: the new Apps Script RPC returns only active membership identity fields and rejects non-teachers and stale roster-sync contracts. It does not expose PINs, pass/check-in history, access overrides, or workbook row numbers, and its source/runtime coverage passed the repository full-release CI before deployment.
 
