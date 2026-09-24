@@ -76,3 +76,40 @@ jobs:
             dist/*.blockmap
             dist/SHA256SUMS.txt
           if-no-files-found: error
+
+  # A version tag also publishes the tested installer as a GitHub Release, so
+  # teachers download it from one permanent link without a GitHub account:
+  # https://github.com/Grantauch/Classroom-Auto-Turn-In/releases/latest/download/GoClassroom-Setup.exe
+  publish-release:
+    needs: build-windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the tested installer
+        uses: actions/download-artifact@v4
+        with:
+          name: GoClassroom-v0.9.29-Windows
+          path: dist
+
+      - name: Add a version-free copy for the permanent link
+        run: |
+          set -euo pipefail
+          installer=$(ls dist/Classroom-Auto-Turn-In-Setup-*.exe | head -n 1)
+          cp "$installer" dist/GoClassroom-Setup.exe
+          ls -l dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: GoClassroom ${{ github.ref_name }}
+          body: |
+            Windows installer for GoClassroom. Download **GoClassroom-Setup.exe** and run it.
+            Windows may say "Windows protected your PC" because the installer is not code-signed: click **More info → Run anyway**.
+            SHA256SUMS.txt lists the checksum of the versioned installer.
+          files: |
+            dist/GoClassroom-Setup.exe
+            dist/Classroom-Auto-Turn-In-Setup-*.exe
+            dist/SHA256SUMS.txt
+          fail_on_unmatched_files: true
