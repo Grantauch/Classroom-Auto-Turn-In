@@ -1,4 +1,8 @@
-# v0.9.31 GoClassroom Multi-Teacher Roster Release Candidate Status
+# v0.9.32 GoClassroom Multi-Teacher Roster Release Candidate Status
+
+v0.9.32 makes roster problems diagnosable from a teacher's computer. "Copy support summary" now lists the last three problems with their support code, the action, and the underlying reason, with student email addresses removed. The plaintext log records the same scrubbed reason. Behavior is otherwise unchanged from v0.9.31.
+
+## Previous: v0.9.31
 
 v0.9.31 is a visual and layout overhaul. Behavior, safety rules, and support codes are unchanged from v0.9.30.
 
