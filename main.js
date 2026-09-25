@@ -372,7 +372,7 @@ async function dashboard(){
   const failureAt=Date.parse(state.lastFailure?.finishedAt||0)||0,successAt=Date.parse(state.lastSuccess?.finishedAt||0)||0;
   const unresolvedFailure=failureAt>successAt?teacherOutcome(state.lastFailure):null;
   const ai=aiPublicState();const pendingDrafts=ai.drafts.filter(d=>d.status==='ready');
-  return {config:cfg,machine,plansCount:plans.length,submittedCount:autoSubmittedRecords.length,lastRun:state.lastRun,nextPlan:next,state:{...state,currentBlockers:undefined,dataCorrupt:!localDataHealthy},readiness,scheduler,lock:getRunLockInfo(),ai:{settings:ai.settings,pendingCount:pendingDrafts.length,drafts:ai.drafts.slice(0,20)},diagnostics:{lastOutcome:teacherOutcome(state.lastOutcome),lastSuccess:teacherOutcome(state.lastSuccess),lastFailure:teacherOutcome(state.lastFailure),unresolvedFailure,lastSubmission:state.lastSubmission,currentBlockers:teacherBlockers,recoveredFromBackupAt:state.recoveredFromBackupAt||null}};
+  return {config:cfg,machine,plansCount:plans.length,submittedCount:autoSubmittedRecords.length,lastRun:state.lastRun,nextPlan:next,state:{...state,currentBlockers:undefined,dataCorrupt:!localDataHealthy},readiness,scheduler,lock:getRunLockInfo(),ai:{settings:ai.settings,pendingCount:pendingDrafts.length,drafts:ai.drafts.slice(0,20)},diagnostics:{lastOutcome:teacherOutcome(state.lastOutcome),lastSuccess:teacherOutcome(state.lastSuccess),lastFailure:teacherOutcome(state.lastFailure),unresolvedFailure,lastSubmission:state.lastSubmission,currentBlockers:teacherBlockers,recoveredFromBackupAt:state.recoveredFromBackupAt||null,recentProblems:userSafeError.recentProblems()}};
 }
 
 function validSafetyCertification(cfg=loadConfig(),plans=loadPlans()){
