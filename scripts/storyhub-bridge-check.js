@@ -45,7 +45,7 @@ const roster={studentsHeadingFound:true,scrollComplete:true,students:[{email:'ad
     const localData=createLocalData(()=>root);let received=null;
     const service=createGradingService({localData,ensureAutomationIdle:()=>{},compactError:e=>e.message,runNodeScript:async(file,args)=>{
       if(file==='read-storyhub-submissions.js')return encode('storyhub-catalog',{spreadsheetUrl:scope.spreadsheetUrl,groups:catalog(source)});
-      if(file==='grading-classroom-extract.js'){received=JSON.parse(Buffer.from(args[0],'base64url'));return encode('grading-submissions',{assignment:{courseId:'course',assignmentId:'assignment',title:'Example',question:'Explain',questionComplete:true,maxPoints:10},packets:[{studentId:'ada',studentName:'Ada',extractionComplete:false,extractionReason:'Unreadable newest submission'}]})}
+      if(file==='grading-classroom-extract.js'){received=JSON.parse(Buffer.from(args[0],'base64url'));return encode('grading-submissions',{assignment:{courseId:'course',assignmentId:'assignment',title:'Example',question:'Explain',questionComplete:false,maxPoints:10},packets:[{studentId:'ada',studentName:'Ada',source:'storyhub',submissionId:'new',studentWork:'Complete hub answer for teacher review',extractionComplete:true}]})}
       throw new Error('Unexpected runner '+file);
     }});
     service.addGradingClassroom({courseId:'course',name:'Synthetic History'});
@@ -56,6 +56,7 @@ const roster={studentsHeadingFound:true,scrollComplete:true,students:[{email:'ad
     const result=await service.processClassroomAssignment({assignment:{courseId:'course',assignmentId:'assignment'},submissionSource:scope,writeDrafts:false,batchSize:35});
     assert.equal(received.submissionSource.hub,scope.hub);assert.equal(received.batchSize,35);
     assert.equal(result.summary.teacherReview,1);assert.equal(result.summary.draftsSaved,0);
+    assert.equal(result.results[0].studentWork,'Complete hub answer for teacher review','Answers must remain visible when incomplete assignment directions prevent grading');
     await assert.rejects(()=>service.processClassroomAssignment({assignment:{courseId:'course',assignmentId:'assignment'},submissionSource:{...scope,hub:''}}),/choose the hub/);
   }finally{fs.rmSync(root,{recursive:true,force:true})}
   console.log('StoryHub bridge checks passed: private sheet parsing, full evidence, newest-row handling, explicit hub/period scope, verified email identity, ambiguous and missing matches, auth rejection, settings and grading-service integration.');

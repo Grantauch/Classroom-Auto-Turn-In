@@ -322,7 +322,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
   }
 
   function reviewResult(packet,reason){
-    return {studentId:packet.studentId,studentName:packet.studentName,status:'TEACHER_REVIEW',reason,grade:null,validation:null,writeStatus:'NOT_WRITTEN',writeMessage:'No Classroom grade was changed.'};
+    return {studentId:packet.studentId,studentName:packet.studentName,status:'TEACHER_REVIEW',reason,grade:null,validation:null,writeStatus:'NOT_WRITTEN',writeMessage:'No Classroom grade was changed.',...(packet.source==='storyhub'?{source:'storyhub',studentWork:packet.studentWork||'',submissionId:packet.submissionId}:{})};
   }
 
   async function processClassroomAssignmentUnlocked(input={}){
