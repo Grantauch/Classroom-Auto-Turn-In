@@ -1,4 +1,15 @@
-# v0.9.32 GoClassroom Multi-Teacher Roster Release Candidate Status
+# v0.9.33 GoClassroom StoryHub Release Candidate Status
+
+v0.9.33 adds a private Turn In sheet source to Draft grading, explicit hub/period
+selection for a Classroom assignment, verified-email matching, complete-answer
+preview, and newest-submission handling. It also preserves class-size batch
+settings up to 60 and makes the native confirmation report that same bound.
+
+Local synthetic/source verification and the Windows installer build are separate
+from activation on the teacher's computer. School-account field verification,
+Apps Script v5 deployment, and installed-app update remain pending.
+
+## Previous: v0.9.32
 
 v0.9.32 makes roster problems diagnosable from a teacher's computer. "Copy support summary" now lists the last three problems with their support code, the action, and the underlying reason, with student email addresses removed. The plaintext log records the same scrubbed reason. Behavior is otherwise unchanged from v0.9.31.
 

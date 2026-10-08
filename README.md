@@ -1,4 +1,13 @@
-# GoClassroom v0.9.28 — Live Roster Pilot Preview
+# GoClassroom v0.9.33 — StoryHub grading connection
+
+v0.9.33 connects the private Turn In sheet to Draft grading. Select a Classroom
+assignment, choose **StoryHub turn ins**, and choose its hub and period. The app
+reads each student's newest submitted answers and matches by verified Classroom
+email. Read [STORYHUB-WORKFLOW.md](STORYHUB-WORKFLOW.md) for the complete workflow.
+
+Existing grade protection, local Ollama grading, the separate draft-write opt-in,
+and teacher confirmation remain in force. Deployment and school-account field
+verification are still separate from the source checks below.
 
 GoClassroom is the umbrella product built on the existing Classroom Auto Turn-In (CATI) Windows identity. v0.9.28 preserves the stable app ID, install identity, saved setup, browser profile, scheduled-task names, v0.9.23 due-date repair, and v0.9.27 roster-write safety while repairing current Google Classroom People-page discovery and filtering harmless `Last, First` / `First Last` differences out of live name-write proposals.
 

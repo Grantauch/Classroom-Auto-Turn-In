@@ -97,7 +97,7 @@ assert(!validateGrade(wrongTypes).valid,'Mechanical validation accepted string-t
     const dataPath=localData.dataDir(),files=fs.readdirSync(dataPath).filter(x=>!x.endsWith('.bak'));
     assert(files.includes('grading-settings.json'),'Grading settings were not persisted');
     const savedSettings=JSON.parse(fs.readFileSync(path.join(dataPath,'grading-settings.json'),'utf8'));
-    assert(Object.keys(savedSettings).sort().join(',')==='activeGradingCourseId,batchSize,classroomDraftWriteEnabled,enabled,gradingClassrooms,model,reviewExportEnabled,reviewFolderPath','Grading settings persisted unexpected fields');
+    assert(Object.keys(savedSettings).sort().join(',')==='activeGradingCourseId,batchSize,classroomDraftWriteEnabled,enabled,gradingClassrooms,model,reviewExportEnabled,reviewFolderPath,storyHubSheetUrl','Grading settings persisted unexpected fields');
     assert(savedSettings.classroomDraftWriteEnabled===false&&savedSettings.batchSize===5&&savedSettings.reviewExportEnabled===false&&Array.isArray(savedSettings.gradingClassrooms),'Grading bridge safety settings were not persisted as expected');
     assert(!files.some(x=>/grade|student|submission/i.test(x)&&x!=='grading-settings.json'),'Grading service persisted student grading content unexpectedly');
     fs.rmSync(root,{recursive:true,force:true});
