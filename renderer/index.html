@@ -54,7 +54,7 @@
     </nav>
     <div class="sidebar-foot">
       <button class="nav" data-page="logs" data-tip="Help &amp; support"><svg><use href="#i-help"/></svg><span class="nav-label">Help &amp; support</span></button>
-      <div class="sidebar-version"><b>Preview · v0.9.32</b><span>Your Google sign-in stays on this PC</span></div>
+      <div class="sidebar-version"><b>Preview · v0.9.33</b><span>Your Google sign-in stays on this PC</span></div>
     </div>
   </aside>
 
@@ -177,6 +177,13 @@
           <div class="wide classroom-picker-actions"><button id="findTeachingClassrooms" class="btn" type="button" data-tip="Opens Classroom once, saves every class you teach, and reads their assignments."><svg><use href="#i-refresh"/></svg><span>Find my classes</span></button><button id="addGradingClassroom" class="btn secondary" type="button" data-tip="Pick one class by hand instead."><svg><use href="#i-home"/></svg><span>Add one class</span></button><span id="gradingClassroomCourse" class="muted">Your lesson plan setup will not change.</span></div>
           <label class="wide field">Class<select id="gradingClassroomSelect"><option value="">No classes yet</option></select></label>
           <label class="wide field">Assignment<select id="gradingClassroomAssignment"><option value="">Find assignments first</option></select></label>
+          <label class="wide field">Student work<select id="gradingWorkSource"><option value="classroom">Google Classroom submissions</option><option value="storyhub">StoryHub turn ins</option></select></label>
+          <div id="gradingHubSource" class="wide hidden">
+            <label class="field">Private Turn In sheet<input id="gradingHubSheet" type="url" placeholder="Paste your Google Sheets link"></label>
+            <button id="readGradingHubs" class="btn secondary" type="button">Read hub turn ins</button>
+            <label class="field">Hub and period for this assignment<select id="gradingHubGroup"><option value="">Read your Turn In sheet first</option></select></label>
+            <p class="muted">Choose the hub that belongs to the selected Classroom assignment. GoClassroom uses each student's newest turn in and matches by verified email.</p>
+          </div>
           <div class="wide form-actions"><button id="discoverGradingAssignments" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh assignments</span></button><button id="removeGradingClassroom" class="btn text-btn" type="button">Remove this class</button></div>
           <label class="wide field">Rubric <small class="muted">Optional. Leave blank and GoClassroom grades from the directions, out of the points Classroom already shows.</small><textarea id="gradingClassroomRubric" rows="7" maxlength="30000" placeholder="Paste the rubric, or leave this blank."></textarea></label>
           <label class="wide field">Directions <small class="muted">Optional. Leave blank to use the directions in Classroom.</small><textarea id="gradingClassroomQuestion" rows="4" maxlength="20000" placeholder="Only needed if the Classroom directions are unclear."></textarea></label>
@@ -334,7 +341,7 @@
         <div class="panel support-card"><div class="support-icon good"><svg><use href="#i-shield"/></svg></div><span class="section-kicker">QUICK SUPPORT</span><h2>Copy a support summary</h2><p>Copies the useful status information you can send to someone helping you.</p><button id="copyDiagnostics" class="btn secondary"><svg><use href="#i-copy"/></svg><span>Copy support summary</span></button></div>
       </div>
       <details class="panel"><summary><div><span class="section-kicker">SUPPORT FILES</span><h2>Files for school technology support</h2></div><span class="summary-chevron"><svg><use href="#i-chevron"/></svg></span></summary><p class="muted">You normally do not need these. If someone is helping troubleshoot the app, they may ask you to open this folder.</p><div class="actions toolbar"><button id="refreshLogs" class="btn secondary"><svg><use href="#i-refresh"/></svg><span>Refresh support status</span></button><button id="openLogs" class="btn secondary"><svg><use href="#i-folder"/></svg><span>Open support folder</span></button><button id="cleanupLogs" class="btn secondary"><span>Remove old support files</span></button></div><div id="logBox" class="notice compact">Support files are stored on this computer and are not shown inside the app.</div></details>
-      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>GoClassroom <small>preview name</small></h2><p>Teacher Edition v0.9.32 · Built on the Classroom Auto Turn-In compatibility identity so existing setup and schedules remain intact.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
+      <div class="panel about-card"><div><span class="section-kicker">ABOUT</span><h2>GoClassroom <small>preview name</small></h2><p>Teacher Edition v0.9.33 · Built on the Classroom Auto Turn-In compatibility identity so existing setup and schedules remain intact.</p></div><div class="about-badges"><span class="status-badge good">Stops instead of guessing</span><span class="status-badge info">Google sign-in stays on this PC</span></div></div>
     </section>
   </main>
 </div>

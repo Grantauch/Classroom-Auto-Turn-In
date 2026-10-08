@@ -6,6 +6,8 @@ const {
   collectStudentSubmissionRowsDom,collectStudentEvidenceDom,extractAssignmentTextDom,readAssignmentMaxPointsDom,findGradeInputsDom
 }=require('./classroom-grading');
 const {emit,emitError}=require('./protocol');
+const {sourceScope,readTurnIns,matchSubmissions,hubEvidence}=require('./storyhub-submissions');
+const {collectCourseRoster}=require('./discover-classroom-rosters');
 
 function bestExistingGrade(inputs){
   const rows=Array.isArray(inputs)?inputs:[];
@@ -99,8 +101,21 @@ async function extractOneStudent({context,page,row,courseId,assignmentId}){
   return {...row,existingGrade:'',extractionComplete,extractionReason,studentWork,attachments:attachmentSummary};
 }
 
+async function extractHubStudent({page,row,courseId,assignmentId,matched}){
+  await openStudentPage(page,row.studentUrl,courseId,assignmentId,row.studentId);
+  const grade=bestExistingGrade(await page.evaluate(findGradeInputsDom).catch(()=>[]));
+  const base={...row,source:'storyhub',attachments:[],studentWork:'',existingGrade:grade.value,extractionComplete:false};
+  if(grade.ambiguous)return {...base,extractionReason:'The Classroom grade field is ambiguous. Review this student manually.'};
+  if(grade.value)return {...base,extractionReason:'A draft or existing grade is already present.'};
+  const match=matched.get(row.studentId);
+  if(!match?.submission)return {...base,extractionReason:'No hub turn in matched this student by verified Classroom email for the selected hub and period.'};
+  try{return {...base,studentEmail:match.email,submissionId:match.submission.submissionId,studentWork:hubEvidence(match.submission),extractionComplete:true}}
+  catch(error){return {...base,extractionReason:String(error.message||error)}}
+}
+
 (async()=>{
   const input=decodePayload(process.argv[2]),cfg=loadConfig();
+  const hubSource=sourceScope(input.submissionSource);
   const courseId=clean(input.courseId,300),assignmentId=clean(input.assignmentId,300),title=clean(input.title,1000),batchSize=clampBatch(input.batchSize);
   if(!courseId||!assignmentId)throw new Error('Choose a Classroom assignment before scanning student work.');
   const urls=assignmentUrls(courseId,assignmentId),detailUrl=clean(input.detailUrl,1000)||urls.detailUrl;
@@ -108,6 +123,13 @@ async function extractOneStudent({context,page,row,courseId,assignmentId}){
   const context=await launchTeacherContext(cfg,{headless:false});
   try{
     const page=context.pages()[0]||await context.newPage();
+    let matched=null;
+    if(hubSource){
+      emit('status',{message:'Reading private hub turn ins and verifying Classroom student emails.'});
+      const submissions=await readTurnIns(context,hubSource.spreadsheetUrl);
+      const roster=await collectCourseRoster(page,{courseId,courseDisplayName:title||'Selected Classroom',needsTeacherCheck:true});
+      matched=matchSubmissions(submissions,hubSource,roster);
+    }
     emit('status',{message:`Reading assignment directions for ${title||'the selected assignment'}.`});
     await page.goto(detailUrl,{waitUntil:'domcontentloaded',timeout:45000});
     await assertGoogleSession(page,'assignment directions for local grading');
@@ -132,18 +154,30 @@ async function extractOneStudent({context,page,row,courseId,assignmentId}){
       await page.waitForTimeout(900);
       rows=await collectStudentRows(page,assignmentId);
     }
-    const eligible=rows.filter(row=>!row.existingGrade&&!/\b(?:Graded|Returned|Assigned|Missing)\b/i.test(row.status||'')).slice(0,batchSize);
+    if(hubSource&&studentPageUrl!==urls.studentWorkAllUrl){
+      await page.goto(urls.studentWorkAllUrl,{waitUntil:'domcontentloaded',timeout:45000});
+      await assertGoogleSession(page,'Classroom students with hub turn ins');
+      await page.locator('main,[role="main"]').first().waitFor({state:'visible',timeout:30000});
+      await page.waitForTimeout(700);
+      const allRows=await collectStudentRows(page,assignmentId),merged=new Map(rows.map(row=>[row.studentId,row]));
+      for(const row of allRows)if(!merged.has(row.studentId))merged.set(row.studentId,row);
+      rows=[...merged.values()];
+    }
+    const excluded=hubSource?/\b(?:Graded|Returned)\b/i:/\b(?:Graded|Returned|Assigned|Missing)\b/i;
+    const eligible=rows.filter(row=>!row.existingGrade&&!excluded.test(row.status||'')&&(!hubSource||matched.get(row.studentId)?.submission)).slice(0,batchSize);
     const alreadyGraded=rows.filter(row=>!!row.existingGrade||/\b(?:Graded|Returned)\b/i.test(row.status||'')).length;
     const packets=[];
     for(let i=0;i<eligible.length;i++){
       emit('status',{message:`Reading student work ${i+1} of ${eligible.length}.`});
-      try{packets.push(await extractOneStudent({context,page,row:eligible[i],courseId,assignmentId}));}
+      try{packets.push(hubSource
+        ?await extractHubStudent({page,row:eligible[i],courseId,assignmentId,matched})
+        :await extractOneStudent({context,page,row:eligible[i],courseId,assignmentId}));}
       catch(error){packets.push({...eligible[i],existingGrade:'',extractionComplete:false,extractionReason:clean(error.message,1000),studentWork:'',attachments:[]});}
     }
     log(`Classroom grading extraction read ${packets.length} ungraded submission(s) for assignment ${assignmentId}; ${alreadyGraded} existing/returned grade(s) were not touched.`);
     emit('grading-submissions',{
       assignment:{courseId,assignmentId,title:title||assignmentText.title||`Assignment ${assignmentId}`,detailUrl,studentWorkUrl:studentPageUrl,question:clean(input.questionOverride,20000)||clean(assignmentText.text,20000),questionComplete:!!clean(input.questionOverride,20000)||(!assignmentText.truncated&&!!clean(assignmentText.text,20000)),questionReason:assignmentText.truncated?'The Classroom directions exceeded CATI\'s safe evidence limit. Add a complete directions override before grading.':'',maxPoints,maxPointsReason:points?.ok?'':clean(points?.reason||'CATI could not verify one Classroom assignment point total.',500)},
-      totalStudentRows:rows.length,alreadyGraded,packets
+      totalStudentRows:rows.length,alreadyGraded,packets,...(hubSource?{hubIssues:matched.unmatched}: {})
     });
   }finally{await context.close().catch(()=>{})}
 })().catch(error=>{emitError(error);process.exit(1)});

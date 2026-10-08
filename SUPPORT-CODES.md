@@ -132,6 +132,7 @@ These codes are used only if the normal typed main-process error cannot cross th
 | `AT-GRD-192` | `grading:select-review-folder` | The private grading review folder could not be selected. No student work was saved by that action. |
 | `AT-GRD-191` | `grading:open-review-folder` | Windows could not open the saved private grading review folder. |
 | `AT-GRD-190` | `grading:discover-my-classrooms` | GoClassroom could not read your class list. Saved classes and grades were not changed. |
+| `AT-GRD-189` | `grading:read-storyhubs` | The private Turn In sheet could not be read. Check the workbook link and sign into GoClassroom's Google browser with the teacher account that can access it. Keep the sheet private. |
 | `AT-ROS-101` | `roster:get-state` | GoClassroom could not load the saved roster preview. No Hall Pass or Check-In roster was changed. |
 | `AT-ROS-102` | `roster:discover` | GoClassroom could not safely read the Classroom rosters. No Hall Pass or Check-In roster was changed. |
 | `AT-ROS-103` | `roster:save-mappings` | The class-to-period mapping could not be saved. No Hall Pass or Check-In roster was changed. |

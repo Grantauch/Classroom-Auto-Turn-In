@@ -5,6 +5,7 @@ const {DEFAULT_OLLAMA_URL,DEFAULT_GRADING_MODEL,GRADING_SCHEMA_VERSION,cleanMode
 const {clean,clampBatch,encodePayload,assignmentUrls,extractMaxPoints}=require('../engine/classroom-grading');
 const {parseClassroomIds}=require('../engine/safety');
 const {lastPayload}=require('../engine/protocol');
+const {sheetIdentity,sourceScope}=require('../engine/storyhub-submissions');
 
 const WRITE_AUTHORIZATION_TTL_MS=5*60*1000;
 const CLASSROOM_BATCH_DEADLINE_MS=60*60*1000;
@@ -97,7 +98,8 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       gradingClassrooms:[],
       activeGradingCourseId:'',
       reviewExportEnabled:false,
-      reviewFolderPath:''
+      reviewFolderPath:'',
+      storyHubSheetUrl:''
     };
   }
 
@@ -116,6 +118,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       activeGradingCourseId,
       reviewExportEnabled:!!saved.reviewExportEnabled,
       reviewFolderPath:String(saved.reviewFolderPath||'').trim(),
+      storyHubSheetUrl:saved.storyHubSheetUrl?sheetIdentity(saved.storyHubSheetUrl).url:'',
       baseUrl:DEFAULT_OLLAMA_URL,
       gradingSchema:GRADING_SCHEMA_VERSION
     };
@@ -137,7 +140,8 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       gradingClassrooms,
       activeGradingCourseId,
       reviewExportEnabled:!!next.reviewExportEnabled,
-      reviewFolderPath
+      reviewFolderPath,
+      storyHubSheetUrl:next.storyHubSheetUrl?sheetIdentity(next.storyHubSheetUrl).url:''
     };
     if(saved.reviewExportEnabled&&!saved.reviewFolderPath)throw new Error('Choose a grading review folder before turning on review copies.');
     writeJson('grading-settings.json',saved);
@@ -198,6 +202,16 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
   }
 
   function requireBrowserRunner(){if(typeof runNodeScript!=='function')throw new Error('The Classroom grading browser bridge is not available in this build.');}
+
+  async function readStoryHubCatalog(value={}){
+    ensureAutomationIdle();requireBrowserRunner();
+    const spreadsheetUrl=sheetIdentity(value.spreadsheetUrl||loadSettings().storyHubSheetUrl).url;
+    const out=await exclusive('Private hub submission read',()=>runNodeScript('read-storyhub-submissions.js',[encodePayload({spreadsheetUrl})],false,{timeoutMs:2*60*1000}));
+    const payload=lastPayload(out,'storyhub-catalog');
+    if(!payload||payload.spreadsheetUrl!==spreadsheetUrl||!Array.isArray(payload.groups))throw new Error('GoClassroom could not read a matching Turn In sheet.');
+    saveSettings({storyHubSheetUrl:spreadsheetUrl});
+    return payload;
+  }
 
   async function discoverAssignments(courseId){
     ensureAutomationIdle();requireBrowserRunner();
@@ -321,6 +335,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       if(!fs.existsSync(reviewRoot)||!fs.statSync(reviewRoot).isDirectory())throw new Error('The grading review folder is unavailable. Choose an available private folder or turn review copies off before grading.');
     }
     const assignment=input.assignment&&typeof input.assignment==='object'?input.assignment:{};
+    const submissionSource=sourceScope(input.submissionSource);
     const {courseId,assignmentId,title,courseDisplayName}=validateAssignmentScope(assignment);
     const course=gradingClassroom(courseId,settings);
     if(writeDrafts)consumeWriteAuthorization(input.writeAuthorization,{courseId,assignmentId});
@@ -332,7 +347,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
 
     const extractArgs=encodePayload({
       courseId,assignmentId,title,detailUrl:canonicalUrls.detailUrl,studentWorkUrl:canonicalUrls.studentWorkUrl,
-      batchSize,questionOverride
+      batchSize,questionOverride,...(submissionSource?{submissionSource}:{})
     });
     const scanOut=await exclusive('Classroom grading submission scan',()=>runNodeScript('grading-classroom-extract.js',[extractArgs],false,{timeoutMs:25*60*1000}));
     const scan=lastPayload(scanOut,'grading-submissions');
@@ -361,11 +376,15 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
       if(status==='SAFE_DRAFT'&&Math.abs(Number(graded.grade?.max_score)-classroomMax)>0.001){
         status='TEACHER_REVIEW';reason=`The rubric totals ${graded.grade?.max_score} points, but Classroom shows ${classroomMax} points. CATI will not scale or guess.`;
       }
-      const row={studentId:packet.studentId,studentName:packet.studentName,status,reason,grade:graded.grade||null,validation:graded.validation||null,rubricSource:graded.rubricSource||(rubricProvided?'teacher':'directions'),writeStatus:'NOT_WRITTEN',writeMessage:'No Classroom grade was changed.'};
+      const row={studentId:packet.studentId,studentName:packet.studentName,status,reason,grade:graded.grade||null,validation:graded.validation||null,rubricSource:graded.rubricSource||(rubricProvided?'teacher':'directions'),writeStatus:'NOT_WRITTEN',writeMessage:'No Classroom grade was changed.',...(submissionSource?{studentWork:packet.studentWork,submissionId:packet.submissionId,source:'storyhub'}:{})};
       results.push(row);
       if(status==='SAFE_DRAFT'&&graded.grade?.score!==null&&graded.grade?.score!==undefined){
         writeCandidates.push({studentId:packet.studentId,studentName:packet.studentName,studentUrl:packet.studentUrl,score:graded.grade.score,maxScore:graded.grade.max_score,classification:'SAFE_DRAFT',row});
       }
+    }
+
+    for(const issue of submissionSource&&Array.isArray(scan.hubIssues)?scan.hubIssues:[]){
+      results.push(reviewResult({studentId:'',studentName:clean(issue.studentEmail,320)},clean(issue.reason,1000)||'This hub turn in could not be matched safely.'));
     }
 
     if(writeDrafts&&writeCandidates.length){
@@ -415,7 +434,7 @@ function createGradingService({localData,ensureAutomationIdle,compactError,runNo
     finally{classroomBatchActive=false}
   }
 
-  return {loadSettings,saveSettings,addGradingClassroom,removeGradingClassroom,state,grade,discoverAssignments,discoverTeachingClassrooms,authorizeWriteBatch,processClassroomAssignment};
+  return {loadSettings,saveSettings,addGradingClassroom,removeGradingClassroom,state,grade,readStoryHubCatalog,discoverAssignments,discoverTeachingClassrooms,authorizeWriteBatch,processClassroomAssignment};
 }
 
 module.exports={createGradingService};
